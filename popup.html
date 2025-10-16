@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Q‑SCI Quality Evaluator</title>
+  <!-- Base popup styles -->
+  <link rel="stylesheet" href="popup.css" />
+  <!-- Additional badge styles -->
+  <link rel="stylesheet" href="qsci_ui_badges.css" />
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="popup-logo">
+        <div class="popup-logo-icon">Q‑SCI</div>
+        <div>
+          <div class="popup-title">Quality Check</div>
+          <div class="popup-subtitle">Scientific Publications</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content wrapper -->
+    <div class="popup-content">
+      <!-- Current page section -->
+      <div class="section current-page-section">
+        <h3>Current Page</h3>
+        <div class="page-status" id="page-status">
+          <span class="status-icon">ℹ️</span>
+          <span class="status-text">Checking...</span>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" id="analyze-btn">Analyze Paper</button>
+          <button class="btn btn-secondary" id="refresh-btn">Refresh</button>
+        </div>
+        <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px;">
+          <input type="checkbox" id="analyze-pdf" />
+          <label for="analyze-pdf" style="font-size: 12px;">Analyze PDF (if available)</label>
+        </div>
+      </div>
+
+      <!-- Stats section (hidden until analysis run) -->
+      <div class="section stats-section" id="stats-section" style="display: none;">
+        <h3>Analysis Results</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value" id="quality-score">--</div>
+            <div class="stat-label">Quality</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="impact-factor">--</div>
+            <div class="stat-label">Journal Tier</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="quartile">--</div>
+            <div class="stat-label">Quartile</div>
+          </div>
+        </div>
+        <button class="btn btn-outline" id="view-details-btn" style="display: none;">View Details</button>
+      </div>
+
+      <!-- Manual analysis section -->
+      <div class="section manual-analysis-section">
+        <h3>Manual Analysis</h3>
+        <textarea id="manual-text" rows="4" placeholder="Paste paper text to analyze..." style="width: 100%; border: 1px solid #d1d5db; border-radius: 4px; padding: 8px;"></textarea>
+        <div style="margin-top: 8px;">
+          <button class="btn btn-primary" id="manual-analyze-btn">Analyze Text</button>
+        </div>
+      </div>
+
+      <!-- Detailed analysis section (hidden until requested) -->
+      <div class="section detailed-section" id="detailed-section" style="display: none;">
+        <h3>Detailed Analysis</h3>
+        <button class="btn btn-secondary" id="close-details-btn" style="margin-bottom: 12px;">Close</button>
+        <div id="journal-info" style="margin-bottom: 8px;">
+          <div><strong>Journal:</strong> <span id="journal-name"></span></div>
+          <div><strong>Journal Tier:</strong> <span id="detailed-impact-factor"></span></div>
+          <div><strong>Quartile:</strong> <span id="detailed-quartile"></span></div>
+          <div><strong>Quality:</strong> <span id="detailed-quality-percentage"></span></div>
+          <div><strong>Traffic Light:</strong> <span id="detailed-traffic-light"></span></div>
+        </div>
+        <div id="badges-container" class="qsci-badges"></div>
+        <h4 style="margin-top: 12px;">✅ Positive Aspects</h4>
+        <div id="positive-aspects-list"></div>
+        <h4 style="margin-top: 12px;">⚠️ Areas for Improvement</h4>
+        <div id="negative-aspects-list"></div>
+        <!-- Source citations wrapper; hidden by default and populated dynamically -->
+        <div id="source-citations-section" style="display: none; margin-top: 12px;">
+          <h4>Source</h4>
+          <div id="source-text-display" style="display: none; margin-top: 8px;">
+            <div id="source-content" style="font-style: italic;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.85); align-items: center; justify-content: center; font-size: 18px; z-index: 1000;">
+      Analyzing...
+    </div>
+
+    <!-- Error message -->
+    <div id="error-message" style="display: none; color: #b91c1c; padding: 8px; background: #fee2e2; margin: 8px; border-radius: 4px;">
+      <span class="error-text">An error occurred.</span>
+    </div>
+
+    <!-- Success message -->
+    <div id="success-message" style="display: none; color: #065f46; padding: 8px; background: #d1fae5; margin: 8px; border-radius: 4px;">
+      <span class="success-text">Success!</span>
+    </div>
+
+    <!-- Settings button -->
+    <div style="text-align: center; margin-top: 12px;">
+      <button id="settings-btn" style="padding: 6px 12px; font-size: 14px; cursor: pointer;">Settings</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="qsci_evaluator.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

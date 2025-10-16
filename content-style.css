@@ -1,0 +1,508 @@
+/* Q-SCI Browser Extension - Content Script Styles */
+
+.qsci-widget {
+  position: relative;
+  max-width: 800px;
+  margin: 20px auto;
+  background: #ffffff;
+  border: 2px solid #e0e7ff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  z-index: 10000;
+  animation: qsci-slide-in 0.3s ease-out;
+}
+
+@keyframes qsci-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qsci-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 10px 10px 0 0;
+}
+
+.qsci-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.qsci-logo-icon {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.qsci-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.qsci-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.qsci-content {
+  padding: 24px;
+}
+
+/* Loading Animation */
+.qsci-loading {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.qsci-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: qsci-spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes qsci-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.qsci-progress {
+  width: 100%;
+  height: 4px;
+  background: #f3f4f6;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.qsci-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  animation: qsci-progress 2s ease-in-out infinite;
+}
+
+@keyframes qsci-progress {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+/* Score Section */
+.qsci-score-section {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.qsci-score-circle {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 6px solid;
+  margin: 0 auto;
+  position: relative;
+}
+
+.qsci-score-circle.green {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+}
+
+.qsci-score-circle.yellow {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+}
+
+.qsci-score-circle.red {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+}
+
+.qsci-score-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.qsci-score-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Journal Information */
+.qsci-journal-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.qsci-journal-section h3 {
+  margin: 0 0 16px 0;
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.qsci-journal-info {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.qsci-journal-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.qsci-impact-factor {
+  text-align: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-radius: 8px;
+}
+
+.qsci-if-value {
+  display: block;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.qsci-if-label {
+  display: block;
+  font-size: 11px;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.qsci-quartile {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.qsci-quartile.q1 {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.qsci-quartile.q2 {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.qsci-quartile.q3 {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.qsci-quartile.q4 {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Aspects Section */
+.qsci-aspects-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .qsci-aspects-section {
+    grid-template-columns: 1fr;
+  }
+  
+  .qsci-journal-info {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+}
+
+.qsci-positive-aspects,
+.qsci-negative-aspects {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.qsci-positive-aspects h3 {
+  color: #059669;
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.qsci-negative-aspects h3 {
+  color: #dc2626;
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.qsci-positive-aspects ul,
+.qsci-negative-aspects ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.qsci-aspect-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+  color: #374151;
+  line-height: 1.6;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.qsci-aspect-item:last-child {
+  border-bottom: none;
+}
+
+.qsci-aspect-item[data-source]:hover {
+  background: #f1f5f9;
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+  border-radius: 6px;
+  color: #1e293b;
+}
+
+.qsci-aspect-item[data-source]::after {
+  content: "👁️";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.qsci-aspect-item[data-source]:hover::after {
+  opacity: 1;
+}
+
+.qsci-positive-aspects .qsci-aspect-item::before {
+  content: "✓";
+  color: #059669;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.qsci-negative-aspects .qsci-aspect-item::before {
+  content: "⚠";
+  color: #dc2626;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+/* Footer */
+.qsci-footer {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 24px;
+}
+
+.qsci-footer small {
+  color: #6b7280;
+}
+
+.qsci-footer a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.qsci-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Error State */
+.qsci-error {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.qsci-error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.qsci-error h3 {
+  color: #dc2626;
+  margin: 0 0 12px 0;
+}
+
+.qsci-error p {
+  color: #6b7280;
+  margin: 0 0 20px 0;
+}
+
+.qsci-retry-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.qsci-retry-btn:hover {
+  background: #5a67d8;
+}
+
+/* Modal Styles */
+.qsci-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+  animation: qsci-modal-fade-in 0.2s ease-out;
+}
+
+@keyframes qsci-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.qsci-modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: qsci-modal-slide-in 0.3s ease-out;
+}
+
+@keyframes qsci-modal-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.qsci-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.qsci-modal-header h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.qsci-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.qsci-modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.qsci-modal-body {
+  padding: 24px;
+}
+
+.qsci-aspect-text,
+.qsci-source-text {
+  margin-bottom: 20px;
+}
+
+.qsci-aspect-text strong,
+.qsci-source-text strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.qsci-aspect-text p {
+  background: #f1f5f9;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin: 0;
+  color: #374151;
+}
+
+.qsci-source-text p {
+  background: #fef3c7;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin: 0;
+  color: #92400e;
+  border-left: 4px solid #f59e0b;
+}
+

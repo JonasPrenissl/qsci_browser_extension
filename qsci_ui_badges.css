@@ -1,0 +1,26 @@
+/*
+ * Additional badge styles for Q-SCI extension
+ *
+ * These styles define how badges are displayed in the detailed analysis
+ * section. Each badge is rendered as a small pill with subtle borders and
+ * gentle background colouring. Feel free to adjust margins or colours to
+ * better fit your theme.
+ */
+
+.qsci-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.qsci-badge {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
