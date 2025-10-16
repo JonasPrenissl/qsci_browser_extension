@@ -30,13 +30,15 @@
         <!-- Login form (shown when not logged in) -->
         <div id="login-form" style="display: none;">
           <h3>Login Required</h3>
-          <p style="font-size: 13px; margin-bottom: 12px;">Please login to use Q-SCI analysis features.</p>
-          <input type="email" id="login-email" placeholder="Email" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #d1d5db; border-radius: 4px;" />
-          <input type="password" id="login-password" placeholder="Password" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #d1d5db; border-radius: 4px;" />
-          <button class="btn btn-primary" id="login-btn" style="width: 100%; margin-bottom: 8px;">Login</button>
-          <p style="font-size: 12px; text-align: center; color: #6b7280;">
-            Don't have an account? Visit <a href="https://www.q-sci.org/register" target="_blank" style="color: #3b82f6;">q-sci.org</a> to register.
-          </p>
+          <p style="font-size: 13px; margin-bottom: 16px;">Please login with Clerk to use Q-SCI analysis features.</p>
+          <button class="btn btn-primary" id="login-btn" style="width: 100%; margin-bottom: 12px; padding: 12px;">
+            🔐 Login with Clerk
+          </button>
+          <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; font-size: 12px; color: #374151; margin-top: 8px;">
+            <div style="margin-bottom: 6px;"><strong>What you get:</strong></div>
+            <div>• <strong>Free:</strong> 10 analyses per day</div>
+            <div>• <strong>Subscribed:</strong> 100 analyses per day</div>
+          </div>
         </div>
 
         <!-- User status (shown when logged in) -->

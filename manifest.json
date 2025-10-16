@@ -144,7 +144,8 @@
         "qsci_evaluator.js",
         "qsci_ui_badges.css",
         "qsci_calibration_publications.json",
-        "popup.html"
+        "popup.html",
+        "clerk-auth.html"
       ],
       "matches": ["<all_urls>"]
     }

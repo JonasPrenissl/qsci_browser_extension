@@ -57,8 +57,6 @@ function initializeElements() {
     // Auth elements
     authSection: document.getElementById('auth-section'),
     loginForm: document.getElementById('login-form'),
-    loginEmail: document.getElementById('login-email'),
-    loginPassword: document.getElementById('login-password'),
     loginBtn: document.getElementById('login-btn'),
     userStatus: document.getElementById('user-status'),
     userEmailDisplay: document.getElementById('user-email-display'),
@@ -155,15 +153,6 @@ function setupEventListeners() {
       handleLogout();
     });
   }
-
-  // Allow Enter key to submit login form
-  if (elements.loginPassword) {
-    elements.loginPassword.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        handleLogin();
-      }
-    });
-  }
 }
 
 // Initialize authentication
@@ -211,31 +200,19 @@ async function initializeAuth() {
   }
 }
 
-// Handle login
+// Handle login - opens Clerk authentication pop-up
 async function handleLogin() {
-  const email = elements.loginEmail?.value?.trim();
-  const password = elements.loginPassword?.value?.trim();
-  
-  if (!email || !password) {
-    showError('Please enter both email and password.');
-    return;
-  }
-  
-  console.log('Q-SCI Debug Popup: Attempting login...');
+  console.log('Q-SCI Debug Popup: Attempting Clerk login...');
   
   // Disable login button
   if (elements.loginBtn) {
     elements.loginBtn.disabled = true;
-    elements.loginBtn.textContent = 'Logging in...';
+    elements.loginBtn.innerHTML = '⏳ Opening login window...';
   }
   
   try {
-    const userData = await window.QSCIAuth.login(email, password);
+    const userData = await window.QSCIAuth.login();
     currentUser = userData;
-    
-    // Clear login form
-    if (elements.loginEmail) elements.loginEmail.value = '';
-    if (elements.loginPassword) elements.loginPassword.value = '';
     
     // Show user status
     showUserStatus(currentUser);
@@ -245,12 +222,12 @@ async function handleLogin() {
     showSuccess('Login successful!');
   } catch (error) {
     console.error('Q-SCI Debug Popup: Login failed:', error);
-    showError(error.message || 'Login failed. Please check your credentials.');
+    showError(error.message || 'Login failed. Please try again.');
   } finally {
     // Re-enable login button
     if (elements.loginBtn) {
       elements.loginBtn.disabled = false;
-      elements.loginBtn.textContent = 'Login';
+      elements.loginBtn.innerHTML = '🔐 Login with Clerk';
     }
   }
 }

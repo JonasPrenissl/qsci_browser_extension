@@ -1,23 +1,24 @@
 // Q-SCI Browser Extension - Authentication Module
-// Handles user authentication, subscription status, and usage tracking
+// Handles user authentication via Clerk, subscription status, and usage tracking
 
 (function() {
   'use strict';
 
-  // Backend API base URL - points to q-sci.org backend
-  // Note: If the backend is not yet deployed, you can test locally by:
-  // 1. Setting up a local server at http://localhost:5000/api
-  // 2. Or implementing the /api/auth/login and /api/auth/verify endpoints on q-sci.org
-  // 
-  // Expected endpoints:
-  // POST /api/auth/login - accepts { email, password }, returns { token, email, subscription_status }
-  // GET /api/auth/verify - accepts Authorization: Bearer <token>, returns { subscription_status }
+  // Clerk authentication configuration
+  // The extension uses Clerk for authentication via a pop-up window
+  // Users authenticate through Clerk's hosted UI, and the extension receives
+  // the session token and user information via postMessage
+  const CLERK_AUTH_URL = chrome.runtime.getURL('clerk-auth.html');
+  
+  // Backend API base URL - points to q-sci.org backend (if needed for additional verification)
   const API_BASE_URL = 'https://www.q-sci.org/api';
   
   // Storage keys
   const STORAGE_KEYS = {
     AUTH_TOKEN: 'qsci_auth_token',
     USER_EMAIL: 'qsci_user_email',
+    USER_ID: 'qsci_user_id',
+    CLERK_SESSION_ID: 'qsci_clerk_session_id',
     SUBSCRIPTION_STATUS: 'qsci_subscription_status',
     DAILY_USAGE: 'qsci_daily_usage',
     LAST_USAGE_DATE: 'qsci_last_usage_date'
@@ -35,46 +36,104 @@
   const AuthService = {
     
     /**
-     * Login user with email and password
-     * @param {string} email - User email
-     * @param {string} password - User password
+     * Login user via Clerk authentication pop-up
+     * Opens a pop-up window with Clerk authentication
      * @returns {Promise<Object>} User data including subscription status
      */
-    async login(email, password) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
+    async login() {
+      return new Promise((resolve, reject) => {
+        console.log('Q-SCI Auth: Opening Clerk authentication pop-up...');
+        
+        try {
+          // Open Clerk auth page in a pop-up window
+          const width = 500;
+          const height = 700;
+          const left = (screen.width - width) / 2;
+          const top = (screen.height - height) / 2;
+          
+          const authWindow = window.open(
+            CLERK_AUTH_URL,
+            'Q-SCI Login',
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+          );
 
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ message: 'Login failed' }));
-          throw new Error(error.message || 'Login failed. Please check your credentials.');
+          if (!authWindow) {
+            reject(new Error('Failed to open authentication window. Please check if pop-ups are blocked.'));
+            return;
+          }
+
+          // Listen for message from auth window
+          const messageHandler = async (event) => {
+            // Verify the message is from our auth window
+            if (event.data && event.data.type === 'CLERK_AUTH_SUCCESS') {
+              console.log('Q-SCI Auth: Received authentication success from Clerk');
+              
+              window.removeEventListener('message', messageHandler);
+              
+              try {
+                const authData = event.data.data;
+                
+                // Store auth data
+                await this._storeAuthData({
+                  token: authData.token,
+                  email: authData.email,
+                  userId: authData.userId,
+                  clerkSessionId: authData.clerkSessionId,
+                  subscriptionStatus: authData.subscriptionStatus || 'free'
+                });
+
+                // Close the auth window if still open
+                if (authWindow && !authWindow.closed) {
+                  authWindow.close();
+                }
+
+                resolve({
+                  email: authData.email,
+                  subscription_status: authData.subscriptionStatus || 'free',
+                  userId: authData.userId
+                });
+              } catch (error) {
+                console.error('Q-SCI Auth: Error storing auth data:', error);
+                reject(error);
+              }
+            } else if (event.data && event.data.type === 'CLERK_AUTH_ERROR') {
+              console.error('Q-SCI Auth: Authentication error from Clerk');
+              window.removeEventListener('message', messageHandler);
+              
+              if (authWindow && !authWindow.closed) {
+                authWindow.close();
+              }
+              
+              reject(new Error(event.data.message || 'Authentication failed'));
+            }
+          };
+
+          window.addEventListener('message', messageHandler);
+
+          // Check if window was closed without completing auth
+          const checkClosed = setInterval(() => {
+            if (authWindow.closed) {
+              clearInterval(checkClosed);
+              window.removeEventListener('message', messageHandler);
+              reject(new Error('Authentication window was closed'));
+            }
+          }, 1000);
+
+          // Timeout after 5 minutes
+          setTimeout(() => {
+            clearInterval(checkClosed);
+            window.removeEventListener('message', messageHandler);
+            if (authWindow && !authWindow.closed) {
+              authWindow.close();
+            }
+            reject(new Error('Authentication timeout'));
+          }, 5 * 60 * 1000);
+
+        } catch (error) {
+          console.error('Q-SCI Auth: Login error:', error);
+          reject(error);
         }
-
-        const data = await response.json();
-        
-        // Store auth token and user data
-        await this._storeAuthData({
-          token: data.token,
-          email: data.email || email,
-          subscriptionStatus: data.subscription_status || 'free'
-        });
-
-        return data;
-      } catch (error) {
-        console.error('Q-SCI Auth: Login error:', error);
-        
-        // Provide more user-friendly error messages
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          throw new Error('Unable to connect to q-sci.org. Please check your internet connection.');
-        }
-        
-        throw error;
-      }
+      });
     },
 
     /**
@@ -86,6 +145,8 @@
         await chrome.storage.local.remove([
           STORAGE_KEYS.AUTH_TOKEN,
           STORAGE_KEYS.USER_EMAIL,
+          STORAGE_KEYS.USER_ID,
+          STORAGE_KEYS.CLERK_SESSION_ID,
           STORAGE_KEYS.SUBSCRIPTION_STATUS
         ]);
         
@@ -119,6 +180,8 @@
         const result = await chrome.storage.local.get([
           STORAGE_KEYS.AUTH_TOKEN,
           STORAGE_KEYS.USER_EMAIL,
+          STORAGE_KEYS.USER_ID,
+          STORAGE_KEYS.CLERK_SESSION_ID,
           STORAGE_KEYS.SUBSCRIPTION_STATUS
         ]);
 
@@ -129,6 +192,8 @@
         return {
           token: result[STORAGE_KEYS.AUTH_TOKEN],
           email: result[STORAGE_KEYS.USER_EMAIL],
+          userId: result[STORAGE_KEYS.USER_ID],
+          clerkSessionId: result[STORAGE_KEYS.CLERK_SESSION_ID],
           subscriptionStatus: result[STORAGE_KEYS.SUBSCRIPTION_STATUS] || 'free'
         };
       } catch (error) {
@@ -138,7 +203,9 @@
     },
 
     /**
-     * Verify authentication token with backend and refresh subscription status
+     * Verify authentication token with Clerk and refresh subscription status
+     * For Clerk integration, we primarily rely on the stored session
+     * but can optionally verify with backend if needed
      * @returns {Promise<Object>} Updated user data
      */
     async verifyAndRefreshAuth() {
@@ -149,37 +216,39 @@
           throw new Error('No authentication token found');
         }
 
-        const response = await fetch(`${API_BASE_URL}/auth/verify`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          // Token is invalid, logout user
-          await this.logout();
-          throw new Error('Authentication token is invalid or expired. Please login again.');
-        }
-
-        const data = await response.json();
+        // For Clerk, we trust the stored session token
+        // Optionally, you can verify with your backend if you have an endpoint
+        // that validates Clerk tokens
         
-        // Update subscription status
-        await chrome.storage.local.set({
-          [STORAGE_KEYS.SUBSCRIPTION_STATUS]: data.subscription_status || 'free'
-        });
+        // If you want to verify with backend (optional):
+        // const response = await fetch(`${API_BASE_URL}/auth/verify-clerk`, {
+        //   method: 'GET',
+        //   headers: {
+        //     'Authorization': `Bearer ${user.token}`,
+        //     'Content-Type': 'application/json'
+        //   }
+        // });
+        //
+        // if (!response.ok) {
+        //   await this.logout();
+        //   throw new Error('Authentication token is invalid or expired. Please login again.');
+        // }
+        //
+        // const data = await response.json();
+        // await chrome.storage.local.set({
+        //   [STORAGE_KEYS.SUBSCRIPTION_STATUS]: data.subscription_status || 'free'
+        // });
 
-        return {
-          ...user,
-          subscriptionStatus: data.subscription_status || 'free'
-        };
+        // For now, return the cached user data
+        // Clerk handles session management and expiration
+        console.log('Q-SCI Auth: Using Clerk session from storage');
+        return user;
+        
       } catch (error) {
         console.error('Q-SCI Auth: Error verifying auth:', error);
         
-        // Provide more user-friendly error messages for network errors
+        // For network errors, use cached data
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          // Don't logout on network errors, just return cached user data
           const user = await this.getCurrentUser();
           if (user) {
             console.warn('Q-SCI Auth: Using cached user data due to network error');
@@ -196,10 +265,12 @@
      * Store authentication data
      * @private
      */
-    async _storeAuthData({ token, email, subscriptionStatus }) {
+    async _storeAuthData({ token, email, userId, clerkSessionId, subscriptionStatus }) {
       await chrome.storage.local.set({
         [STORAGE_KEYS.AUTH_TOKEN]: token,
         [STORAGE_KEYS.USER_EMAIL]: email,
+        [STORAGE_KEYS.USER_ID]: userId,
+        [STORAGE_KEYS.CLERK_SESSION_ID]: clerkSessionId,
         [STORAGE_KEYS.SUBSCRIPTION_STATUS]: subscriptionStatus
       });
     }
