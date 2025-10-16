@@ -64,7 +64,8 @@ function initializeElements() {
     userEmailDisplay: document.getElementById('user-email-display'),
     subscriptionBadge: document.getElementById('subscription-badge'),
     usageDisplay: document.getElementById('usage-display'),
-    logoutBtn: document.getElementById('logout-btn')
+    logoutBtn: document.getElementById('logout-btn'),
+    upgradePrompt: document.getElementById('upgrade-prompt')
   };
   
   // Log which elements were found
@@ -182,8 +183,24 @@ async function initializeAuth() {
         updatePageStatus();
       } catch (error) {
         console.error('Q-SCI Debug Popup: Auth verification failed:', error);
-        // Token is invalid, show login form
-        showLoginForm();
+        
+        // If it's a network error, show cached user data
+        if (error.message && error.message.includes('internet connection')) {
+          const cachedUser = await window.QSCIAuth.getCurrentUser();
+          if (cachedUser) {
+            currentUser = cachedUser;
+            showUserStatus(currentUser);
+            await updateUsageDisplay();
+            updatePageStatus();
+            // Show a warning that we're using cached data
+            console.warn('Q-SCI Debug Popup: Using cached auth data due to network error');
+          } else {
+            showLoginForm();
+          }
+        } else {
+          // Token is invalid, show login form
+          showLoginForm();
+        }
       }
     } else {
       showLoginForm();
@@ -339,6 +356,15 @@ async function updateUsageDisplay() {
       } else {
         elements.usageDisplay.style.color = '#374151';
       }
+    }
+    
+    // Show upgrade prompt for free users who are getting close to limit or have reached it
+    if (elements.upgradePrompt && currentUser.subscriptionStatus !== 'subscribed') {
+      const shouldShowPrompt = usageInfo.used >= 5 || usageInfo.remaining === 0;
+      elements.upgradePrompt.style.display = shouldShowPrompt ? 'block' : 'none';
+    } else if (elements.upgradePrompt) {
+      // Hide upgrade prompt for subscribed users
+      elements.upgradePrompt.style.display = 'none';
     }
   } catch (error) {
     console.error('Q-SCI Debug Popup: Error updating usage display:', error);

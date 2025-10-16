@@ -5,6 +5,13 @@
   'use strict';
 
   // Backend API base URL - points to q-sci.org backend
+  // Note: If the backend is not yet deployed, you can test locally by:
+  // 1. Setting up a local server at http://localhost:5000/api
+  // 2. Or implementing the /api/auth/login and /api/auth/verify endpoints on q-sci.org
+  // 
+  // Expected endpoints:
+  // POST /api/auth/login - accepts { email, password }, returns { token, email, subscription_status }
+  // GET /api/auth/verify - accepts Authorization: Bearer <token>, returns { subscription_status }
   const API_BASE_URL = 'https://www.q-sci.org/api';
   
   // Storage keys
@@ -45,7 +52,7 @@
 
         if (!response.ok) {
           const error = await response.json().catch(() => ({ message: 'Login failed' }));
-          throw new Error(error.message || 'Login failed');
+          throw new Error(error.message || 'Login failed. Please check your credentials.');
         }
 
         const data = await response.json();
@@ -60,6 +67,12 @@
         return data;
       } catch (error) {
         console.error('Q-SCI Auth: Login error:', error);
+        
+        // Provide more user-friendly error messages
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          throw new Error('Unable to connect to q-sci.org. Please check your internet connection.');
+        }
+        
         throw error;
       }
     },
@@ -147,7 +160,7 @@
         if (!response.ok) {
           // Token is invalid, logout user
           await this.logout();
-          throw new Error('Authentication token is invalid or expired');
+          throw new Error('Authentication token is invalid or expired. Please login again.');
         }
 
         const data = await response.json();
@@ -163,6 +176,18 @@
         };
       } catch (error) {
         console.error('Q-SCI Auth: Error verifying auth:', error);
+        
+        // Provide more user-friendly error messages for network errors
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          // Don't logout on network errors, just return cached user data
+          const user = await this.getCurrentUser();
+          if (user) {
+            console.warn('Q-SCI Auth: Using cached user data due to network error');
+            return user;
+          }
+          throw new Error('Unable to verify authentication. Please check your internet connection.');
+        }
+        
         throw error;
       }
     },
