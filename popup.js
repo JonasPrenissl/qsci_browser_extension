@@ -5,13 +5,14 @@ console.log('Q-SCI Debug Popup: Script loaded');
 let elements = {};
 let currentTab = null;
 let currentAnalysis = null;
+let currentUser = null;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   console.log('Q-SCI Debug Popup: DOM loaded, initializing...');
   initializeElements();
   setupEventListeners();
-  updatePageStatus();
+  initializeAuth();
 });
 
 // Initialize all DOM elements
@@ -51,9 +52,20 @@ function initializeElements() {
     openWebAppDetailed: document.getElementById('open-web-app-detailed'),
     exportAnalysisBtn: document.getElementById('export-analysis-btn'),
     // Settings elements
-    analyzePdfCheckbox: document.getElementById('analyze-pdf')
-      ,
-      settingsBtn: document.getElementById('settings-btn')
+    analyzePdfCheckbox: document.getElementById('analyze-pdf'),
+    settingsBtn: document.getElementById('settings-btn'),
+    // Auth elements
+    authSection: document.getElementById('auth-section'),
+    loginForm: document.getElementById('login-form'),
+    loginEmail: document.getElementById('login-email'),
+    loginPassword: document.getElementById('login-password'),
+    loginBtn: document.getElementById('login-btn'),
+    userStatus: document.getElementById('user-status'),
+    userEmailDisplay: document.getElementById('user-email-display'),
+    subscriptionBadge: document.getElementById('subscription-badge'),
+    usageDisplay: document.getElementById('usage-display'),
+    logoutBtn: document.getElementById('logout-btn'),
+    upgradePrompt: document.getElementById('upgrade-prompt')
   };
   
   // Log which elements were found
@@ -127,6 +139,235 @@ function setupEventListeners() {
         chrome.runtime.openOptionsPage();
       }
     });
+  }
+
+  // Auth event listeners
+  if (elements.loginBtn) {
+    elements.loginBtn.addEventListener('click', function() {
+      console.log('Q-SCI Debug Popup: Login button clicked');
+      handleLogin();
+    });
+  }
+
+  if (elements.logoutBtn) {
+    elements.logoutBtn.addEventListener('click', function() {
+      console.log('Q-SCI Debug Popup: Logout button clicked');
+      handleLogout();
+    });
+  }
+
+  // Allow Enter key to submit login form
+  if (elements.loginPassword) {
+    elements.loginPassword.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        handleLogin();
+      }
+    });
+  }
+}
+
+// Initialize authentication
+async function initializeAuth() {
+  console.log('Q-SCI Debug Popup: Initializing authentication...');
+  
+  try {
+    // Check if user is logged in
+    const isLoggedIn = await window.QSCIAuth.isLoggedIn();
+    
+    if (isLoggedIn) {
+      // Get current user and verify auth
+      try {
+        currentUser = await window.QSCIAuth.verifyAndRefreshAuth();
+        showUserStatus(currentUser);
+        await updateUsageDisplay();
+        updatePageStatus();
+      } catch (error) {
+        console.error('Q-SCI Debug Popup: Auth verification failed:', error);
+        
+        // If it's a network error, show cached user data
+        if (error.message && error.message.includes('internet connection')) {
+          const cachedUser = await window.QSCIAuth.getCurrentUser();
+          if (cachedUser) {
+            currentUser = cachedUser;
+            showUserStatus(currentUser);
+            await updateUsageDisplay();
+            updatePageStatus();
+            // Show a warning that we're using cached data
+            console.warn('Q-SCI Debug Popup: Using cached auth data due to network error');
+          } else {
+            showLoginForm();
+          }
+        } else {
+          // Token is invalid, show login form
+          showLoginForm();
+        }
+      }
+    } else {
+      showLoginForm();
+    }
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Auth initialization error:', error);
+    showLoginForm();
+  }
+}
+
+// Handle login
+async function handleLogin() {
+  const email = elements.loginEmail?.value?.trim();
+  const password = elements.loginPassword?.value?.trim();
+  
+  if (!email || !password) {
+    showError('Please enter both email and password.');
+    return;
+  }
+  
+  console.log('Q-SCI Debug Popup: Attempting login...');
+  
+  // Disable login button
+  if (elements.loginBtn) {
+    elements.loginBtn.disabled = true;
+    elements.loginBtn.textContent = 'Logging in...';
+  }
+  
+  try {
+    const userData = await window.QSCIAuth.login(email, password);
+    currentUser = userData;
+    
+    // Clear login form
+    if (elements.loginEmail) elements.loginEmail.value = '';
+    if (elements.loginPassword) elements.loginPassword.value = '';
+    
+    // Show user status
+    showUserStatus(currentUser);
+    await updateUsageDisplay();
+    updatePageStatus();
+    
+    showSuccess('Login successful!');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Login failed:', error);
+    showError(error.message || 'Login failed. Please check your credentials.');
+  } finally {
+    // Re-enable login button
+    if (elements.loginBtn) {
+      elements.loginBtn.disabled = false;
+      elements.loginBtn.textContent = 'Login';
+    }
+  }
+}
+
+// Handle logout
+async function handleLogout() {
+  console.log('Q-SCI Debug Popup: Attempting logout...');
+  
+  try {
+    await window.QSCIAuth.logout();
+    currentUser = null;
+    
+    // Show login form
+    showLoginForm();
+    
+    // Hide analysis sections
+    if (elements.statsSection) {
+      elements.statsSection.style.display = 'none';
+    }
+    if (elements.detailedSection) {
+      elements.detailedSection.style.display = 'none';
+    }
+    
+    showSuccess('Logged out successfully!');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Logout failed:', error);
+    showError('Logout failed. Please try again.');
+  }
+}
+
+// Show login form
+function showLoginForm() {
+  console.log('Q-SCI Debug Popup: Showing login form');
+  
+  if (elements.loginForm) {
+    elements.loginForm.style.display = 'block';
+  }
+  if (elements.userStatus) {
+    elements.userStatus.style.display = 'none';
+  }
+  
+  // Disable analyze buttons
+  if (elements.analyzeBtn) {
+    elements.analyzeBtn.disabled = true;
+    elements.analyzeBtn.style.opacity = '0.5';
+  }
+  if (elements.manualAnalyzeBtn) {
+    elements.manualAnalyzeBtn.disabled = true;
+    elements.manualAnalyzeBtn.style.opacity = '0.5';
+  }
+}
+
+// Show user status
+function showUserStatus(user) {
+  console.log('Q-SCI Debug Popup: Showing user status');
+  
+  if (elements.loginForm) {
+    elements.loginForm.style.display = 'none';
+  }
+  if (elements.userStatus) {
+    elements.userStatus.style.display = 'block';
+  }
+  
+  // Update user email display
+  if (elements.userEmailDisplay && user.email) {
+    elements.userEmailDisplay.textContent = user.email;
+  }
+  
+  // Update subscription badge
+  if (elements.subscriptionBadge) {
+    const isSubscribed = user.subscriptionStatus === 'subscribed';
+    elements.subscriptionBadge.textContent = isSubscribed ? '✓ Subscribed' : 'Free';
+    elements.subscriptionBadge.style.backgroundColor = isSubscribed ? '#dcfce7' : '#f3f4f6';
+    elements.subscriptionBadge.style.color = isSubscribed ? '#166534' : '#6b7280';
+  }
+  
+  // Enable analyze buttons
+  if (elements.analyzeBtn) {
+    elements.analyzeBtn.disabled = false;
+    elements.analyzeBtn.style.opacity = '1';
+  }
+  if (elements.manualAnalyzeBtn) {
+    elements.manualAnalyzeBtn.disabled = false;
+    elements.manualAnalyzeBtn.style.opacity = '1';
+  }
+}
+
+// Update usage display
+async function updateUsageDisplay() {
+  if (!currentUser) return;
+  
+  try {
+    const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
+    
+    if (elements.usageDisplay) {
+      elements.usageDisplay.textContent = `${usageInfo.used} / ${usageInfo.limit}`;
+      
+      // Color code based on remaining
+      if (usageInfo.remaining === 0) {
+        elements.usageDisplay.style.color = '#dc2626';
+      } else if (usageInfo.remaining < 5) {
+        elements.usageDisplay.style.color = '#ea580c';
+      } else {
+        elements.usageDisplay.style.color = '#374151';
+      }
+    }
+    
+    // Show upgrade prompt for free users who are getting close to limit or have reached it
+    if (elements.upgradePrompt && currentUser.subscriptionStatus !== 'subscribed') {
+      const shouldShowPrompt = usageInfo.used >= 5 || usageInfo.remaining === 0;
+      elements.upgradePrompt.style.display = shouldShowPrompt ? 'block' : 'none';
+    } else if (elements.upgradePrompt) {
+      // Hide upgrade prompt for subscribed users
+      elements.upgradePrompt.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error updating usage display:', error);
   }
 }
 
@@ -222,6 +463,35 @@ function showPageStatus(message, canAnalyze) {
 async function analyzePage() {
   console.log('Q-SCI Debug Popup: Starting simplified page analysis...');
   
+  // Check if user is logged in
+  if (!currentUser) {
+    showError('Please login to use analysis features.');
+    return;
+  }
+  
+  // Check usage limits
+  try {
+    const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
+    
+    if (!usageInfo.canAnalyze) {
+      const limit = usageInfo.limit;
+      const subscriptionType = currentUser.subscriptionStatus === 'subscribed' ? 'subscribed' : 'free';
+      
+      if (subscriptionType === 'free') {
+        showError(`You have reached your daily limit of ${limit} analyses. Please subscribe at q-sci.org for more analyses (up to 100 per day).`);
+      } else {
+        showError(`You have reached your daily limit of ${limit} analyses. Please try again tomorrow.`);
+      }
+      return;
+    }
+    
+    console.log('Q-SCI Debug Popup: Usage check passed, remaining:', usageInfo.remaining);
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error checking usage:', error);
+    showError('Failed to check usage limits. Please try again.');
+    return;
+  }
+  
   // Show loading immediately
   showLoading();
   
@@ -314,6 +584,16 @@ async function analyzePage() {
       console.log('Q-SCI Debug Popup: Evaluation result:', evaluation);
       currentAnalysis = evaluation;
       displayAnalysisResults(evaluation);
+      
+      // Increment usage after successful analysis
+      try {
+        await window.QSCIUsage.incrementUsage();
+        await updateUsageDisplay();
+        console.log('Q-SCI Debug Popup: Usage incremented');
+      } catch (usageError) {
+        console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
+      }
+      
       showSuccess('Analysis completed successfully!');
     } catch (error) {
       console.error('Q-SCI Debug Popup: Evaluation error:', error);
@@ -376,24 +656,63 @@ function extractPageContent() {
     text = document.body.textContent.trim();
   }
   
+  // Try to extract PDF URLs
+  const pdfUrls = [];
+  const pdfLinks = document.querySelectorAll('a[href*=".pdf"], a[href*="pdf"]');
+  pdfLinks.forEach(link => {
+    const href = link.href;
+    if (href && (href.endsWith('.pdf') || href.includes('/pdf/') || href.includes('getPDF'))) {
+      pdfUrls.push(href);
+    }
+  });
+  
   console.log('Q-SCI Content Extractor: Extracted:', {
     title: title.substring(0, 50) + '...',
-    textLength: text.length
+    textLength: text.length,
+    pdfUrlsFound: pdfUrls.length
   });
   
   return {
     title: title,
     text: text,
-    url: window.location.href
+    url: window.location.href,
+    pdfUrls: pdfUrls
   };
 }
 
 // Analyze manual text
 async function analyzeText() {
+  // Check if user is logged in
+  if (!currentUser) {
+    showError('Please login to use analysis features.');
+    return;
+  }
+  
   const text = elements.manualText?.value?.trim();
   
   if (!text || text.length < 50) {
     showError('Please enter at least 50 characters of text to analyze.');
+    return;
+  }
+  
+  // Check usage limits
+  try {
+    const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
+    
+    if (!usageInfo.canAnalyze) {
+      const limit = usageInfo.limit;
+      const subscriptionType = currentUser.subscriptionStatus === 'subscribed' ? 'subscribed' : 'free';
+      
+      if (subscriptionType === 'free') {
+        showError(`You have reached your daily limit of ${limit} analyses. Please subscribe at q-sci.org for more analyses (up to 100 per day).`);
+      } else {
+        showError(`You have reached your daily limit of ${limit} analyses. Please try again tomorrow.`);
+      }
+      return;
+    }
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error checking usage:', error);
+    showError('Failed to check usage limits. Please try again.');
     return;
   }
   
@@ -416,6 +735,16 @@ async function analyzeText() {
     console.log('Q-SCI Debug Popup: Manual evaluation result:', evaluation);
     currentAnalysis = evaluation;
     displayAnalysisResults(evaluation);
+    
+    // Increment usage after successful analysis
+    try {
+      await window.QSCIUsage.incrementUsage();
+      await updateUsageDisplay();
+      console.log('Q-SCI Debug Popup: Usage incremented');
+    } catch (usageError) {
+      console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
+    }
+    
     showSuccess('Text analysis completed successfully!');
   } catch (error) {
     console.error('Q-SCI Debug Popup: Text analysis error:', error);

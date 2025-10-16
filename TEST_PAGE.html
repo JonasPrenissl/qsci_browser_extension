@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q-SCI Extension Test Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #2563eb;
+    }
+    .info-box {
+      background: #e0f2fe;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .test-section {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    code {
+      background: #1f2937;
+      color: #10b981;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    .steps {
+      list-style-type: decimal;
+      padding-left: 30px;
+    }
+    .steps li {
+      margin: 10px 0;
+    }
+    .warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Q-SCI Browser Extension - Test Page</h1>
+  
+  <div class="info-box">
+    <h2>Extension Testing Instructions</h2>
+    <p>Use this page to test the Q-SCI browser extension after making changes.</p>
+  </div>
+
+  <div class="test-section">
+    <h3>1. Loading the Extension</h3>
+    <ol class="steps">
+      <li>Open Chrome browser</li>
+      <li>Go to <code>chrome://extensions/</code></li>
+      <li>Enable "Developer mode" (toggle in top right)</li>
+      <li>Click "Load unpacked"</li>
+      <li>Select the extension directory: <code>/home/runner/work/qsci_browser_extension/qsci_browser_extension</code></li>
+      <li>Verify the extension loads without errors</li>
+    </ol>
+  </div>
+
+  <div class="test-section">
+    <h3>2. Testing Authentication UI</h3>
+    <ol class="steps">
+      <li>Click the Q-SCI extension icon in Chrome toolbar</li>
+      <li>Verify the login form is displayed (email and password fields)</li>
+      <li>Check that "Login" button is visible</li>
+      <li>Verify link to q-sci.org registration page is present</li>
+    </ol>
+  </div>
+
+  <div class="test-section">
+    <h3>3. Testing Login Flow (Without Backend)</h3>
+    <ol class="steps">
+      <li>Try entering test credentials (email: test@example.com, password: test123)</li>
+      <li>Click "Login" button</li>
+      <li>Expected behavior: Error message about connection to q-sci.org (backend not available)</li>
+      <li>This is expected until the backend API is deployed</li>
+    </ol>
+  </div>
+
+  <div class="test-section">
+    <h3>4. Manual Auth Setup (For Testing)</h3>
+    <p>To test the extension without a backend, manually set auth data in browser console:</p>
+    <ol class="steps">
+      <li>Open browser DevTools (F12)</li>
+      <li>Go to Console tab</li>
+      <li>Run this code:</li>
+    </ol>
+    <pre style="background: #1f2937; color: #10b981; padding: 15px; border-radius: 5px; overflow-x: auto;">
+chrome.storage.local.set({
+  'qsci_auth_token': 'test_token_12345',
+  'qsci_user_email': 'test@example.com',
+  'qsci_subscription_status': 'free'  // or 'subscribed'
+}, () => {
+  console.log('Test auth data set');
+});
+    </pre>
+    <ol class="steps" start="4">
+      <li>Close and reopen the extension popup</li>
+      <li>Verify you see the user status section instead of login form</li>
+    </ol>
+  </div>
+
+  <div class="test-section">
+    <h3>5. Testing Usage Limits</h3>
+    <ol class="steps">
+      <li>After setting test auth data (see step 4)</li>
+      <li>Navigate to a supported site (e.g., PubMed, arXiv)</li>
+      <li>Click "Analyze Paper" button</li>
+      <li>Verify usage counter increments (e.g., "1 / 10" for free users)</li>
+      <li>Test multiple analyses to verify counter continues incrementing</li>
+      <li>To test limit enforcement, manually set usage to limit:
+        <pre style="background: #1f2937; color: #10b981; padding: 10px; border-radius: 5px; margin-top: 10px;">
+chrome.storage.local.set({
+  'qsci_daily_usage': 10,
+  'qsci_last_usage_date': new Date().toISOString().split('T')[0]
+});
+        </pre>
+      </li>
+      <li>Try to analyze again - should show error about reaching daily limit</li>
+    </ol>
+  </div>
+
+  <div class="test-section">
+    <h3>6. Testing Options Page</h3>
+    <ol class="steps">
+      <li>Right-click the Q-SCI extension icon</li>
+      <li>Select "Options"</li>
+      <li>Verify authentication status is displayed</li>
+      <li>Verify usage statistics are shown (if logged in)</li>
+      <li>Test saving OpenAI API key</li>
+    </ol>
+  </div>
+
+  <div class="warning">
+    <strong>⚠️ Important Notes:</strong>
+    <ul>
+      <li>Backend API endpoints must be implemented on q-sci.org for full functionality</li>
+      <li>See <code>AUTHENTICATION.md</code> for API specification</li>
+      <li>Extension will work offline with cached auth data</li>
+      <li>Paper analysis requires OpenAI API key to be set in options</li>
+    </ul>
+  </div>
+
+  <div class="test-section">
+    <h3>7. Resetting Test Data</h3>
+    <p>To clear all test data and start fresh:</p>
+    <pre style="background: #1f2937; color: #10b981; padding: 15px; border-radius: 5px;">
+chrome.storage.local.clear(() => {
+  console.log('All extension data cleared');
+});
+    </pre>
+  </div>
+
+  <h2>Sample Paper for Testing</h2>
+  <div class="test-section">
+    <p>To test paper analysis, visit one of these supported sites:</p>
+    <ul>
+      <li><a href="https://pubmed.ncbi.nlm.nih.gov/" target="_blank">PubMed</a></li>
+      <li><a href="https://arxiv.org/" target="_blank">arXiv</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/" target="_blank">PubMed Central</a></li>
+    </ul>
+    <p>Search for any paper and open its detail page, then use the extension to analyze it.</p>
+  </div>
+
+  <div class="info-box">
+    <h3>✅ Expected Behavior Checklist</h3>
+    <ul style="list-style-type: none; padding-left: 0;">
+      <li>✓ Extension loads without errors</li>
+      <li>✓ Login form appears when not authenticated</li>
+      <li>✓ User status displays after login/manual auth setup</li>
+      <li>✓ Usage counter shows and increments correctly</li>
+      <li>✓ Daily limit is enforced (10 for free, 100 for subscribed)</li>
+      <li>✓ Upgrade prompt shows for free users near limit</li>
+      <li>✓ Options page displays auth status and usage stats</li>
+      <li>✓ Extension works offline with cached auth data</li>
+    </ul>
+  </div>
+
+</body>
+</html>

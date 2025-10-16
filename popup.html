@@ -25,6 +25,47 @@
 
     <!-- Content wrapper -->
     <div class="popup-content">
+      <!-- Authentication section -->
+      <div class="section auth-section" id="auth-section">
+        <!-- Login form (shown when not logged in) -->
+        <div id="login-form" style="display: none;">
+          <h3>Login Required</h3>
+          <p style="font-size: 13px; margin-bottom: 12px;">Please login to use Q-SCI analysis features.</p>
+          <input type="email" id="login-email" placeholder="Email" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #d1d5db; border-radius: 4px;" />
+          <input type="password" id="login-password" placeholder="Password" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #d1d5db; border-radius: 4px;" />
+          <button class="btn btn-primary" id="login-btn" style="width: 100%; margin-bottom: 8px;">Login</button>
+          <p style="font-size: 12px; text-align: center; color: #6b7280;">
+            Don't have an account? Visit <a href="https://www.q-sci.org/register" target="_blank" style="color: #3b82f6;">q-sci.org</a> to register.
+          </p>
+        </div>
+
+        <!-- User status (shown when logged in) -->
+        <div id="user-status" style="display: none;">
+          <div style="background: #f3f4f6; padding: 10px; border-radius: 4px; margin-bottom: 12px;">
+            <div style="font-size: 12px; color: #6b7280;">Logged in as:</div>
+            <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px;" id="user-email-display"></div>
+            <div style="font-size: 12px;">
+              <span id="subscription-badge" style="padding: 2px 8px; border-radius: 3px; font-weight: 500;"></span>
+            </div>
+            <div style="font-size: 12px; margin-top: 6px; color: #374151;">
+              <strong>Today's analyses:</strong> <span id="usage-display">0 / 0</span>
+            </div>
+            <div id="upgrade-prompt" style="display: none; margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 4px; border: 1px solid #fbbf24;">
+              <div style="font-size: 12px; color: #92400e; margin-bottom: 4px;">
+                <strong>⚡ Upgrade to Premium</strong>
+              </div>
+              <div style="font-size: 11px; color: #78350f; margin-bottom: 6px;">
+                Get 100 analyses per day instead of 10!
+              </div>
+              <a href="https://www.q-sci.org/subscribe" target="_blank" style="display: inline-block; padding: 4px 12px; background: #f59e0b; color: white; text-decoration: none; border-radius: 3px; font-size: 11px; font-weight: 500;">
+                Subscribe Now
+              </a>
+            </div>
+          </div>
+          <button class="btn btn-secondary" id="logout-btn" style="width: 100%; font-size: 13px; padding: 6px;">Logout</button>
+        </div>
+      </div>
+
       <!-- Current page section -->
       <div class="section current-page-section">
         <h3>Current Page</h3>
@@ -119,6 +160,7 @@
   </div>
 
   <!-- Scripts -->
+  <script src="auth.js"></script>
   <script src="qsci_evaluator.js"></script>
   <script src="popup.js"></script>
 </body>
