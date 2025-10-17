@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
   const authStatusEl = document.getElementById('auth-status');
   const usageStatsEl = document.getElementById('usage-stats');
+  const refreshSubscriptionBtn = document.getElementById('refreshSubscriptionBtn');
 
   // Load existing key from storage
   chrome.storage.local.get('openai_api_key', (result) => {
@@ -21,8 +22,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // Refresh subscription button handler
+  if (refreshSubscriptionBtn) {
+    refreshSubscriptionBtn.addEventListener('click', async () => {
+      refreshSubscriptionBtn.disabled = true;
+      refreshSubscriptionBtn.textContent = '⏳ Refreshing...';
+      
+      try {
+        await window.QSCIAuth.refreshSubscriptionStatus();
+        await updateAuthStatus();
+        await updateSubscriptionInfo();
+        showStatus('Subscription status refreshed successfully!', 'success');
+      } catch (error) {
+        console.error('Error refreshing subscription:', error);
+        showStatus('Failed to refresh subscription status.', 'error');
+      } finally {
+        refreshSubscriptionBtn.disabled = false;
+        refreshSubscriptionBtn.textContent = '🔄 Refresh Subscription Status';
+      }
+    });
+  }
+
   // Load and display auth status
   await updateAuthStatus();
+  await updateSubscriptionInfo();
   await updateUsageStats();
 });
 
@@ -54,6 +77,53 @@ async function updateAuthStatus() {
     authStatusEl.innerHTML = `
       <div style="font-weight: bold; margin-bottom: 8px;">Error</div>
       <div>Unable to load authentication status.</div>
+    `;
+  }
+}
+
+async function updateSubscriptionInfo() {
+  const subscriptionInfoEl = document.getElementById('subscription-info');
+  
+  try {
+    const isLoggedIn = await window.QSCIAuth.isLoggedIn();
+    
+    if (isLoggedIn) {
+      const user = await window.QSCIAuth.getCurrentUser();
+      const status = user.subscriptionStatus || 'free';
+      
+      let statusBadge, dailyLimit, tipMessage;
+      
+      if (status === 'subscribed') {
+        statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #dcfce7; color: #166534; font-weight: 500;">✓ Premium</span>';
+        dailyLimit = '100';
+        tipMessage = '';
+      } else if (status === 'past_due') {
+        statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #fef3c7; color: #92400e; font-weight: 500;">⚠ Payment Due</span>';
+        dailyLimit = '10';
+        tipMessage = '<div style="margin-top: 8px; color: #b91c1c;"><strong>⚠ Action Required:</strong> Please update your payment method to restore Premium access.</div>';
+      } else {
+        statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #f3f4f6; color: #6b7280; font-weight: 500;">Free</span>';
+        dailyLimit = '10';
+        tipMessage = '<div style="margin-top: 8px; color: #92400e;"><strong>💡 Tip:</strong> Upgrade to Premium for 10x more analyses per day!</div>';
+      }
+      
+      subscriptionInfoEl.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 8px;">Current Plan</div>
+        <div style="margin-bottom: 8px;">
+          <strong>Status:</strong> ${statusBadge}
+        </div>
+        <div><strong>Daily analyses:</strong> ${dailyLimit}</div>
+        ${tipMessage}
+      `;
+    } else {
+      subscriptionInfoEl.innerHTML = `
+        <div>Login to view subscription information.</div>
+      `;
+    }
+  } catch (error) {
+    console.error('Error loading subscription info:', error);
+    subscriptionInfoEl.innerHTML = `
+      <div>Unable to load subscription information.</div>
     `;
   }
 }

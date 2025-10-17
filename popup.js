@@ -63,7 +63,8 @@ function initializeElements() {
     subscriptionBadge: document.getElementById('subscription-badge'),
     usageDisplay: document.getElementById('usage-display'),
     logoutBtn: document.getElementById('logout-btn'),
-    upgradePrompt: document.getElementById('upgrade-prompt')
+    upgradePrompt: document.getElementById('upgrade-prompt'),
+    refreshSubscriptionBtn: document.getElementById('refresh-subscription-btn')
   };
   
   // Log which elements were found
@@ -151,6 +152,13 @@ function setupEventListeners() {
     elements.logoutBtn.addEventListener('click', function() {
       console.log('Q-SCI Debug Popup: Logout button clicked');
       handleLogout();
+    });
+  }
+
+  if (elements.refreshSubscriptionBtn) {
+    elements.refreshSubscriptionBtn.addEventListener('click', function() {
+      console.log('Q-SCI Debug Popup: Refresh subscription button clicked');
+      handleRefreshSubscription();
     });
   }
 }
@@ -258,6 +266,42 @@ async function handleLogout() {
   }
 }
 
+// Handle refresh subscription status
+async function handleRefreshSubscription() {
+  console.log('Q-SCI Debug Popup: Refreshing subscription status...');
+  
+  if (!currentUser) {
+    showError('Please login first.');
+    return;
+  }
+
+  // Disable refresh button
+  if (elements.refreshSubscriptionBtn) {
+    elements.refreshSubscriptionBtn.disabled = true;
+    elements.refreshSubscriptionBtn.innerHTML = '⏳ Refreshing...';
+  }
+  
+  try {
+    const updatedUser = await window.QSCIAuth.refreshSubscriptionStatus();
+    currentUser = updatedUser;
+    
+    // Update UI with new subscription status
+    showUserStatus(currentUser);
+    await updateUsageDisplay();
+    
+    showSuccess('Subscription status refreshed!');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Refresh subscription failed:', error);
+    showError(error.message || 'Failed to refresh subscription status. Please try again.');
+  } finally {
+    // Re-enable refresh button
+    if (elements.refreshSubscriptionBtn) {
+      elements.refreshSubscriptionBtn.disabled = false;
+      elements.refreshSubscriptionBtn.innerHTML = '🔄 Refresh Status';
+    }
+  }
+}
+
 // Show login form
 function showLoginForm() {
   console.log('Q-SCI Debug Popup: Showing login form');
@@ -298,10 +342,26 @@ function showUserStatus(user) {
   
   // Update subscription badge
   if (elements.subscriptionBadge) {
-    const isSubscribed = user.subscriptionStatus === 'subscribed';
-    elements.subscriptionBadge.textContent = isSubscribed ? '✓ Subscribed' : 'Free';
-    elements.subscriptionBadge.style.backgroundColor = isSubscribed ? '#dcfce7' : '#f3f4f6';
-    elements.subscriptionBadge.style.color = isSubscribed ? '#166534' : '#6b7280';
+    const status = user.subscriptionStatus || 'free';
+    
+    let badgeText, backgroundColor, textColor;
+    if (status === 'subscribed') {
+      badgeText = '✓ Subscribed';
+      backgroundColor = '#dcfce7';
+      textColor = '#166534';
+    } else if (status === 'past_due') {
+      badgeText = '⚠ Payment Due';
+      backgroundColor = '#fef3c7';
+      textColor = '#92400e';
+    } else {
+      badgeText = 'Free';
+      backgroundColor = '#f3f4f6';
+      textColor = '#6b7280';
+    }
+    
+    elements.subscriptionBadge.textContent = badgeText;
+    elements.subscriptionBadge.style.backgroundColor = backgroundColor;
+    elements.subscriptionBadge.style.color = textColor;
   }
   
   // Enable analyze buttons
@@ -336,7 +396,9 @@ async function updateUsageDisplay() {
     }
     
     // Show upgrade prompt for free users who are getting close to limit or have reached it
-    if (elements.upgradePrompt && currentUser.subscriptionStatus !== 'subscribed') {
+    // Also show for past_due users
+    const status = currentUser.subscriptionStatus || 'free';
+    if (elements.upgradePrompt && status !== 'subscribed') {
       const shouldShowPrompt = usageInfo.used >= 5 || usageInfo.remaining === 0;
       elements.upgradePrompt.style.display = shouldShowPrompt ? 'block' : 'none';
     } else if (elements.upgradePrompt) {

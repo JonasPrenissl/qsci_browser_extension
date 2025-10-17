@@ -19,15 +19,20 @@
     USER_EMAIL: 'qsci_user_email',
     USER_ID: 'qsci_user_id',
     CLERK_SESSION_ID: 'qsci_clerk_session_id',
-    SUBSCRIPTION_STATUS: 'qsci_subscription_status',
+    SUBSCRIPTION_STATUS: 'qsci_subscription_status', // Values: 'free', 'subscribed', 'past_due'
     DAILY_USAGE: 'qsci_daily_usage',
     LAST_USAGE_DATE: 'qsci_last_usage_date'
   };
 
   // Usage limits
+  // Subscription status values set by Stripe webhook in Clerk publicMetadata:
+  // - 'free': Free tier users (no active subscription)
+  // - 'subscribed': Active paid subscription (Stripe status: active, trialing)
+  // - 'past_due': Payment issue but still allow limited access (Stripe status: past_due)
   const USAGE_LIMITS = {
     FREE: 10,           // Free users: 10 analyses per day
-    SUBSCRIBED: 100     // Subscribed users: 100 analyses per day
+    SUBSCRIBED: 100,    // Subscribed users: 100 analyses per day
+    PAST_DUE: 10        // Past due users: same as free (10 per day)
   };
 
   /**
@@ -262,6 +267,70 @@
     },
 
     /**
+     * Refresh subscription status from backend
+     * This should be called after a user completes payment to update their subscription status
+     * The backend webhook will update Clerk publicMetadata, and this function fetches the latest status
+     * @returns {Promise<Object>} Updated user data with refreshed subscription status
+     */
+    async refreshSubscriptionStatus() {
+      try {
+        const user = await this.getCurrentUser();
+        
+        if (!user || !user.userId) {
+          throw new Error('No user found. Please login first.');
+        }
+
+        console.log('Q-SCI Auth: Refreshing subscription status from backend...');
+
+        // Call backend API to get updated subscription status
+        // The backend will query Clerk's publicMetadata for the latest subscription_status
+        const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.warn('Q-SCI Auth: Failed to refresh subscription status from backend, using cached data');
+          return user;
+        }
+
+        const data = await response.json();
+        const newSubscriptionStatus = data.subscription_status || 'free';
+
+        // Update stored subscription status
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.SUBSCRIPTION_STATUS]: newSubscriptionStatus
+        });
+
+        console.log('Q-SCI Auth: Subscription status refreshed:', newSubscriptionStatus);
+
+        // Return updated user data
+        return {
+          ...user,
+          subscriptionStatus: newSubscriptionStatus
+        };
+        
+      } catch (error) {
+        console.error('Q-SCI Auth: Error refreshing subscription status:', error);
+        
+        // For network errors, return cached data
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          const user = await this.getCurrentUser();
+          if (user) {
+            console.warn('Q-SCI Auth: Using cached subscription data due to network error');
+            return user;
+          }
+        }
+        
+        // Return current user data even if refresh fails
+        return await this.getCurrentUser();
+      }
+    },
+
+    /**
      * Store authentication data
      * @private
      */
@@ -334,13 +403,23 @@
 
     /**
      * Check if user can perform an analysis
-     * @param {string} subscriptionStatus - User's subscription status ('free' or 'subscribed')
+     * @param {string} subscriptionStatus - User's subscription status ('free', 'subscribed', or 'past_due')
      * @returns {Promise<Object>} Object with canAnalyze flag and remaining count
      */
     async canAnalyze(subscriptionStatus) {
       try {
         const usage = await this.getDailyUsage();
-        const limit = subscriptionStatus === 'subscribed' ? USAGE_LIMITS.SUBSCRIBED : USAGE_LIMITS.FREE;
+        
+        // Determine limit based on subscription status
+        let limit;
+        if (subscriptionStatus === 'subscribed') {
+          limit = USAGE_LIMITS.SUBSCRIBED;
+        } else if (subscriptionStatus === 'past_due') {
+          limit = USAGE_LIMITS.PAST_DUE;
+        } else {
+          limit = USAGE_LIMITS.FREE;
+        }
+        
         const remaining = Math.max(0, limit - usage);
 
         return {
