@@ -1,6 +1,28 @@
 // Q‑SCI Options page script
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Initialize i18n first
+  if (window.QSCIi18n) {
+    await window.QSCIi18n.init();
+    window.QSCIi18n.translatePage();
+    
+    // Setup language selector
+    const languageSelector = document.getElementById('language-selector');
+    if (languageSelector) {
+      languageSelector.value = window.QSCIi18n.getLanguage();
+      languageSelector.addEventListener('change', async function(e) {
+        await window.QSCIi18n.setLanguage(e.target.value);
+        document.documentElement.lang = e.target.value;
+        window.QSCIi18n.translatePage();
+        
+        // Re-render dynamic content after language change
+        await updateAuthStatus();
+        await updateSubscriptionInfo();
+        await updateUsageStats();
+      });
+    }
+  }
+  
   const apiKeyInput = document.getElementById('apiKey');
   const statusEl = document.getElementById('status');
   const authStatusEl = document.getElementById('auth-status');

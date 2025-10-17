@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -17,9 +17,16 @@
       <div class="popup-logo">
         <div class="popup-logo-icon">Q‑SCI</div>
         <div>
-          <div class="popup-title">Quality Check</div>
-          <div class="popup-subtitle">Scientific Publications</div>
+          <div class="popup-title" data-i18n="header.title">Qualitätsprüfung</div>
+          <div class="popup-subtitle" data-i18n="header.subtitle">Wissenschaftliche Publikationen</div>
         </div>
+      </div>
+      <!-- Language Switcher -->
+      <div style="position: absolute; top: 12px; right: 12px;">
+        <select id="language-selector" style="padding: 4px 8px; font-size: 12px; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer;">
+          <option value="de">🇩🇪 DE</option>
+          <option value="en">🇬🇧 EN</option>
+        </select>
       </div>
     </div>
 
@@ -29,115 +36,115 @@
       <div class="section auth-section" id="auth-section">
         <!-- Login form (shown when not logged in) -->
         <div id="login-form" style="display: none;">
-          <h3>Login Required</h3>
-          <p style="font-size: 13px; margin-bottom: 16px;">Please login with Clerk to use Q-SCI analysis features.</p>
-          <button class="btn btn-primary" id="login-btn" style="width: 100%; margin-bottom: 12px; padding: 12px;">
-            🔐 Login with Clerk
+          <h3 data-i18n="auth.loginRequired">Anmeldung erforderlich</h3>
+          <p style="font-size: 13px; margin-bottom: 16px;" data-i18n="auth.loginDescription">Bitte melden Sie sich mit Clerk an, um die Q-SCI Analysefunktionen zu nutzen.</p>
+          <button class="btn btn-primary" id="login-btn" style="width: 100%; margin-bottom: 12px; padding: 12px;" data-i18n="auth.loginButton">
+            🔐 Mit Clerk anmelden
           </button>
           <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; font-size: 12px; color: #374151; margin-top: 8px;">
-            <div style="margin-bottom: 6px;"><strong>What you get:</strong></div>
-            <div>• <strong>Free:</strong> 10 analyses per day</div>
-            <div>• <strong>Subscribed:</strong> 100 analyses per day</div>
+            <div style="margin-bottom: 6px;"><strong data-i18n="auth.whatYouGet">Was Sie erhalten:</strong></div>
+            <div>• <strong data-i18n="auth.free">Kostenlos:</strong> <span data-i18n="auth.freeAnalyses">10 Analysen pro Tag</span></div>
+            <div>• <strong data-i18n="auth.subscribed">Abonniert:</strong> <span data-i18n="auth.subscribedAnalyses">100 Analysen pro Tag</span></div>
           </div>
         </div>
 
         <!-- User status (shown when logged in) -->
         <div id="user-status" style="display: none;">
           <div style="background: #f3f4f6; padding: 10px; border-radius: 4px; margin-bottom: 12px;">
-            <div style="font-size: 12px; color: #6b7280;">Logged in as:</div>
+            <div style="font-size: 12px; color: #6b7280;" data-i18n="auth.loggedInAs">Angemeldet als:</div>
             <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px;" id="user-email-display"></div>
             <div style="font-size: 12px;">
               <span id="subscription-badge" style="padding: 2px 8px; border-radius: 3px; font-weight: 500;"></span>
             </div>
             <div style="font-size: 12px; margin-top: 6px; color: #374151;">
-              <strong>Today's analyses:</strong> <span id="usage-display">0 / 0</span>
+              <strong data-i18n="auth.todaysAnalyses">Heutige Analysen:</strong> <span id="usage-display">0 / 0</span>
             </div>
             <div id="upgrade-prompt" style="display: none; margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 4px; border: 1px solid #fbbf24;">
               <div style="font-size: 12px; color: #92400e; margin-bottom: 4px;">
-                <strong>⚡ Upgrade to Premium</strong>
+                <strong data-i18n="auth.upgradeToPremium">⚡ Auf Premium upgraden</strong>
               </div>
-              <div style="font-size: 11px; color: #78350f; margin-bottom: 6px;">
-                Get 100 analyses per day instead of 10!
+              <div style="font-size: 11px; color: #78350f; margin-bottom: 6px;" data-i18n="auth.upgradeToPremiumDesc">
+                Erhalten Sie 100 Analysen pro Tag statt 10!
               </div>
-              <a href="https://www.q-sci.org/subscribe" target="_blank" style="display: inline-block; padding: 4px 12px; background: #f59e0b; color: white; text-decoration: none; border-radius: 3px; font-size: 11px; font-weight: 500;">
-                Subscribe Now
+              <a href="https://www.q-sci.org/subscribe" target="_blank" style="display: inline-block; padding: 4px 12px; background: #f59e0b; color: white; text-decoration: none; border-radius: 3px; font-size: 11px; font-weight: 500;" data-i18n="auth.subscribeNow">
+                Jetzt abonnieren
               </a>
             </div>
             <div style="margin-top: 8px;">
-              <button class="btn btn-secondary" id="refresh-subscription-btn" style="width: 100%; font-size: 12px; padding: 6px; margin-bottom: 6px;">
-                🔄 Refresh Status
+              <button class="btn btn-secondary" id="refresh-subscription-btn" style="width: 100%; font-size: 12px; padding: 6px; margin-bottom: 6px;" data-i18n="auth.refreshStatus">
+                🔄 Status aktualisieren
               </button>
             </div>
           </div>
-          <button class="btn btn-secondary" id="logout-btn" style="width: 100%; font-size: 13px; padding: 6px;">Logout</button>
+          <button class="btn btn-secondary" id="logout-btn" style="width: 100%; font-size: 13px; padding: 6px;" data-i18n="auth.logout">Abmelden</button>
         </div>
       </div>
 
       <!-- Current page section -->
       <div class="section current-page-section">
-        <h3>Current Page</h3>
+        <h3 data-i18n="page.title">Aktuelle Seite</h3>
         <div class="page-status" id="page-status">
           <span class="status-icon">ℹ️</span>
-          <span class="status-text">Checking...</span>
+          <span class="status-text" data-i18n="page.checking">Überprüfe...</span>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-primary" id="analyze-btn">Analyze Paper</button>
-          <button class="btn btn-secondary" id="refresh-btn">Refresh</button>
+          <button class="btn btn-primary" id="analyze-btn" data-i18n="page.analyzeButton">Paper analysieren</button>
+          <button class="btn btn-secondary" id="refresh-btn" data-i18n="page.refreshButton">Aktualisieren</button>
         </div>
         <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px;">
           <input type="checkbox" id="analyze-pdf" />
-          <label for="analyze-pdf" style="font-size: 12px;">Analyze PDF (if available)</label>
+          <label for="analyze-pdf" style="font-size: 12px;" data-i18n="page.analyzePdf">PDF analysieren (falls verfügbar)</label>
         </div>
       </div>
 
       <!-- Stats section (hidden until analysis run) -->
       <div class="section stats-section" id="stats-section" style="display: none;">
-        <h3>Analysis Results</h3>
+        <h3 data-i18n="results.title">Analyseergebnisse</h3>
         <div class="stats-grid">
           <div class="stat-item">
             <div class="stat-value" id="quality-score">--</div>
-            <div class="stat-label">Quality</div>
+            <div class="stat-label" data-i18n="results.quality">Qualität</div>
           </div>
           <div class="stat-item">
             <div class="stat-value" id="impact-factor">--</div>
-            <div class="stat-label">Journal Tier</div>
+            <div class="stat-label" data-i18n="results.journalTier">Journal-Tier</div>
           </div>
           <div class="stat-item">
             <div class="stat-value" id="quartile">--</div>
-            <div class="stat-label">Quartile</div>
+            <div class="stat-label" data-i18n="results.quartile">Quartil</div>
           </div>
         </div>
-        <button class="btn btn-outline" id="view-details-btn" style="display: none;">View Details</button>
+        <button class="btn btn-outline" id="view-details-btn" style="display: none;" data-i18n="results.viewDetails">Details anzeigen</button>
       </div>
 
       <!-- Manual analysis section -->
       <div class="section manual-analysis-section">
-        <h3>Manual Analysis</h3>
-        <textarea id="manual-text" rows="4" placeholder="Paste paper text to analyze..." style="width: 100%; border: 1px solid #d1d5db; border-radius: 4px; padding: 8px;"></textarea>
+        <h3 data-i18n="manual.title">Manuelle Analyse</h3>
+        <textarea id="manual-text" rows="4" data-i18n="manual.placeholder" placeholder="Paper-Text zum Analysieren einfügen..." style="width: 100%; border: 1px solid #d1d5db; border-radius: 4px; padding: 8px;"></textarea>
         <div style="margin-top: 8px;">
-          <button class="btn btn-primary" id="manual-analyze-btn">Analyze Text</button>
+          <button class="btn btn-primary" id="manual-analyze-btn" data-i18n="manual.analyzeButton">Text analysieren</button>
         </div>
       </div>
 
       <!-- Detailed analysis section (hidden until requested) -->
       <div class="section detailed-section" id="detailed-section" style="display: none;">
-        <h3>Detailed Analysis</h3>
-        <button class="btn btn-secondary" id="close-details-btn" style="margin-bottom: 12px;">Close</button>
+        <h3 data-i18n="detailed.title">Detaillierte Analyse</h3>
+        <button class="btn btn-secondary" id="close-details-btn" style="margin-bottom: 12px;" data-i18n="detailed.close">Schließen</button>
         <div id="journal-info" style="margin-bottom: 8px;">
-          <div><strong>Journal:</strong> <span id="journal-name"></span></div>
-          <div><strong>Journal Tier:</strong> <span id="detailed-impact-factor"></span></div>
-          <div><strong>Quartile:</strong> <span id="detailed-quartile"></span></div>
-          <div><strong>Quality:</strong> <span id="detailed-quality-percentage"></span></div>
-          <div><strong>Traffic Light:</strong> <span id="detailed-traffic-light"></span></div>
+          <div><strong data-i18n="detailed.journal">Journal:</strong> <span id="journal-name"></span></div>
+          <div><strong data-i18n="detailed.journalTier">Journal-Tier:</strong> <span id="detailed-impact-factor"></span></div>
+          <div><strong data-i18n="detailed.quartile">Quartil:</strong> <span id="detailed-quartile"></span></div>
+          <div><strong data-i18n="detailed.quality">Qualität:</strong> <span id="detailed-quality-percentage"></span></div>
+          <div><strong data-i18n="detailed.trafficLight">Ampel:</strong> <span id="detailed-traffic-light"></span></div>
         </div>
         <div id="badges-container" class="qsci-badges"></div>
-        <h4 style="margin-top: 12px;">✅ Positive Aspects</h4>
+        <h4 style="margin-top: 12px;" data-i18n="detailed.positiveAspects">✅ Positive Aspekte</h4>
         <div id="positive-aspects-list"></div>
-        <h4 style="margin-top: 12px;">⚠️ Areas for Improvement</h4>
+        <h4 style="margin-top: 12px;" data-i18n="detailed.negativeAspects">⚠️ Verbesserungsbereiche</h4>
         <div id="negative-aspects-list"></div>
         <!-- Source citations wrapper; hidden by default and populated dynamically -->
         <div id="source-citations-section" style="display: none; margin-top: 12px;">
-          <h4>Source</h4>
+          <h4 data-i18n="detailed.source">Quelle</h4>
           <div id="source-text-display" style="display: none; margin-top: 8px;">
             <div id="source-content" style="font-style: italic;"></div>
           </div>
@@ -146,8 +153,8 @@
     </div>
 
     <!-- Loading overlay -->
-    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.85); align-items: center; justify-content: center; font-size: 18px; z-index: 1000;">
-      Analyzing...
+    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.85); align-items: center; justify-content: center; font-size: 18px; z-index: 1000;" data-i18n="message.analyzing">
+      Analysiere...
     </div>
 
     <!-- Error message -->
@@ -162,11 +169,12 @@
 
     <!-- Settings button -->
     <div style="text-align: center; margin-top: 12px;">
-      <button id="settings-btn" style="padding: 6px 12px; font-size: 14px; cursor: pointer;">Settings</button>
+      <button id="settings-btn" style="padding: 6px 12px; font-size: 14px; cursor: pointer;" data-i18n="settings.button">Einstellungen</button>
     </div>
   </div>
 
   <!-- Scripts -->
+  <script src="i18n.js"></script>
   <script src="auth.js"></script>
   <script src="qsci_evaluator.js"></script>
   <script src="popup.js"></script>

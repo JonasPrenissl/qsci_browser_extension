@@ -145,7 +145,8 @@
         "qsci_ui_badges.css",
         "qsci_calibration_publications.json",
         "popup.html",
-        "clerk-auth.html"
+        "clerk-auth.html",
+        "i18n.js"
       ],
       "matches": ["<all_urls>"]
     }
