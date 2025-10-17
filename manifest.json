@@ -58,7 +58,9 @@
     "https://3000-ihim6em9vakbhsgb4zp4p-b38323ba.manusvm.computer/*",
     "https://api.openai.com/*",
     "https://q-sci.org/*",
-    "https://www.q-sci.org/*"
+    "https://www.q-sci.org/*",
+    "https://optimal-jennet-35.clerk.accounts.dev/*",
+    "https://*.clerk.accounts.dev/*"
   ],
   
   "content_scripts": [
