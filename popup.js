@@ -63,7 +63,8 @@ function initializeElements() {
     subscriptionBadge: document.getElementById('subscription-badge'),
     usageDisplay: document.getElementById('usage-display'),
     logoutBtn: document.getElementById('logout-btn'),
-    upgradePrompt: document.getElementById('upgrade-prompt')
+    upgradePrompt: document.getElementById('upgrade-prompt'),
+    refreshSubscriptionBtn: document.getElementById('refresh-subscription-btn')
   };
   
   // Log which elements were found
@@ -151,6 +152,13 @@ function setupEventListeners() {
     elements.logoutBtn.addEventListener('click', function() {
       console.log('Q-SCI Debug Popup: Logout button clicked');
       handleLogout();
+    });
+  }
+
+  if (elements.refreshSubscriptionBtn) {
+    elements.refreshSubscriptionBtn.addEventListener('click', function() {
+      console.log('Q-SCI Debug Popup: Refresh subscription button clicked');
+      handleRefreshSubscription();
     });
   }
 }
@@ -255,6 +263,42 @@ async function handleLogout() {
   } catch (error) {
     console.error('Q-SCI Debug Popup: Logout failed:', error);
     showError('Logout failed. Please try again.');
+  }
+}
+
+// Handle refresh subscription status
+async function handleRefreshSubscription() {
+  console.log('Q-SCI Debug Popup: Refreshing subscription status...');
+  
+  if (!currentUser) {
+    showError('Please login first.');
+    return;
+  }
+
+  // Disable refresh button
+  if (elements.refreshSubscriptionBtn) {
+    elements.refreshSubscriptionBtn.disabled = true;
+    elements.refreshSubscriptionBtn.innerHTML = '⏳ Refreshing...';
+  }
+  
+  try {
+    const updatedUser = await window.QSCIAuth.refreshSubscriptionStatus();
+    currentUser = updatedUser;
+    
+    // Update UI with new subscription status
+    showUserStatus(currentUser);
+    await updateUsageDisplay();
+    
+    showSuccess('Subscription status refreshed!');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Refresh subscription failed:', error);
+    showError(error.message || 'Failed to refresh subscription status. Please try again.');
+  } finally {
+    // Re-enable refresh button
+    if (elements.refreshSubscriptionBtn) {
+      elements.refreshSubscriptionBtn.disabled = false;
+      elements.refreshSubscriptionBtn.innerHTML = '🔄 Refresh Status';
+    }
   }
 }
 

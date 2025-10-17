@@ -262,6 +262,70 @@
     },
 
     /**
+     * Refresh subscription status from backend
+     * This should be called after a user completes payment to update their subscription status
+     * The backend webhook will update Clerk publicMetadata, and this function fetches the latest status
+     * @returns {Promise<Object>} Updated user data with refreshed subscription status
+     */
+    async refreshSubscriptionStatus() {
+      try {
+        const user = await this.getCurrentUser();
+        
+        if (!user || !user.userId) {
+          throw new Error('No user found. Please login first.');
+        }
+
+        console.log('Q-SCI Auth: Refreshing subscription status from backend...');
+
+        // Call backend API to get updated subscription status
+        // The backend will query Clerk's publicMetadata for the latest subscription_status
+        const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.warn('Q-SCI Auth: Failed to refresh subscription status from backend, using cached data');
+          return user;
+        }
+
+        const data = await response.json();
+        const newSubscriptionStatus = data.subscription_status || 'free';
+
+        // Update stored subscription status
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.SUBSCRIPTION_STATUS]: newSubscriptionStatus
+        });
+
+        console.log('Q-SCI Auth: Subscription status refreshed:', newSubscriptionStatus);
+
+        // Return updated user data
+        return {
+          ...user,
+          subscriptionStatus: newSubscriptionStatus
+        };
+        
+      } catch (error) {
+        console.error('Q-SCI Auth: Error refreshing subscription status:', error);
+        
+        // For network errors, return cached data
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          const user = await this.getCurrentUser();
+          if (user) {
+            console.warn('Q-SCI Auth: Using cached subscription data due to network error');
+            return user;
+          }
+        }
+        
+        // Return current user data even if refresh fails
+        return await this.getCurrentUser();
+      }
+    },
+
+    /**
      * Store authentication data
      * @private
      */
