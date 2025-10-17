@@ -145,12 +145,12 @@ See `BACKEND_OPENAI_KEY_ENDPOINT.md` for detailed implementation guide.
 
 ## Rollback Plan
 
-If issues arise, you can revert these changes by:
-1. Git checkout to previous commit: `git checkout 225bf76`
+If issues arise, you can revert these changes:
+1. Use git to checkout the previous commit before these changes
 2. Restore manual API key input in options.html
 3. Restore old qsci_evaluator.js that reads from local storage
 
-However, the Clerk authentication improvements should be kept as they fix the login stuck issue.
+However, the Clerk authentication improvements should be kept as they fix the login stuck issue. Consider a partial rollback if only the API key changes need to be reverted.
 
 ## Support
 

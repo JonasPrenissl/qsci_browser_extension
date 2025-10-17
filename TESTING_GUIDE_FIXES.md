@@ -14,8 +14,8 @@ Before testing, ensure:
 Verify that users can successfully log in with Clerk and are no longer stuck at "Loading authentication..."
 
 ### Steps
-1. Open the extension popup
-2. Click "🔐 Mit Clerk anmelden" (Login with Clerk)
+1. Open the browser extension popup by clicking the Q-SCI icon in the Chrome toolbar
+2. In the popup, locate and click the "🔐 Mit Clerk anmelden" (Login with Clerk) button
 3. A popup window should open showing the Clerk authentication page
 4. **Expected:** Clerk sign-in form loads within 5-10 seconds
 5. Sign in with valid credentials or create a new account
@@ -91,10 +91,11 @@ Verify that the extension can fetch the OpenAI API key from the backend
 3. **Expected Error:** "Please login to use analysis features."
 
 #### Scenario 2C: Invalid/Expired Token
-1. Manually clear auth token from storage:
+1. Open browser console (F12) and execute the following JavaScript to manually clear the auth token:
    ```javascript
    chrome.storage.local.remove('qsci_auth_token')
    ```
+   Note: This simulates an expired/invalid token scenario for testing purposes.
 2. Try to analyze a paper without logging in again
 3. **Expected Error:** "Unable to retrieve API key: No authentication token found. Please login first."
 
@@ -272,7 +273,7 @@ Verify that authentication persists across browser sessions
 Ensure old local API keys don't cause issues
 
 ### Steps
-1. Manually add old API key to storage:
+1. Open browser console (F12) and manually add an old API key to storage to simulate migration scenario:
    ```javascript
    chrome.storage.local.set({ openai_api_key: 'sk-old-key-123' })
    ```
