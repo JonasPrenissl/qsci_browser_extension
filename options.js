@@ -23,26 +23,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
   
-  const apiKeyInput = document.getElementById('apiKey');
   const statusEl = document.getElementById('status');
   const authStatusEl = document.getElementById('auth-status');
   const usageStatsEl = document.getElementById('usage-stats');
   const refreshSubscriptionBtn = document.getElementById('refreshSubscriptionBtn');
 
-  // Load existing key from storage
-  chrome.storage.local.get('openai_api_key', (result) => {
-    if (result && result.openai_api_key) {
-      apiKeyInput.value = result.openai_api_key;
-    }
-  });
-
-  // Save API key on button click
-  document.getElementById('saveBtn').addEventListener('click', () => {
-    const key = apiKeyInput.value.trim();
-    chrome.storage.local.set({ openai_api_key: key }, () => {
-      showStatus('API key saved successfully.', 'success');
-    });
-  });
+  // Note: API key management has been removed as it's now handled by the backend
+  // Users no longer need to manually enter their OpenAI API keys
 
   // Refresh subscription button handler
   if (refreshSubscriptionBtn) {

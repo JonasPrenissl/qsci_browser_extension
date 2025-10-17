@@ -342,6 +342,57 @@
         [STORAGE_KEYS.CLERK_SESSION_ID]: clerkSessionId,
         [STORAGE_KEYS.SUBSCRIPTION_STATUS]: subscriptionStatus
       });
+    },
+
+    /**
+     * Fetch OpenAI API key from backend
+     * This method retrieves the API key from the backend server
+     * The backend should return the key based on the user's authentication token
+     * @returns {Promise<string>} OpenAI API key
+     */
+    async getOpenAIApiKey() {
+      try {
+        const user = await this.getCurrentUser();
+        
+        if (!user || !user.token) {
+          throw new Error('No authentication token found. Please login first.');
+        }
+
+        console.log('Q-SCI Auth: Fetching OpenAI API key from backend...');
+
+        // Call backend API to get OpenAI API key
+        const response = await fetch(`${API_BASE_URL}/auth/openai-key`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.error('Q-SCI Auth: Failed to fetch API key from backend:', response.status);
+          throw new Error(`Failed to fetch API key: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.api_key) {
+          throw new Error('No API key returned from backend');
+        }
+
+        console.log('Q-SCI Auth: OpenAI API key fetched successfully');
+        return data.api_key;
+        
+      } catch (error) {
+        console.error('Q-SCI Auth: Error fetching OpenAI API key:', error);
+        
+        // For network errors, inform the user appropriately
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          throw new Error('Unable to fetch API key. Please check your internet connection.');
+        }
+        
+        throw error;
+      }
     }
   };
 

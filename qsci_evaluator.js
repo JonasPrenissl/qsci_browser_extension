@@ -139,21 +139,27 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       throw new Error('Insufficient text provided for analysis');
     }
 
-    // Retrieve the API key from chrome.storage.local.  Use a Promise
-    // wrapper since chrome.storage API uses callbacks.  The key is
-    // stored under 'openai_api_key'.
-    const storageResult = await new Promise((resolve) => {
-      if (chrome && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get('openai_api_key', (result) => {
-          resolve(result || {});
-        });
-      } else {
-        resolve({});
+    // Fetch the OpenAI API key from the backend instead of local storage
+    // This ensures the key is managed centrally and users don't need to manually enter it
+    let apiKey;
+    try {
+      console.log('Q‑SCI LLM Evaluator: Fetching API key from backend...');
+      
+      // Check if QSCIAuth is available (it should be loaded before this script)
+      if (typeof window.QSCIAuth === 'undefined' || typeof window.QSCIAuth.getOpenAIApiKey !== 'function') {
+        throw new Error('Authentication module not available. Please ensure you are logged in.');
       }
-    });
-    const apiKey = storageResult.openai_api_key || OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OpenAI API key not set. Please open the extension settings and enter your key.');
+      
+      apiKey = await window.QSCIAuth.getOpenAIApiKey();
+      
+      if (!apiKey) {
+        throw new Error('Failed to retrieve API key from backend. Please try logging in again.');
+      }
+      
+      console.log('Q‑SCI LLM Evaluator: API key fetched successfully');
+    } catch (error) {
+      console.error('Q‑SCI LLM Evaluator: Error fetching API key:', error);
+      throw new Error(`Unable to retrieve API key: ${error.message}`);
     }
 
     const messages = buildMessages(title, sourceUrl, text);

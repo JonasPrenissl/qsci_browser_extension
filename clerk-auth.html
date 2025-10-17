@@ -261,29 +261,22 @@
         // Listen for sign-in events using multiple approaches
         console.log('Q-SCI Clerk Auth: Setting up session listeners...');
         
-        // Approach 1: Use Clerk's session change listener if available
-        if (typeof clerk.addListener === 'function') {
-          console.log('Q-SCI Clerk Auth: Adding Clerk listener');
-          clerk.addListener(async (emission) => {
-            console.log('Q-SCI Clerk Auth: Clerk emission received:', emission);
-            if (emission.user && emission.session) {
-              console.log('Q-SCI Clerk Auth: User authenticated via listener');
-              await handleSignInSuccess(clerk);
-            }
-          });
-        } else {
-          console.log('Q-SCI Clerk Auth: addListener not available on Clerk instance');
-        }
+        // Approach 1: Listen for session events using modern Clerk API
+        // The clerk instance emits events when the session changes
+        let sessionCheckInterval = null;
         
-        // Approach 2: Check session periodically as fallback
+        // Approach 2: Use more aggressive session polling with reload check
         let checkCount = 0;
         const maxChecks = 300; // 5 minutes with 1 second interval
-        const checkSession = setInterval(async () => {
+        sessionCheckInterval = setInterval(async () => {
           try {
             checkCount++;
             
-            // Log every 10 seconds for debugging
-            if (checkCount % 10 === 0) {
+            // Reload clerk state to ensure we have the latest session
+            await clerk.load();
+            
+            // Log every 5 seconds for debugging (more frequent for better UX)
+            if (checkCount % 5 === 0) {
               console.log(`Q-SCI Clerk Auth: Checking session... (attempt ${checkCount}/${maxChecks})`);
               console.log('Q-SCI Clerk Auth: Session exists:', !!clerk.session);
               console.log('Q-SCI Clerk Auth: User exists:', !!clerk.user);
@@ -291,12 +284,18 @@
             
             if (clerk.session && clerk.user) {
               console.log('Q-SCI Clerk Auth: Session detected, user signed in');
-              clearInterval(checkSession);
+              clearInterval(sessionCheckInterval);
               await handleSignInSuccess(clerk);
             } else if (checkCount >= maxChecks) {
               console.warn('Q-SCI Clerk Auth: Maximum check attempts reached');
-              clearInterval(checkSession);
+              clearInterval(sessionCheckInterval);
               showError('Authentication timeout. Please try again.');
+              
+              // Show retry section
+              const retrySection = document.getElementById('retry-section');
+              if (retrySection) {
+                retrySection.style.display = 'block';
+              }
             }
           } catch (error) {
             console.error('Q-SCI Clerk Auth: Error checking session:', error);

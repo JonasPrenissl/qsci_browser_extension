@@ -107,12 +107,13 @@
   </a>
   
   <h2 data-i18n="settings.openaiConfig">OpenAI API Konfiguration</h2>
-  <div class="info-box" data-i18n="settings.openaiDescription">
-    Geben Sie Ihren OpenAI API-Schlüssel unten ein. Er wird lokal in Ihrem Browser gespeichert und für die Qualitätsanalyse von Papern verwendet.
+  <div class="info-box" data-i18n="settings.openaiManagedCentrally">
+    Der OpenAI API-Schlüssel wird zentral vom Q-SCI-Backend verwaltet. Sie müssen keinen eigenen Schlüssel eingeben. Alle Analysen werden über den zentralen Service ausgeführt.
   </div>
-  <label for="apiKey" data-i18n="settings.apiKeyLabel">OpenAI API-Schlüssel</label>
-  <input type="text" id="apiKey" placeholder="sk-..." />
-  <button id="saveBtn" data-i18n="settings.saveButton">API-Schlüssel speichern</button>
+  <div class="info-box" style="background: #dbeafe; border-left: 4px solid #3b82f6;">
+    <strong>✓ API-Schlüssel automatisch konfiguriert</strong><br>
+    <span style="font-size: 13px;">Sobald Sie eingeloggt sind, wird der API-Schlüssel automatisch von unserem Backend abgerufen.</span>
+  </div>
   
   <h2 data-i18n="settings.usageStats">Nutzungsstatistiken</h2>
   <div id="usage-stats" class="info-box"></div>
