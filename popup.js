@@ -342,10 +342,26 @@ function showUserStatus(user) {
   
   // Update subscription badge
   if (elements.subscriptionBadge) {
-    const isSubscribed = user.subscriptionStatus === 'subscribed';
-    elements.subscriptionBadge.textContent = isSubscribed ? '✓ Subscribed' : 'Free';
-    elements.subscriptionBadge.style.backgroundColor = isSubscribed ? '#dcfce7' : '#f3f4f6';
-    elements.subscriptionBadge.style.color = isSubscribed ? '#166534' : '#6b7280';
+    const status = user.subscriptionStatus || 'free';
+    
+    let badgeText, backgroundColor, textColor;
+    if (status === 'subscribed') {
+      badgeText = '✓ Subscribed';
+      backgroundColor = '#dcfce7';
+      textColor = '#166534';
+    } else if (status === 'past_due') {
+      badgeText = '⚠ Payment Due';
+      backgroundColor = '#fef3c7';
+      textColor = '#92400e';
+    } else {
+      badgeText = 'Free';
+      backgroundColor = '#f3f4f6';
+      textColor = '#6b7280';
+    }
+    
+    elements.subscriptionBadge.textContent = badgeText;
+    elements.subscriptionBadge.style.backgroundColor = backgroundColor;
+    elements.subscriptionBadge.style.color = textColor;
   }
   
   // Enable analyze buttons
@@ -380,7 +396,9 @@ async function updateUsageDisplay() {
     }
     
     // Show upgrade prompt for free users who are getting close to limit or have reached it
-    if (elements.upgradePrompt && currentUser.subscriptionStatus !== 'subscribed') {
+    // Also show for past_due users
+    const status = currentUser.subscriptionStatus || 'free';
+    if (elements.upgradePrompt && status !== 'subscribed') {
       const shouldShowPrompt = usageInfo.used >= 5 || usageInfo.remaining === 0;
       elements.upgradePrompt.style.display = shouldShowPrompt ? 'block' : 'none';
     } else if (elements.upgradePrompt) {

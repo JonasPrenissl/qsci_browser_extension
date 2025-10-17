@@ -26,6 +26,7 @@ The extension reads subscription status from Clerk's `publicMetadata.subscriptio
 **Supported values:**
 - `"free"` - Free tier (10 analyses/day)
 - `"subscribed"` - Premium tier (100 analyses/day)
+- `"past_due"` - Payment issue, limited to 10 analyses/day (same as free)
 
 ### 2. Authentication Flow
 
@@ -152,17 +153,71 @@ For the extension to work with Stripe subscriptions, your backend needs:
 2. Extract Clerk user ID from Customer metadata
 3. Map Stripe subscription status to app status:
    - `active`, `trialing` → `"subscribed"`
+   - `past_due` → `"past_due"`
    - `canceled`, `unpaid`, `incomplete_expired` → `"free"`
 4. Update Clerk user's `publicMetadata`:
 
 ```javascript
 await clerkClient.users.updateUser(clerkUserId, {
   publicMetadata: {
-    subscription_status: "subscribed", // or "free"
+    subscription_status: "subscribed", // or "free" or "past_due"
     plan_id: subscription.items.data[0]?.price?.id,
     current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
   }
 });
+```
+
+**Example webhook handler implementation** (matching problem statement requirements):
+
+```javascript
+// Helper: Map Stripe subscription status to app status
+const mapStripeStatus = (s) => {
+  switch (s) {
+    case "active":
+    case "trialing":
+      return "subscribed";
+    case "past_due":
+      return "past_due";
+    case "canceled":
+    case "unpaid":
+    case "incomplete_expired":
+      return "free";
+    default:
+      return "free";
+  }
+};
+
+// Event handling
+switch (event.type) {
+  case "checkout.session.completed": {
+    const clerkUserId = await getClerkUserId();
+    if (clerkUserId) {
+      await clerkClient.users.updateUser(clerkUserId, {
+        publicMetadata: { subscription_status: "subscribed" },
+      });
+    }
+    break;
+  }
+
+  case "customer.subscription.created":
+  case "customer.subscription.updated":
+  case "customer.subscription.deleted": {
+    const subscription = event.data.object;
+    const clerkUserId = await getClerkUserId();
+    if (clerkUserId) {
+      await clerkClient.users.updateUser(clerkUserId, {
+        publicMetadata: {
+          subscription_status: mapStripeStatus(subscription.status),
+          plan_id: subscription.items.data[0]?.price?.id ?? null,
+          current_period_end: subscription.current_period_end
+            ? new Date(subscription.current_period_end * 1000).toISOString()
+            : null,
+        },
+      });
+    }
+    break;
+  }
+}
 ```
 
 ### 3. Subscription Status Endpoint

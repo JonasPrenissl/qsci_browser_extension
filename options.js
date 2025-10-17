@@ -89,18 +89,31 @@ async function updateSubscriptionInfo() {
     
     if (isLoggedIn) {
       const user = await window.QSCIAuth.getCurrentUser();
-      const isSubscribed = user.subscriptionStatus === 'subscribed';
+      const status = user.subscriptionStatus || 'free';
+      
+      let statusBadge, dailyLimit, tipMessage;
+      
+      if (status === 'subscribed') {
+        statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #dcfce7; color: #166534; font-weight: 500;">✓ Premium</span>';
+        dailyLimit = '100';
+        tipMessage = '';
+      } else if (status === 'past_due') {
+        statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #fef3c7; color: #92400e; font-weight: 500;">⚠ Payment Due</span>';
+        dailyLimit = '10';
+        tipMessage = '<div style="margin-top: 8px; color: #b91c1c;"><strong>⚠ Action Required:</strong> Please update your payment method to restore Premium access.</div>';
+      } else {
+        statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #f3f4f6; color: #6b7280; font-weight: 500;">Free</span>';
+        dailyLimit = '10';
+        tipMessage = '<div style="margin-top: 8px; color: #92400e;"><strong>💡 Tip:</strong> Upgrade to Premium for 10x more analyses per day!</div>';
+      }
       
       subscriptionInfoEl.innerHTML = `
         <div style="font-weight: bold; margin-bottom: 8px;">Current Plan</div>
         <div style="margin-bottom: 8px;">
-          <strong>Status:</strong> 
-          <span style="padding: 2px 8px; border-radius: 3px; ${isSubscribed ? 'background: #dcfce7; color: #166534;' : 'background: #f3f4f6; color: #6b7280;'} font-weight: 500;">
-            ${isSubscribed ? '✓ Premium' : 'Free'}
-          </span>
+          <strong>Status:</strong> ${statusBadge}
         </div>
-        <div><strong>Daily analyses:</strong> ${isSubscribed ? '100' : '10'}</div>
-        ${!isSubscribed ? '<div style="margin-top: 8px; color: #92400e;"><strong>💡 Tip:</strong> Upgrade to Premium for 10x more analyses per day!</div>' : ''}
+        <div><strong>Daily analyses:</strong> ${dailyLimit}</div>
+        ${tipMessage}
       `;
     } else {
       subscriptionInfoEl.innerHTML = `

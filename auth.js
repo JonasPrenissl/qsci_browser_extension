@@ -19,15 +19,20 @@
     USER_EMAIL: 'qsci_user_email',
     USER_ID: 'qsci_user_id',
     CLERK_SESSION_ID: 'qsci_clerk_session_id',
-    SUBSCRIPTION_STATUS: 'qsci_subscription_status',
+    SUBSCRIPTION_STATUS: 'qsci_subscription_status', // Values: 'free', 'subscribed', 'past_due'
     DAILY_USAGE: 'qsci_daily_usage',
     LAST_USAGE_DATE: 'qsci_last_usage_date'
   };
 
   // Usage limits
+  // Subscription status values set by Stripe webhook in Clerk publicMetadata:
+  // - 'free': Free tier users (no active subscription)
+  // - 'subscribed': Active paid subscription (Stripe status: active, trialing)
+  // - 'past_due': Payment issue but still allow limited access (Stripe status: past_due)
   const USAGE_LIMITS = {
     FREE: 10,           // Free users: 10 analyses per day
-    SUBSCRIBED: 100     // Subscribed users: 100 analyses per day
+    SUBSCRIBED: 100,    // Subscribed users: 100 analyses per day
+    PAST_DUE: 10        // Past due users: same as free (10 per day)
   };
 
   /**
@@ -398,13 +403,23 @@
 
     /**
      * Check if user can perform an analysis
-     * @param {string} subscriptionStatus - User's subscription status ('free' or 'subscribed')
+     * @param {string} subscriptionStatus - User's subscription status ('free', 'subscribed', or 'past_due')
      * @returns {Promise<Object>} Object with canAnalyze flag and remaining count
      */
     async canAnalyze(subscriptionStatus) {
       try {
         const usage = await this.getDailyUsage();
-        const limit = subscriptionStatus === 'subscribed' ? USAGE_LIMITS.SUBSCRIBED : USAGE_LIMITS.FREE;
+        
+        // Determine limit based on subscription status
+        let limit;
+        if (subscriptionStatus === 'subscribed') {
+          limit = USAGE_LIMITS.SUBSCRIBED;
+        } else if (subscriptionStatus === 'past_due') {
+          limit = USAGE_LIMITS.PAST_DUE;
+        } else {
+          limit = USAGE_LIMITS.FREE;
+        }
+        
         const remaining = Math.max(0, limit - usage);
 
         return {
