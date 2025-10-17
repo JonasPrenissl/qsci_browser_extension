@@ -3,12 +3,12 @@
 ## Original Problem Statement (German)
 
 > wenn ich versuche app als extension zu installieren kommt: Datei
-> \\charite.de\homes\h08\jopr10\Dokumente\Forschung\Q-SCI Project\Q_SCI on Github\APP 1
+> \\network.domain\homes\user\Dokumente\Forschung\Q-SCI Project\Q_SCI on Github\APP 1
 > 
-> FehlerDas Hintergrundskript „background.js" konnte nicht geladen werden. Fix it. Also make sure that the login and subscription check via Clerk integration works and that people without subscription but with registration can do 10 analyses per day and people with subscription and registration can do 100 analyses per day. Also make sure only logged in persons can use the browser extension
+> Fehler: Das Hintergrundskript „background.js" konnte nicht geladen werden. Fix it. Also make sure that the login and subscription check via Clerk integration works and that people without subscription but with registration can do 10 analyses per day and people with subscription and registration can do 100 analyses per day. Also make sure only logged in persons can use the browser extension
 
 ## Translation
-"When I try to install the app as an extension I get: File \\charite.de\homes\h08\jopr10\Documents\Research\Q-SCI Project\Q_SCI on Github\APP 1
+"When I try to install the app as an extension I get: File \\network.domain\homes\user\Documents\Research\Q-SCI Project\Q_SCI on Github\APP 1
 Error: The background script 'background.js' could not be loaded. Fix it. Also make sure that the login and subscription check via Clerk integration works and that people without subscription but with registration can do 10 analyses per day and people with subscription and registration can do 100 analyses per day. Also make sure only logged in persons can use the browser extension"
 
 ## Root Cause Analysis
@@ -16,7 +16,7 @@ Error: The background script 'background.js' could not be loaded. Fix it. Also m
 ### Issue 1: Background Script Loading Error
 **Cause**: Chrome extensions cannot be loaded from network drives or UNC paths.
 
-**Evidence**: The error shows path `\\charite.de\homes\h08\jopr10\...` which is a **network UNC path**. Chrome's extension system has security restrictions that prevent loading from network locations.
+**Evidence**: The error shows path `\\network.domain\homes\user\...` which is a **network UNC path**. Chrome's extension system has security restrictions that prevent loading from network locations.
 
 **Solution**: Extension must be copied to a **local hard drive** (C:\, D:\, etc.) before loading in Chrome.
 
@@ -216,8 +216,7 @@ User performs analysis
 ## Files Created
 
 1. **.gitignore** - Exclude unnecessary files
-2. **README.md** - Main documentation
-3. **QUICK_START.md** - 5-minute setup guide
+2. **QUICK_START.md** - 5-minute setup guide
 4. **INSTALLATION.md** - Complete installation guide
 5. **FEHLERBEHEBUNG.md** - German troubleshooting guide
 6. **CHECK_INSTALLATION.md** - Installation checklist
@@ -231,7 +230,7 @@ To fix the background script loading error, the user must:
 ### Windows Users:
 1. **Copy the extension folder** from network drive to local drive:
    ```
-   From: \\charite.de\homes\h08\jopr10\Dokumente\Forschung\Q-SCI Project\...
+   From: \\network.domain\homes\username\Documents\Projects\qsci_browser_extension
    To:   C:\Users\[Username]\Documents\qsci_browser_extension
    ```
 
