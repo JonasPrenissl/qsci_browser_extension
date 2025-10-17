@@ -4,6 +4,8 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
 
 ## 🚀 Quick Start
 
+👉 **New to this extension?** See **[QUICK_START.md](QUICK_START.md)** for a 5-minute setup guide!
+
 ### ⚠️ IMPORTANT: Network Drive Issue
 
 **If you get an error:** "Das Hintergrundskript „background.js" konnte nicht geladen werden"
