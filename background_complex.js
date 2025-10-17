@@ -4,19 +4,27 @@
 // Default: production site – change to your deployed website
 let QSCI_API_BASE = 'https://your-domain.com';
 
+// Initialize API base from storage on startup
+let apiBaseInitialized = false;
+
 // Try to read a configured override from chrome.storage.sync (useful for local development)
-try {
-  if (chrome && chrome.storage && chrome.storage.sync) {
-    chrome.storage.sync.get(['QSCI_API_BASE'], (res) => {
+(async function initializeApiBase() {
+  try {
+    if (chrome && chrome.storage && chrome.storage.sync) {
+      const res = await chrome.storage.sync.get(['QSCI_API_BASE']);
       if (res && res.QSCI_API_BASE) {
         QSCI_API_BASE = res.QSCI_API_BASE;
         console.log('Q-SCI: using configured API base', QSCI_API_BASE);
+      } else {
+        console.log('Q-SCI: using default API base', QSCI_API_BASE);
       }
-    });
+    }
+  } catch (e) {
+    console.warn('Q-SCI: chrome.storage not available, using default API base', QSCI_API_BASE);
+  } finally {
+    apiBaseInitialized = true;
   }
-} catch (e) {
-  console.warn('Q-SCI: chrome.storage not available, using default API base', QSCI_API_BASE);
-}
+})();
 
 // Example usage:
 // fetch(`${QSCI_API_BASE}/api/extension?action=login-url`)

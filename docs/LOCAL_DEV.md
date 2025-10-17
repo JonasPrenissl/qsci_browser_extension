@@ -20,7 +20,7 @@ The extension reads the API base URL from `chrome.storage.sync`. To set a custom
 chrome.storage.sync.set({ QSCI_API_BASE: 'http://localhost:5173' }, () => console.log('QSCI API base set')); 
 ```
 
-4. Reload the extension or restart Chrome
+4. Reload the extension (disable and re-enable, or click the reload icon on chrome://extensions/)
 5. You should see a console log: `Q-SCI: using configured API base http://localhost:5173`
 
 #### Method 2: Using Extension Popup Console
