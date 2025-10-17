@@ -8,8 +8,15 @@ let currentAnalysis = null;
 let currentUser = null;
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   console.log('Q-SCI Debug Popup: DOM loaded, initializing...');
+  
+  // Initialize i18n first
+  if (window.QSCIi18n) {
+    await window.QSCIi18n.init();
+    window.QSCIi18n.translatePage();
+  }
+  
   initializeElements();
   setupEventListeners();
   initializeAuth();
@@ -64,7 +71,9 @@ function initializeElements() {
     usageDisplay: document.getElementById('usage-display'),
     logoutBtn: document.getElementById('logout-btn'),
     upgradePrompt: document.getElementById('upgrade-prompt'),
-    refreshSubscriptionBtn: document.getElementById('refresh-subscription-btn')
+    refreshSubscriptionBtn: document.getElementById('refresh-subscription-btn'),
+    // Language selector
+    languageSelector: document.getElementById('language-selector')
   };
   
   // Log which elements were found
@@ -136,6 +145,29 @@ function setupEventListeners() {
       console.log('Q-SCI Debug Popup: Settings button clicked');
       if (chrome && chrome.runtime && chrome.runtime.openOptionsPage) {
         chrome.runtime.openOptionsPage();
+      }
+    });
+  }
+
+  // Language selector
+  if (elements.languageSelector && window.QSCIi18n) {
+    // Set initial value
+    elements.languageSelector.value = window.QSCIi18n.getLanguage();
+    
+    // Handle language change
+    elements.languageSelector.addEventListener('change', async function(e) {
+      console.log('Q-SCI Debug Popup: Language changed to', e.target.value);
+      await window.QSCIi18n.setLanguage(e.target.value);
+      
+      // Update HTML lang attribute
+      document.documentElement.lang = e.target.value;
+      
+      // Re-translate the entire page
+      window.QSCIi18n.translatePage();
+      
+      // Re-render dynamic content if needed
+      if (currentUser) {
+        updateSubscriptionBadge(currentUser.subscriptionStatus);
       }
     });
   }
@@ -324,6 +356,31 @@ function showLoginForm() {
   }
 }
 
+// Update subscription badge with i18n support
+function updateSubscriptionBadge(status) {
+  if (!elements.subscriptionBadge) return;
+  
+  let badgeKey, backgroundColor, textColor;
+  if (status === 'subscribed') {
+    badgeKey = 'subscription.subscribed';
+    backgroundColor = '#dcfce7';
+    textColor = '#166534';
+  } else if (status === 'past_due') {
+    badgeKey = 'subscription.pastDue';
+    backgroundColor = '#fef3c7';
+    textColor = '#92400e';
+  } else {
+    badgeKey = 'subscription.free';
+    backgroundColor = '#f3f4f6';
+    textColor = '#6b7280';
+  }
+  
+  const badgeText = window.QSCIi18n ? window.QSCIi18n.t(badgeKey) : status;
+  elements.subscriptionBadge.textContent = badgeText;
+  elements.subscriptionBadge.style.backgroundColor = backgroundColor;
+  elements.subscriptionBadge.style.color = textColor;
+}
+
 // Show user status
 function showUserStatus(user) {
   console.log('Q-SCI Debug Popup: Showing user status');
@@ -341,28 +398,7 @@ function showUserStatus(user) {
   }
   
   // Update subscription badge
-  if (elements.subscriptionBadge) {
-    const status = user.subscriptionStatus || 'free';
-    
-    let badgeText, backgroundColor, textColor;
-    if (status === 'subscribed') {
-      badgeText = '✓ Subscribed';
-      backgroundColor = '#dcfce7';
-      textColor = '#166534';
-    } else if (status === 'past_due') {
-      badgeText = '⚠ Payment Due';
-      backgroundColor = '#fef3c7';
-      textColor = '#92400e';
-    } else {
-      badgeText = 'Free';
-      backgroundColor = '#f3f4f6';
-      textColor = '#6b7280';
-    }
-    
-    elements.subscriptionBadge.textContent = badgeText;
-    elements.subscriptionBadge.style.backgroundColor = backgroundColor;
-    elements.subscriptionBadge.style.color = textColor;
-  }
+  updateSubscriptionBadge(user.subscriptionStatus || 'free');
   
   // Enable analyze buttons
   if (elements.analyzeBtn) {

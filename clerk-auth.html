@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Q-SCI Login</title>
+  <title>Q-SCI Anmeldung</title>
   <style>
     * {
       margin: 0;
@@ -120,15 +120,23 @@
 </head>
 <body>
   <div class="container">
+    <!-- Language Switcher -->
+    <div style="position: absolute; top: 12px; right: 12px;">
+      <select id="language-selector" style="padding: 4px 8px; font-size: 12px; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer;">
+        <option value="de">🇩🇪 DE</option>
+        <option value="en">🇬🇧 EN</option>
+      </select>
+    </div>
+    
     <div class="logo">
       <div class="logo-text">Q‑SCI</div>
-      <div class="logo-subtitle">Scientific Paper Quality Evaluator</div>
+      <div class="logo-subtitle" data-i18n="clerkAuth.subtitle">Scientific Paper Quality Evaluator</div>
     </div>
 
     <div id="clerk-container">
       <div class="loading">
         <div class="spinner"></div>
-        <div>Loading authentication...</div>
+        <div data-i18n="clerkAuth.loading">Lade Authentifizierung...</div>
       </div>
     </div>
 
@@ -136,25 +144,51 @@
     <div id="success-message" class="success"></div>
 
     <div class="info-box">
-      <strong>What you get:</strong>
+      <strong data-i18n="clerkAuth.whatYouGet">Was Sie erhalten:</strong>
       <ul>
-        <li><strong>Free:</strong> 10 analyses per day</li>
-        <li><strong>Subscribed:</strong> 100 analyses per day</li>
+        <li><strong data-i18n="clerkAuth.free">Kostenlos:</strong> <span data-i18n="clerkAuth.freeAnalyses">10 Analysen pro Tag</span></li>
+        <li><strong data-i18n="clerkAuth.subscribed">Abonniert:</strong> <span data-i18n="clerkAuth.subscribedAnalyses">100 Analysen pro Tag</span></li>
       </ul>
     </div>
   </div>
+
+  <!-- Load i18n before other scripts -->
+  <script src="i18n.js"></script>
 
   <!-- Clerk JavaScript SDK -->
   <script
     async
     crossorigin="anonymous"
     data-clerk-publishable-key="pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA"
-    src="https://[your-clerk-frontend-api].clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    src="https://optimal-jennet-35.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
     type="text/javascript"
   ></script>
 
   <script>
     console.log('Q-SCI Clerk Auth: Page loaded');
+
+    // Initialize i18n
+    let currentLanguage = 'de';
+    document.addEventListener('DOMContentLoaded', async function() {
+      if (window.QSCIi18n) {
+        await window.QSCIi18n.init();
+        currentLanguage = window.QSCIi18n.getLanguage();
+        document.documentElement.lang = currentLanguage;
+        window.QSCIi18n.translatePage();
+        
+        // Set language selector
+        const langSelector = document.getElementById('language-selector');
+        if (langSelector) {
+          langSelector.value = currentLanguage;
+          langSelector.addEventListener('change', async function(e) {
+            await window.QSCIi18n.setLanguage(e.target.value);
+            currentLanguage = e.target.value;
+            document.documentElement.lang = currentLanguage;
+            window.QSCIi18n.translatePage();
+          });
+        }
+      }
+    });
 
     // Wait for Clerk to load
     window.addEventListener('load', async function() {
@@ -162,7 +196,7 @@
         // Wait for Clerk to be available
         if (typeof Clerk === 'undefined') {
           console.error('Q-SCI Clerk Auth: Clerk not loaded');
-          showError('Failed to load authentication system. Please try again.');
+          showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorInit') : 'Failed to load authentication system. Please try again.');
           return;
         }
 
@@ -204,7 +238,7 @@
 
       } catch (error) {
         console.error('Q-SCI Clerk Auth: Initialization error:', error);
-        showError('Failed to initialize authentication. Please try again.');
+        showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorInit') : 'Failed to initialize authentication. Please try again.');
       }
     });
 
@@ -212,7 +246,7 @@
     async function handleSignInSuccess(clerk) {
       try {
         console.log('Q-SCI Clerk Auth: Processing sign-in...');
-        showSuccess('Authentication successful! Processing...');
+        showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.authSuccess') : 'Authentication successful! Processing...');
 
         const user = clerk.user;
         const session = clerk.session;
@@ -255,7 +289,7 @@
           }, '*');
 
           // Show success and close window after a short delay
-          showSuccess('Success! You can close this window.');
+          showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! You can close this window.');
           setTimeout(() => {
             window.close();
           }, 2000);
@@ -270,15 +304,15 @@
               'qsci_clerk_session_id': authData.clerkSessionId
             });
 
-            showSuccess('Success! You can close this window.');
+            showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! You can close this window.');
           } else {
-            showError('Please open this page from the extension.');
+            showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorExtension') : 'Please open this page from the extension.');
           }
         }
 
       } catch (error) {
         console.error('Q-SCI Clerk Auth: Sign-in handling error:', error);
-        showError('Failed to process authentication. Please try again.');
+        showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorProcess') : 'Failed to process authentication. Please try again.');
       }
     }
 
