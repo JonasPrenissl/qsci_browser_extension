@@ -19,8 +19,9 @@ The browser extension has been enhanced to support Stripe subscription payments 
 **Key Code:**
 ```javascript
 async refreshSubscriptionStatus() {
-  // Calls backend API to get updated subscription status
-  // Backend queries Clerk publicMetadata for latest status
+  // Makes HTTP GET request to backend endpoint
+  // Endpoint: GET /api/auth/subscription-status
+  // Authorization: Bearer token from Clerk session
   const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
     method: 'GET',
     headers: {
@@ -28,10 +29,18 @@ async refreshSubscriptionStatus() {
       'Content-Type': 'application/json'
     }
   });
-  // Updates local storage with new status
+  
+  // Validates response and extracts subscription status
+  const data = await response.json();
+  const newSubscriptionStatus = data.subscription_status || 'free';
+  
+  // Updates local storage only if valid status received
   await chrome.storage.local.set({
     [STORAGE_KEYS.SUBSCRIPTION_STATUS]: newSubscriptionStatus
   });
+  
+  // Returns updated user object with new status
+  // Falls back to cached data if backend unavailable
 }
 ```
 
@@ -267,6 +276,13 @@ Set by Stripe webhook in Clerk `publicMetadata`:
 | `"free"` | No subscription or canceled | 10 analyses/day, show upgrade prompt |
 | `"subscribed"` | Active subscription (Stripe: active, trialing) | 100 analyses/day, hide upgrade prompt |
 | `"past_due"` | Payment issue (Stripe: past_due) | 10 analyses/day, show payment warning |
+| `undefined` / `null` | Not set, backend unavailable | Defaults to `"free"`, uses cached data if available |
+
+**Default Handling:**
+- All code paths treat `undefined`, `null`, or missing status as `"free"`
+- Consistent default value (`"free"`) used throughout the application
+- Cached subscription status used when backend is unavailable
+- Extension remains functional even if backend is down
 
 ## Backend Requirements
 
@@ -320,6 +336,19 @@ See [STRIPE_TESTING.md](./STRIPE_TESTING.md) for detailed test cases.
 - Default to `"free"` if not set
 - Extension handles missing/undefined status gracefully
 
+**Migration Strategy:**
+1. Deploy backend with webhook handler first
+2. Run migration script to set `subscription_status = "free"` for all existing users
+3. Deploy extension update (this PR)
+4. Users will see "free" status on next login
+5. Existing subscriptions can be imported by setting status to `"subscribed"`
+
+**Data Consistency:**
+- Extension caches subscription status locally
+- Refresh button allows manual sync with Clerk
+- No data loss if backend temporarily unavailable
+- Users can continue using extension with cached status
+
 **Backward Compatibility:**
 - Extension works without backend (shows cached status)
 - Refresh button shows error but doesn't break functionality
@@ -341,6 +370,31 @@ If issues arise, rollback is simple:
 2. No database changes (stateless)
 3. No breaking changes to existing functionality
 4. Users without subscriptions unaffected
+
+## Error Handling
+
+**Backend Unavailable:**
+- Extension uses cached subscription status
+- Refresh button shows error message
+- User can continue with cached data
+- No functionality lost
+
+**Network Errors:**
+- Graceful fallback to cached status
+- Console warning logged
+- User sees friendly error message
+- Can retry when connection restored
+
+**Invalid Token:**
+- Extension prompts for re-login
+- User data cleared safely
+- No data corruption
+
+**Webhook Failures:**
+- Stripe retries failed webhooks automatically
+- Webhook logs available in Stripe Dashboard
+- Manual status update via Clerk Dashboard
+- User can refresh status to sync
 
 ## Support
 
