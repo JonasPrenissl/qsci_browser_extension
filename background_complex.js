@@ -1,7 +1,38 @@
 // Q-SCI Browser Extension - Background Service Worker
 // Handles extension lifecycle, API communication, and cross-tab coordination
 
-const QSCI_API_BASE = 'http://localhost:5000';
+// Default: production site – change to your deployed website
+let QSCI_API_BASE = 'https://your-domain.com';
+
+// Initialize API base from storage on startup
+let apiBaseInitPromise = null;
+
+// Try to read a configured override from chrome.storage.sync (useful for local development)
+apiBaseInitPromise = (async function initializeApiBase() {
+  try {
+    if (chrome && chrome.storage && chrome.storage.sync) {
+      const res = await chrome.storage.sync.get(['QSCI_API_BASE']);
+      if (res && res.QSCI_API_BASE) {
+        QSCI_API_BASE = res.QSCI_API_BASE;
+        console.log('Q-SCI: using configured API base', QSCI_API_BASE);
+      } else {
+        console.log('Q-SCI: using default API base', QSCI_API_BASE);
+      }
+    }
+  } catch (e) {
+    console.warn('Q-SCI: chrome.storage not available, using default API base', QSCI_API_BASE);
+  }
+})();
+
+// Helper function to ensure API base is initialized before use
+async function getApiBase() {
+  await apiBaseInitPromise;
+  return QSCI_API_BASE;
+}
+
+// Example usage:
+// const apiBase = await getApiBase();
+// fetch(`${apiBase}/api/extension?action=login-url`)
 
 // Extension installation and update handling
 chrome.runtime.onInstalled.addListener((details) => {
@@ -66,6 +97,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Handle paper analysis requests
 async function handlePaperAnalysis(data, sendResponse) {
   try {
+    // Ensure API base is initialized before proceeding
+    const apiBase = await getApiBase();
+    
     console.log('Q-SCI Background: Starting paper analysis for:', data.url || 'text content');
     console.log('Q-SCI Background: Analysis data:', {
       hasTitle: !!data.title,
@@ -113,7 +147,7 @@ async function handlePaperAnalysis(data, sendResponse) {
     
     try {
       // Send to Q-SCI API with timeout
-      const response = await fetch(`${QSCI_API_BASE}/api/evaluate`, {
+      const response = await fetch(`${apiBase}/api/evaluate`, {
         ...analysisRequest,
         signal: controller.signal
       });
