@@ -37,8 +37,24 @@ Quick setup:
 1. Create a Clerk account
 2. Get your publishable key
 3. Update `clerk-auth.html` with your Clerk keys
-4. Load extension in Chrome
-5. Test authentication flow
+4. Configure API base URL (see below)
+5. Load extension in Chrome
+6. Test authentication flow
+
+#### API Base Configuration
+
+The extension connects to your backend API. By default, it uses `https://your-domain.com`.
+
+**For local development**, override the API base URL:
+- See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for detailed instructions
+- Quick override: Open extension background console and run:
+  ```javascript
+  chrome.storage.sync.set({ QSCI_API_BASE: 'http://localhost:5173' }, () => console.log('QSCI API base set'));
+  ```
+- Example config: See `extension-config.example.json` in the repo root
+
+**For production**, update the default in `background_complex.js`:
+- Change `let QSCI_API_BASE = 'https://your-domain.com';` to your actual domain
 
 ## Features
 

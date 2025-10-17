@@ -1,7 +1,25 @@
 // Q-SCI Browser Extension - Background Service Worker
 // Handles extension lifecycle, API communication, and cross-tab coordination
 
-const QSCI_API_BASE = 'http://localhost:5000';
+// Default: production site – change to your deployed website
+let QSCI_API_BASE = 'https://your-domain.com';
+
+// Try to read a configured override from chrome.storage.sync (useful for local development)
+try {
+  if (chrome && chrome.storage && chrome.storage.sync) {
+    chrome.storage.sync.get(['QSCI_API_BASE'], (res) => {
+      if (res && res.QSCI_API_BASE) {
+        QSCI_API_BASE = res.QSCI_API_BASE;
+        console.log('Q-SCI: using configured API base', QSCI_API_BASE);
+      }
+    });
+  }
+} catch (e) {
+  console.warn('Q-SCI: chrome.storage not available, using default API base', QSCI_API_BASE);
+}
+
+// Example usage:
+// fetch(`${QSCI_API_BASE}/api/extension?action=login-url`)
 
 // Extension installation and update handling
 chrome.runtime.onInstalled.addListener((details) => {
