@@ -76,12 +76,19 @@ async function initializeClerk() {
      * Note: The actual authentication flow uses postMessage for communication between
      * the extension and auth window, so the redirect URL is never actually followed -
      * it only needs to pass OAuth provider validation.
+     * 
+     * We set both "fallback" and "force" variants to ensure comprehensive coverage:
+     * - Fallback URLs are used when no other redirect URL is specified
+     * - Force URLs override any other redirect URL settings
      */
     await clerk.load({
+      // Set all redirect URL variants to ensure OAuth callback works
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signInForceRedirectUrl: AUTH_CALLBACK_URL,
-      signUpForceRedirectUrl: AUTH_CALLBACK_URL
+      signUpForceRedirectUrl: AUTH_CALLBACK_URL,
+      // Additional redirect URL to handle OAuth callback scenarios
+      redirectUrl: AUTH_CALLBACK_URL
     });
 
     console.log('Q-SCI Clerk Auth: Clerk initialized successfully');
@@ -103,9 +110,20 @@ async function initializeClerk() {
       // Use a valid HTTPS URL to avoid "Invalid URL scheme" error
       // Clerk defaults to window.location.href (chrome-extension://) when redirectUrl is undefined
       // We use postMessage for auth, so the actual redirect is not used
+      // 
+      // IMPORTANT: Setting all redirect URL parameters is crucial for OAuth flows
+      // (Google, Apple, etc.). When OAuth providers redirect back to Clerk's callback
+      // page (clerk.shared.lcl.dev/v1/oauth_callback), Clerk needs a valid HTTPS
+      // redirect URL to complete the flow.
       redirectUrl: AUTH_CALLBACK_URL,
       afterSignInUrl: AUTH_CALLBACK_URL,
       afterSignUpUrl: AUTH_CALLBACK_URL,
+      // Force redirect URLs ensure OAuth callbacks use our HTTPS URL
+      signInForceRedirectUrl: AUTH_CALLBACK_URL,
+      signUpForceRedirectUrl: AUTH_CALLBACK_URL,
+      // Fallback URLs as additional safety net
+      signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
       appearance: {
         elements: {
           rootBox: {
