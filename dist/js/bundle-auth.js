@@ -39408,6 +39408,8 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   // src/auth.js
   console.log("Q-SCI Clerk Auth: Module loaded");
   var CLERK_PUBLISHABLE_KEY = "pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA";
+  var SUCCESS_CLOSE_MESSAGE = "Success! Closing window...";
+  var WINDOW_CLOSE_DELAY_MS = 1500;
   var currentLanguage = "de";
   async function initializeI18n() {
     if (window.QSCIi18n) {
@@ -39538,10 +39540,10 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
           type: "CLERK_AUTH_SUCCESS",
           data: authData
         }, targetOrigin);
-        showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : "Success! Closing window...");
+        showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : SUCCESS_CLOSE_MESSAGE);
         setTimeout(() => {
           window.close();
-        }, 1500);
+        }, WINDOW_CLOSE_DELAY_MS);
       } else {
         if (typeof chrome !== "undefined" && chrome.storage) {
           await chrome.storage.local.set({
@@ -39551,10 +39553,10 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
             "qsci_user_id": authData.userId,
             "qsci_clerk_session_id": authData.clerkSessionId
           });
-          showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : "Success! Closing window...");
+          showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : SUCCESS_CLOSE_MESSAGE);
           setTimeout(() => {
             window.close();
-          }, 1500);
+          }, WINDOW_CLOSE_DELAY_MS);
         } else {
           showError(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorExtension") : "Please open this page from the extension.");
         }
