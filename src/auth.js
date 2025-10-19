@@ -64,7 +64,14 @@ async function initializeClerk() {
     
     // Initialize Clerk with the publishable key
     const clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
-    await clerk.load();
+    // Load Clerk with redirect URL options to prevent "Invalid URL scheme" errors
+    // when using OAuth providers (like Apple, Google, etc.)
+    await clerk.load({
+      signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      signInForceRedirectUrl: AUTH_CALLBACK_URL,
+      signUpForceRedirectUrl: AUTH_CALLBACK_URL
+    });
 
     console.log('Q-SCI Clerk Auth: Clerk initialized successfully');
 
