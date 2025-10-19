@@ -14,16 +14,18 @@ Q-SCI Debug Popup: Missing element 'openWebAppDetailed'
 Q-SCI Debug Popup: Missing element 'exportAnalysisBtn'
 ```
 
-**Root Cause:** These elements exist in `popup.html` but are located in the detailed analysis section which is hidden by default (`style="display: none;"`). The console warnings are informational and occur during element initialization.
+**Root Cause:** These elements already exist in `popup.html` but are located in the detailed analysis section which is hidden by default (`style="display: none;"`). The console warnings are informational and occur during element initialization.
 
-**Fix Applied:**
-- All elements are now present in `popup.html`:
-  - Line 137: `<div id="journal-category"></div>`
-  - Line 139: `<div id="detailed-quality-circle"></div>`
-  - Line 144: `<button class="btn btn-outline" id="open-web-app-detailed">`
-  - Line 145: `<button class="btn btn-outline" id="export-analysis-btn">`
+**Note on Naming:** The console log messages use camelCase variable names from JavaScript (e.g., `journalCategory`), but the actual HTML IDs use kebab-case (e.g., `journal-category`). This is standard practice where JavaScript variables use camelCase while HTML attributes use kebab-case.
 
-**Status:** These console warnings are harmless and can be ignored. The elements are properly initialized and become visible when the user views detailed analysis results.
+**Current State:**
+- All elements exist in `popup.html`:
+  - Line 137: `<div id="journal-category"></div>` (JS variable: `journalCategory`)
+  - Line 139: `<div id="detailed-quality-circle"></div>` (JS variable: `detailedQualityCircle`)
+  - Line 144: `<button id="open-web-app-detailed">` (JS variable: `openWebAppDetailed`)
+  - Line 145: `<button id="export-analysis-btn">` (JS variable: `exportAnalysisBtn`)
+
+**Status:** These console warnings are harmless and can be ignored. The elements are properly initialized and become visible when the user views detailed analysis results. No code changes were needed.
 
 ---
 
@@ -151,8 +153,8 @@ Q-SCI Debug Popup: Showing error: Authentication window was closed
 ## Files Modified
 
 1. **popup.html**
-   - Added missing element IDs (were already present)
    - Removed flag emojis from language selector options
+   - (Note: Missing element IDs already existed - no changes needed)
 
 2. **clerk-auth.html**
    - Removed flag emojis from language selector options
