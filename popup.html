@@ -24,8 +24,8 @@
       <!-- Language Switcher -->
       <div style="position: absolute; top: 12px; right: 12px;">
         <select id="language-selector" style="padding: 4px 8px; font-size: 12px; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer;">
-          <option value="de">🇩🇪 DE</option>
-          <option value="en">🇬🇧 EN</option>
+          <option value="de">DE</option>
+          <option value="en">EN</option>
         </select>
       </div>
     </div>
@@ -134,10 +134,16 @@
           <div><strong data-i18n="detailed.journal">Journal:</strong> <span id="journal-name"></span></div>
           <div><strong data-i18n="detailed.journalTier">Journal-Tier:</strong> <span id="detailed-impact-factor"></span></div>
           <div><strong data-i18n="detailed.quartile">Quartil:</strong> <span id="detailed-quartile"></span></div>
+          <div id="journal-category"></div>
           <div><strong data-i18n="detailed.quality">Qualität:</strong> <span id="detailed-quality-percentage"></span></div>
+          <div id="detailed-quality-circle"></div>
           <div><strong data-i18n="detailed.trafficLight">Ampel:</strong> <span id="detailed-traffic-light"></span></div>
         </div>
         <div id="badges-container" class="qsci-badges"></div>
+        <div style="margin-top: 12px;">
+          <button class="btn btn-outline" id="open-web-app-detailed" style="margin-right: 8px;">🌐 Open in Web App</button>
+          <button class="btn btn-outline" id="export-analysis-btn">📥 Export Analysis</button>
+        </div>
         <h4 style="margin-top: 12px;" data-i18n="detailed.positiveAspects">✅ Positive Aspekte</h4>
         <div id="positive-aspects-list"></div>
         <h4 style="margin-top: 12px;" data-i18n="detailed.negativeAspects">⚠️ Verbesserungsbereiche</h4>
