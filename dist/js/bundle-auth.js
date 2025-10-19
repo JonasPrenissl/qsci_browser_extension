@@ -39410,6 +39410,7 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   var CLERK_PUBLISHABLE_KEY = "pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA";
   var SUCCESS_CLOSE_MESSAGE = "Success! Closing window...";
   var WINDOW_CLOSE_DELAY_MS = 1500;
+  var AUTH_CALLBACK_URL = "https://www.q-sci.org/auth-callback";
   var currentLanguage = "de";
   async function initializeI18n() {
     if (window.QSCIi18n) {
@@ -39447,9 +39448,9 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
         // Use a valid HTTPS URL to avoid "Invalid URL scheme" error
         // Clerk defaults to window.location.href (chrome-extension://) when redirectUrl is undefined
         // We use postMessage for auth, so the actual redirect is not used
-        redirectUrl: "https://www.q-sci.org/auth-callback",
-        afterSignInUrl: "https://www.q-sci.org/auth-callback",
-        afterSignUpUrl: "https://www.q-sci.org/auth-callback",
+        redirectUrl: AUTH_CALLBACK_URL,
+        afterSignInUrl: AUTH_CALLBACK_URL,
+        afterSignUpUrl: AUTH_CALLBACK_URL,
         appearance: {
           elements: {
             rootBox: {
