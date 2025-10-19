@@ -381,7 +381,19 @@
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Q-SCI Auth: Failed to fetch API key from backend:', response.status, errorText);
-          throw new Error(`Backend returned error ${response.status}: ${response.statusText}. The backend endpoint may not be properly configured. Please contact support.`);
+          
+          let userMessage;
+          if (response.status === 404) {
+            userMessage = `Backend endpoint not found (404). The /api/auth/openai-key endpoint needs to be deployed to Vercel. Please ensure the backend is properly configured.`;
+          } else if (response.status === 401) {
+            userMessage = `Authentication failed (401). Your session may have expired. Please try logging out and logging in again.`;
+          } else if (response.status === 500) {
+            userMessage = `Backend server error (500). The OPENAI_API_KEY environment variable may not be set on Vercel. Please contact support.`;
+          } else {
+            userMessage = `Backend returned error ${response.status}: ${response.statusText}. Please contact support.`;
+          }
+          
+          throw new Error(userMessage);
         }
 
         const data = await response.json();

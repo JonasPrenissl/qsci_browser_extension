@@ -1214,11 +1214,19 @@ function showError(message) {
     }
     elements.errorMessage.style.display = 'flex';
     
+    // For API key or authentication errors, keep the message visible longer (15 seconds)
+    const timeout = message.includes('API key') || message.includes('authentication') || 
+                    message.includes('backend') || message.includes('login') ? 15000 : 8000;
+    
     setTimeout(() => {
       if (elements.errorMessage) {
         elements.errorMessage.style.display = 'none';
       }
-    }, 5000);
+    }, timeout);
+  } else {
+    // Fallback: show an alert if error element not found
+    console.error('Q-SCI Debug Popup: Error message element not found, using alert');
+    alert('Q-SCI Error: ' + message);
   }
 }
 
