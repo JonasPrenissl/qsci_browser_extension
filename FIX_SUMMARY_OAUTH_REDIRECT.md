@@ -85,15 +85,15 @@ By setting all redirect URL parameters, we ensure that regardless of which authe
 ### Why Multiple Redirect URLs?
 Clerk uses different redirect URL parameters for different stages of authentication:
 
-| Parameter | When Used | Priority |
-|-----------|-----------|----------|
-| `signInForceRedirectUrl` | OAuth callback for sign-in | Highest (overrides all) |
-| `signUpForceRedirectUrl` | OAuth callback for sign-up | Highest (overrides all) |
-| `afterSignInUrl` | After sign-in completes | Medium |
-| `afterSignUpUrl` | After sign-up completes | Medium |
-| `redirectUrl` | General redirect | Medium |
-| `signInFallbackRedirectUrl` | When no sign-in redirect set | Lowest (fallback) |
-| `signUpFallbackRedirectUrl` | When no sign-up redirect set | Lowest (fallback) |
+Parameter | When Used | Priority
+----------|-----------|----------
+`signInForceRedirectUrl` | OAuth callback for sign-in | Highest (overrides all)
+`signUpForceRedirectUrl` | OAuth callback for sign-up | Highest (overrides all)
+`afterSignInUrl` | After sign-in completes | Medium
+`afterSignUpUrl` | After sign-up completes | Medium
+`redirectUrl` | General redirect | Medium
+`signInFallbackRedirectUrl` | When no sign-in redirect set | Lowest (fallback)
+`signUpFallbackRedirectUrl` | When no sign-up redirect set | Lowest (fallback)
 
 The "Force" variants are particularly important for OAuth flows because they take precedence during the OAuth callback phase.
 
