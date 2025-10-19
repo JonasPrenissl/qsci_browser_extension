@@ -36,10 +36,13 @@ See [CLERK_SETUP.md](CLERK_SETUP.md) for detailed setup instructions.
 Quick setup:
 1. Create a Clerk account
 2. Get your publishable key
-3. Update `clerk-auth.html` with your Clerk keys
-4. Configure API base URL (see below)
-5. Load extension in Chrome
-6. Test authentication flow
+3. Update the publishable key in `src/clerk-auth-main.js`
+4. Rebuild the bundles with `npm run build` (see [BUILD.md](BUILD.md))
+5. Configure API base URL (see below)
+6. Load extension in Chrome
+7. Test authentication flow
+
+**Note**: The Clerk SDK is now bundled locally. If you modify authentication logic, you need to rebuild using `npm run build`. See [BUILD.md](BUILD.md) for details.
 
 #### API Base Configuration
 
