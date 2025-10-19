@@ -24,7 +24,7 @@ The Clerk SDK is now bundled locally. To update your Clerk publishable key:
 
 ```javascript
 // FROM:
-const clerk = new Clerk('pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA');
+const clerk = new Clerk('YOUR_CURRENT_KEY');
 
 // TO:
 const clerk = new Clerk('pk_test_your_actual_key_here');
