@@ -77,10 +77,18 @@ async function initializeClerk() {
     // Mount the sign-in component
     console.log('Q-SCI Clerk Auth: Mounting sign-in component...');
     clerk.mountSignIn(clerkContainer, {
+      // Don't use redirectUrl - we handle auth via postMessage instead
+      redirectUrl: undefined,
+      afterSignInUrl: undefined,
+      afterSignUpUrl: undefined,
       appearance: {
         elements: {
           rootBox: {
-            width: '100%'
+            width: '100%',
+            margin: '0 auto'
+          },
+          card: {
+            margin: '0 auto'
           }
         }
       }
@@ -204,10 +212,10 @@ async function handleSignInSuccess(clerk) {
       }, targetOrigin);
 
       // Show success and close window after a short delay
-      showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! You can close this window.');
+      showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
       setTimeout(() => {
         window.close();
-      }, 2000);
+      }, 1500);
     } else {
       // Fallback: Try to communicate with extension directly via chrome.storage
       if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -219,7 +227,12 @@ async function handleSignInSuccess(clerk) {
           'qsci_clerk_session_id': authData.clerkSessionId
         });
 
-        showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! You can close this window.');
+        showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
+        
+        // Close window after a short delay
+        setTimeout(() => {
+          window.close();
+        }, 1500);
       } else {
         showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorExtension') : 'Please open this page from the extension.');
       }
