@@ -135,6 +135,8 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
    * @returns {Promise<any>} A promise that resolves to the evaluation object
    */
   async function evaluate(text, title, sourceUrl) {
+    console.log('Q‑SCI LLM Evaluator: Starting evaluation...');
+    
     if (!text || text.trim().length < 50) {
       throw new Error('Insufficient text provided for analysis');
     }
@@ -144,22 +146,30 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
     let apiKey;
     try {
       console.log('Q‑SCI LLM Evaluator: Fetching API key from backend...');
+      console.log('Q‑SCI LLM Evaluator: window.QSCIAuth available:', typeof window.QSCIAuth !== 'undefined');
+      console.log('Q‑SCI LLM Evaluator: getOpenAIApiKey function available:', typeof window.QSCIAuth?.getOpenAIApiKey === 'function');
       
       // Check if QSCIAuth is available (it should be loaded before this script)
       if (typeof window.QSCIAuth === 'undefined' || typeof window.QSCIAuth.getOpenAIApiKey !== 'function') {
-        throw new Error('Authentication module not available. Please ensure you are logged in.');
+        const errorMsg = 'Authentication module not available. Please ensure you are logged in and the extension is properly loaded.';
+        console.error('Q‑SCI LLM Evaluator:', errorMsg);
+        throw new Error(errorMsg);
       }
       
+      console.log('Q‑SCI LLM Evaluator: Calling getOpenAIApiKey()...');
       apiKey = await window.QSCIAuth.getOpenAIApiKey();
       
       if (!apiKey) {
-        throw new Error('Failed to retrieve API key from backend. Please try logging in again.');
+        const errorMsg = 'Failed to retrieve API key from backend. Please try logging in again.';
+        console.error('Q‑SCI LLM Evaluator:', errorMsg);
+        throw new Error(errorMsg);
       }
       
-      console.log('Q‑SCI LLM Evaluator: API key fetched successfully');
+      console.log('Q‑SCI LLM Evaluator: API key fetched successfully (length:', apiKey.length, ')');
     } catch (error) {
       console.error('Q‑SCI LLM Evaluator: Error fetching API key:', error);
-      throw new Error(`Unable to retrieve API key: ${error.message}`);
+      console.error('Q‑SCI LLM Evaluator: Error stack:', error.stack);
+      throw new Error(`Unable to retrieve API key from backend: ${error.message}`);
     }
 
     const messages = buildMessages(title, sourceUrl, text);
