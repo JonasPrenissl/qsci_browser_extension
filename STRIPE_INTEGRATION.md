@@ -21,12 +21,18 @@ Frontend (q-sci.org) → Backend API → Stripe → Webhook → Clerk publicMeta
 
 ### 1. Subscription Status Storage
 
-The extension reads subscription status from Clerk's `publicMetadata.subscription_status` field during authentication.
+The extension determines subscription status by querying the backend API which checks Clerk's `privateMetadata.stripe_customer_id` field.
 
-**Supported values:**
-- `"free"` - Free tier (10 analyses/day)
-- `"subscribed"` - Premium tier (100 analyses/day)
-- `"past_due"` - Payment issue, limited to 10 analyses/day (same as free)
+**Important:** `privateMetadata` is **only accessible server-side** and cannot be read by client-side JavaScript. Therefore, the extension must call the backend API to determine subscription status.
+
+**Backend Logic:**
+- If `privateMetadata.stripe_customer_id` exists → user is **subscribed**
+- If `privateMetadata.stripe_customer_id` does NOT exist → user is **free**
+
+**Supported subscription status values:**
+- `"free"` - Free tier (10 analyses/day) - no stripe_customer_id in privateMetadata
+- `"subscribed"` - Premium tier (100 analyses/day) - has stripe_customer_id in privateMetadata
+- `"past_due"` - Payment issue, treated as free (10 analyses/day) - deprecated
 
 ### 2. Authentication Flow
 
@@ -35,15 +41,36 @@ When a user logs in via the extension:
 1. User clicks "Login with Clerk" in extension popup
 2. Clerk authentication window opens
 3. User signs in/signs up
-4. Extension receives user data including `publicMetadata.subscription_status`
-5. Extension stores subscription status locally
+4. Extension receives Clerk session token
+5. **Extension calls backend API** `/api/auth/subscription-status` with session token
+6. Backend validates token and checks `privateMetadata.stripe_customer_id`
+7. Backend returns subscription status based on presence of stripe_customer_id
+8. Extension stores subscription status locally
 
-**File:** `clerk-auth.html` (lines 230-232)
+**File:** `src/auth.js` (handleSignInSuccess function)
 ```javascript
-const subscriptionStatus = user.publicMetadata?.subscription_status || 'free';
+// Fetch actual subscription status from backend
+// The backend checks privateMetadata.stripe_customer_id to determine if user is subscribed
+let subscriptionStatus = 'free';
+try {
+  const response = await fetch('https://www.q-sci.org/api/auth/subscription-status', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (response.ok) {
+    const data = await response.json();
+    subscriptionStatus = data.subscription_status || 'free';
+  }
+} catch (error) {
+  console.error('Error fetching subscription status:', error);
+}
 ```
 
-**File:** `auth.js` (lines 268-276)
+**File:** `auth.js` - `_storeAuthData()` method
 ```javascript
 async _storeAuthData({ token, email, userId, clerkSessionId, subscriptionStatus }) {
   await chrome.storage.local.set({
@@ -149,70 +176,98 @@ For the extension to work with Stripe subscriptions, your backend needs:
 - `customer.subscription.deleted`
 
 **Implementation:**
+
+The webhook handler must store the Stripe customer ID in Clerk's **privateMetadata** when a subscription is created or updated. This is critical because the extension determines subscription status by checking if `stripe_customer_id` exists in privateMetadata.
+
 1. Verify webhook signature
 2. Extract Clerk user ID from Customer metadata
-3. Map Stripe subscription status to app status:
-   - `active`, `trialing` → `"subscribed"`
-   - `past_due` → `"past_due"`
-   - `canceled`, `unpaid`, `incomplete_expired` → `"free"`
-4. Update Clerk user's `publicMetadata`:
+3. For subscription events, store `stripe_customer_id` in Clerk's **privateMetadata**
+4. Remove `stripe_customer_id` when subscription is canceled/deleted
+
+**Important:** Store `stripe_customer_id` in **privateMetadata** (not publicMetadata) for security. The extension queries the backend API which can access privateMetadata server-side.
 
 ```javascript
+// When subscription is created/updated
 await clerkClient.users.updateUser(clerkUserId, {
+  privateMetadata: {
+    stripe_customer_id: customer.id  // Store Stripe customer ID
+  },
   publicMetadata: {
-    subscription_status: "subscribed", // or "free" or "past_due"
     plan_id: subscription.items.data[0]?.price?.id,
     current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
   }
 });
+
+// When subscription is canceled/deleted
+await clerkClient.users.updateUser(clerkUserId, {
+  privateMetadata: {
+    stripe_customer_id: undefined  // Use undefined to delete the field
+  }
+});
 ```
 
-**Example webhook handler implementation** (matching problem statement requirements):
+**Example webhook handler implementation:**
 
 ```javascript
-// Helper: Map Stripe subscription status to app status
-const mapStripeStatus = (s) => {
-  switch (s) {
-    case "active":
-    case "trialing":
-      return "subscribed";
-    case "past_due":
-      return "past_due";
-    case "canceled":
-    case "unpaid":
-    case "incomplete_expired":
-      return "free";
-    default:
-      return "free";
-  }
-};
-
 // Event handling
 switch (event.type) {
   case "checkout.session.completed": {
-    const clerkUserId = await getClerkUserId();
+    const session = event.data.object;
+    const customer = await stripe.customers.retrieve(session.customer);
+    const clerkUserId = customer.metadata.clerk_user_id;
+    
     if (clerkUserId) {
+      // Store stripe_customer_id in privateMetadata
       await clerkClient.users.updateUser(clerkUserId, {
-        publicMetadata: { subscription_status: "subscribed" },
+        privateMetadata: {
+          stripe_customer_id: customer.id
+        }
       });
     }
     break;
   }
 
   case "customer.subscription.created":
-  case "customer.subscription.updated":
+  case "customer.subscription.updated": {
+    const subscription = event.data.object;
+    const customer = await stripe.customers.retrieve(subscription.customer);
+    const clerkUserId = customer.metadata.clerk_user_id;
+    
+    if (clerkUserId) {
+      if (subscription.status === 'active' || subscription.status === 'trialing') {
+        // Active subscription - store stripe_customer_id
+        await clerkClient.users.updateUser(clerkUserId, {
+          privateMetadata: {
+            stripe_customer_id: customer.id
+          },
+          publicMetadata: {
+            plan_id: subscription.items.data[0]?.price?.id,
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+          }
+        });
+      } else {
+        // Subscription not active - remove stripe_customer_id
+        await clerkClient.users.updateUser(clerkUserId, {
+          privateMetadata: {
+            stripe_customer_id: undefined  // Use undefined to delete the field
+          }
+        });
+      }
+    }
+    break;
+  }
+  
   case "customer.subscription.deleted": {
     const subscription = event.data.object;
-    const clerkUserId = await getClerkUserId();
+    const customer = await stripe.customers.retrieve(subscription.customer);
+    const clerkUserId = customer.metadata.clerk_user_id;
+    
     if (clerkUserId) {
+      // Remove stripe_customer_id when subscription is deleted
       await clerkClient.users.updateUser(clerkUserId, {
-        publicMetadata: {
-          subscription_status: mapStripeStatus(subscription.status),
-          plan_id: subscription.items.data[0]?.price?.id ?? null,
-          current_period_end: subscription.current_period_end
-            ? new Date(subscription.current_period_end * 1000).toISOString()
-            : null,
-        },
+        privateMetadata: {
+          stripe_customer_id: undefined  // Use undefined to delete the field
+        }
       });
     }
     break;
@@ -239,10 +294,76 @@ Authorization: Bearer <clerk-session-token>
 ```
 
 **Implementation:**
-1. Verify Clerk session token
-2. Get Clerk user ID from token
-3. Query Clerk user's `publicMetadata.subscription_status`
-4. Return subscription details
+
+This endpoint is **critical** for the extension to determine subscription status correctly. It must:
+
+1. Verify Clerk session token from Authorization header
+2. Get Clerk user ID from the verified token
+3. **Query Clerk's `privateMetadata.stripe_customer_id`** for the user
+4. Determine subscription status:
+   - If `stripe_customer_id` exists in privateMetadata → return `"subscribed"`
+   - If `stripe_customer_id` does NOT exist → return `"free"`
+5. Return subscription details
+
+**Example Implementation:**
+```javascript
+app.get('/api/auth/subscription-status', async (req, res) => {
+  try {
+    // Verify Clerk session token
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const session = await clerkClient.sessions.verifyToken(token);
+    
+    // Get user from Clerk
+    const user = await clerkClient.users.getUser(session.userId);
+    
+    // Check privateMetadata for stripe_customer_id
+    const stripeCustomerId = user.privateMetadata?.stripe_customer_id;
+    
+    // Determine subscription status based on stripe_customer_id
+    let subscriptionStatus = 'free';
+    if (stripeCustomerId) {
+      subscriptionStatus = 'subscribed';
+    }
+    
+    // Optionally, query Stripe to get more details
+    let planId = null;
+    let currentPeriodEnd = null;
+    
+    if (stripeCustomerId) {
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: stripeCustomerId,
+          status: 'active',
+          limit: 1
+        });
+        
+        if (subscriptions.data.length > 0) {
+          const subscription = subscriptions.data[0];
+          planId = subscription.items.data[0]?.price?.id;
+          currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+        } else {
+          // Customer exists but no active subscription
+          subscriptionStatus = 'free';
+        }
+      } catch (error) {
+        console.error('Error querying Stripe:', error);
+        // Even if Stripe query fails, we know they have a customer ID
+        // so we can still return subscribed
+      }
+    }
+    
+    return res.json({
+      subscription_status: subscriptionStatus,
+      plan_id: planId,
+      current_period_end: currentPeriodEnd
+    });
+    
+  } catch (error) {
+    console.error('Error fetching subscription status:', error);
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+});
+```
 
 ## Extension Workflow
 
@@ -264,38 +385,33 @@ Authorization: Bearer <clerk-session-token>
 1. User installs extension
 2. Clicks "Login with Clerk"
 3. Signs in with existing account
-4. Extension automatically loads "Premium" status from Clerk
-5. Shows 100 analyses/day limit
+4. Extension calls backend API to check subscription status
+5. Backend checks privateMetadata.stripe_customer_id
+6. Extension automatically loads "Premium" status if stripe_customer_id exists
+7. Shows 100 analyses/day limit
 
 ## Testing
 
 ### Test Free User
 
 In Clerk Dashboard:
-1. Go to Users → Select user → Public metadata
-2. Set:
-```json
-{
-  "subscription_status": "free"
-}
-```
-3. In extension, click "Refresh Status"
-4. Verify shows "Free" and 10/day limit
+1. Go to Users → Select user → **Private metadata** (not Public metadata)
+2. Ensure `stripe_customer_id` is **not present** or set to `null`
+3. In extension, logout and login again (or click "Refresh Status")
+4. Verify extension shows "Free" and 10/day limit
 
 ### Test Premium User
 
 In Clerk Dashboard:
-1. Go to Users → Select user → Public metadata
+1. Go to Users → Select user → **Private metadata**
 2. Set:
 ```json
 {
-  "subscription_status": "subscribed",
-  "plan_id": "price_xxxxx",
-  "current_period_end": "2024-12-31T23:59:59.000Z"
+  "stripe_customer_id": "cus_test123456"
 }
 ```
-3. In extension, click "Refresh Status"
-4. Verify shows "Premium" and 100/day limit
+3. In extension, logout and login again (or click "Refresh Status")
+4. Verify extension shows "Premium"/"Subscribed" and 100/day limit
 
 ### Test Subscription Flow
 
@@ -303,9 +419,9 @@ In Clerk Dashboard:
 2. Configure webhook to test endpoint
 3. Use Stripe test mode checkout
 4. Complete test payment
-5. Verify webhook updates Clerk metadata
-6. Click "Refresh Status" in extension
-7. Verify status updates to "Premium"
+5. Verify webhook updates Clerk **privateMetadata** with `stripe_customer_id`
+6. In extension, click "Refresh Status" or logout and login again
+7. Verify status updates to "Premium"/"Subscribed"
 
 ## Security Considerations
 
@@ -327,44 +443,75 @@ In Clerk Dashboard:
 
 ### Subscription Status Not Updating
 
-**Problem:** User subscribed but extension still shows "Free"
+**Problem:** User subscribed but extension still shows "Free"/"Kostenlos"
 
 **Solutions:**
-1. Check Clerk metadata was updated by webhook
-2. Click "Refresh Status" button in extension
-3. Verify backend `/api/auth/subscription-status` returns correct data
-4. Check browser console for errors
+1. Check Clerk **privateMetadata.stripe_customer_id** was set by webhook
+   - Go to Clerk Dashboard → Users → Select user → Private metadata
+   - Verify `stripe_customer_id` field exists and has a valid value
+2. Click "Refresh Status" button in extension OR logout and login again
+3. Verify backend `/api/auth/subscription-status` endpoint is working:
+   - Check it reads from `privateMetadata.stripe_customer_id`
+   - Verify it returns `"subscribed"` when stripe_customer_id exists
+4. Check browser console for errors in the extension popup
+5. Test the backend API directly with curl:
+   ```bash
+   curl -H "Authorization: Bearer YOUR_CLERK_TOKEN" \
+        https://www.q-sci.org/api/auth/subscription-status
+   ```
 
 ### Webhook Not Firing
 
-**Problem:** Stripe payment completed but Clerk not updated
+**Problem:** Stripe payment completed but Clerk privateMetadata not updated
 
 **Solutions:**
 1. Verify webhook URL in Stripe Dashboard
 2. Check webhook signature secret matches
 3. Review webhook logs in Stripe Dashboard
 4. Ensure backend endpoint is accessible from internet
+5. Verify webhook handler updates **privateMetadata.stripe_customer_id** (not just publicMetadata)
 
 ### Usage Limit Not Applied
 
 **Problem:** User can analyze more than their limit
 
 **Solutions:**
-1. Verify subscription status in local storage
+1. Verify subscription status in local storage:
+   - Chrome DevTools → Application → Local Storage → Extension ID
+   - Check `qsci_subscription_status` value
 2. Check usage counter in Chrome DevTools → Application → Storage
 3. Ensure `subscription_status` is exactly `"free"` or `"subscribed"`
 4. Clear extension data and re-login
 
+### Extension Always Shows "Kostenlos" (Free)
+
+**Problem:** Extension always shows free status even for subscribed users
+
+**Root Causes:**
+1. Backend `/api/auth/subscription-status` endpoint not implemented correctly
+2. Webhook not updating `privateMetadata.stripe_customer_id` in Clerk
+3. Extension cannot reach backend API (CORS or network issues)
+
+**Solutions:**
+1. Implement/fix backend endpoint to check `privateMetadata.stripe_customer_id`
+2. Update webhook handler to set `privateMetadata.stripe_customer_id` on subscription creation
+3. Check CORS configuration on backend API
+4. Test backend endpoint manually with valid Clerk token
+
 ## Migration Notes
 
-### From Manual to Automated
+### From publicMetadata to privateMetadata
 
-If migrating from manual subscription management:
+If migrating from the old implementation that used `publicMetadata.subscription_status`:
 
-1. **Existing Users**: Set `publicMetadata.subscription_status` for all users
-2. **Backend Setup**: Implement webhook handler before enabling Stripe
-3. **Testing**: Test with Stripe test mode before production
-4. **Communication**: Notify users about new automatic subscription management
+1. **Update Webhook Handler**: Change to store `stripe_customer_id` in privateMetadata
+2. **Update Backend API**: Implement `/api/auth/subscription-status` to read from privateMetadata
+3. **Existing Subscribers**: 
+   - For each existing subscriber, set `privateMetadata.stripe_customer_id` to their Stripe customer ID
+   - Can be done via Clerk API or dashboard
+4. **Testing**: Test thoroughly with both free and subscribed test users
+5. **Deploy**: Deploy backend changes before updating extension
+6. **Communicate**: Users may need to logout and login again to see updated status
 
 ### Environment Variables
 

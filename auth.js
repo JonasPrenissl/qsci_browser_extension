@@ -25,10 +25,17 @@
   };
 
   // Usage limits
-  // Subscription status values set by Stripe webhook in Clerk publicMetadata:
-  // - 'free': Free tier users (no active subscription)
-  // - 'subscribed': Active paid subscription (Stripe status: active, trialing)
-  // - 'past_due': Payment issue but still allow limited access (Stripe status: past_due)
+  // Subscription status determination:
+  // The backend checks Clerk's privateMetadata.stripe_customer_id to determine subscription status:
+  // - If stripe_customer_id exists -> user is 'subscribed' (has active paid subscription)
+  // - If stripe_customer_id does NOT exist -> user is 'free' (no subscription)
+  // Note: privateMetadata is only accessible server-side, so the extension must query the backend
+  // API endpoint /api/auth/subscription-status to get the current subscription status.
+  //
+  // Subscription status values:
+  // - 'free': Free tier users (no active subscription, no stripe_customer_id)
+  // - 'subscribed': Active paid subscription (has stripe_customer_id in privateMetadata)
+  // - 'past_due': Payment issue but still allow limited access (deprecated, treated as 'free')
   const USAGE_LIMITS = {
     FREE: 10,           // Free users: 10 analyses per day
     SUBSCRIBED: 100,    // Subscribed users: 100 analyses per day
@@ -209,8 +216,8 @@
 
     /**
      * Verify authentication token with Clerk and refresh subscription status
-     * For Clerk integration, we primarily rely on the stored session
-     * but can optionally verify with backend if needed
+     * This fetches the current subscription status from the backend which checks
+     * privateMetadata.stripe_customer_id to determine if user is subscribed
      * @returns {Promise<Object>} Updated user data
      */
     async verifyAndRefreshAuth() {
@@ -221,33 +228,40 @@
           throw new Error('No authentication token found');
         }
 
-        // For Clerk, we trust the stored session token
-        // Optionally, you can verify with your backend if you have an endpoint
-        // that validates Clerk tokens
-        
-        // If you want to verify with backend (optional):
-        // const response = await fetch(`${API_BASE_URL}/auth/verify-clerk`, {
-        //   method: 'GET',
-        //   headers: {
-        //     'Authorization': `Bearer ${user.token}`,
-        //     'Content-Type': 'application/json'
-        //   }
-        // });
-        //
-        // if (!response.ok) {
-        //   await this.logout();
-        //   throw new Error('Authentication token is invalid or expired. Please login again.');
-        // }
-        //
-        // const data = await response.json();
-        // await chrome.storage.local.set({
-        //   [STORAGE_KEYS.SUBSCRIPTION_STATUS]: data.subscription_status || 'free'
-        // });
-
-        // For now, return the cached user data
-        // Clerk handles session management and expiration
-        console.log('Q-SCI Auth: Using Clerk session from storage');
-        return user;
+        // Fetch the latest subscription status from backend
+        // The backend checks privateMetadata.stripe_customer_id to determine subscription status
+        try {
+          const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${user.token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const newSubscriptionStatus = data.subscription_status || 'free';
+            
+            // Update stored subscription status
+            await chrome.storage.local.set({
+              [STORAGE_KEYS.SUBSCRIPTION_STATUS]: newSubscriptionStatus
+            });
+            
+            console.log('Q-SCI Auth: Subscription status verified and updated:', newSubscriptionStatus);
+            
+            return {
+              ...user,
+              subscriptionStatus: newSubscriptionStatus
+            };
+          } else {
+            console.warn('Q-SCI Auth: Failed to verify subscription status, using cached data');
+            return user;
+          }
+        } catch (fetchError) {
+          console.warn('Q-SCI Auth: Network error fetching subscription status, using cached data');
+          return user;
+        }
         
       } catch (error) {
         console.error('Q-SCI Auth: Error verifying auth:', error);
@@ -283,7 +297,8 @@
         console.log('Q-SCI Auth: Refreshing subscription status from backend...');
 
         // Call backend API to get updated subscription status
-        // The backend will query Clerk's publicMetadata for the latest subscription_status
+        // The backend will check Clerk's privateMetadata.stripe_customer_id to determine subscription status
+        // If stripe_customer_id exists, user is subscribed; otherwise, user is on free tier
         const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
           method: 'GET',
           headers: {

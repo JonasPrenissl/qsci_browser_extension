@@ -39520,7 +39520,7 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   }
   var isHandlingSignIn = false;
   async function handleSignInSuccess(clerk) {
-    var _a, _b, _c;
+    var _a, _b;
     if (isHandlingSignIn) {
       console.log("Q-SCI Clerk Auth: Already handling sign-in, skipping...");
       return;
@@ -39536,7 +39536,26 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       }
       const token = await session.getToken();
       const email = ((_a = user.primaryEmailAddress) == null ? void 0 : _a.emailAddress) || ((_b = user.emailAddresses[0]) == null ? void 0 : _b.emailAddress);
-      const subscriptionStatus = ((_c = user.publicMetadata) == null ? void 0 : _c.subscription_status) || "free";
+      let subscriptionStatus = "free";
+      try {
+        const response = await fetch("https://www.q-sci.org/api/auth/subscription-status", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          subscriptionStatus = data.subscription_status || "free";
+          console.log("Q-SCI Clerk Auth: Fetched subscription status from backend:", subscriptionStatus);
+        } else {
+          console.warn("Q-SCI Clerk Auth: Failed to fetch subscription status, defaulting to free");
+        }
+      } catch (error) {
+        console.error("Q-SCI Clerk Auth: Error fetching subscription status:", error);
+        console.log("Q-SCI Clerk Auth: Defaulting to free tier");
+      }
       console.log("Q-SCI Clerk Auth: User data:", {
         email,
         subscriptionStatus,
