@@ -39434,7 +39434,12 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
     try {
       console.log("Q-SCI Clerk Auth: Initializing Clerk...");
       const clerk = new o(CLERK_PUBLISHABLE_KEY);
-      await clerk.load();
+      await clerk.load({
+        signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
+        signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
+        signInForceRedirectUrl: AUTH_CALLBACK_URL,
+        signUpForceRedirectUrl: AUTH_CALLBACK_URL
+      });
       console.log("Q-SCI Clerk Auth: Clerk initialized successfully");
       if (clerk.user) {
         console.log("Q-SCI Clerk Auth: User already signed in:", clerk.user.id);

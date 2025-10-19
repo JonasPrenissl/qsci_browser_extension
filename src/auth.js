@@ -64,7 +64,25 @@ async function initializeClerk() {
     
     // Initialize Clerk with the publishable key
     const clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
-    await clerk.load();
+    
+    /**
+     * Load Clerk with redirect URL options to prevent "Invalid URL scheme" errors.
+     * 
+     * In browser extensions, window.location.href returns chrome-extension://... URLs,
+     * which are not valid for OAuth providers (Apple, Google, etc.) that require
+     * HTTPS/HTTP URLs. By setting these options, we ensure Clerk uses a valid HTTPS
+     * callback URL for all OAuth flows.
+     * 
+     * Note: The actual authentication flow uses postMessage for communication between
+     * the extension and auth window, so the redirect URL is never actually followed -
+     * it only needs to pass OAuth provider validation.
+     */
+    await clerk.load({
+      signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      signInForceRedirectUrl: AUTH_CALLBACK_URL,
+      signUpForceRedirectUrl: AUTH_CALLBACK_URL
+    });
 
     console.log('Q-SCI Clerk Auth: Clerk initialized successfully');
 
