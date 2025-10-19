@@ -80,7 +80,7 @@ Complete implementation reference for the backend endpoint
 
 ### The Flow
 
-```
+```text
 User clicks "Analyze Paper"
     ↓
 popup.js: analyzePage()
@@ -132,7 +132,7 @@ The backend must implement:
 
 If backend is properly deployed:
 
-```javascript
+```console
 // In browser console after clicking "Analyze":
 // Should see:
 Q-SCI Auth: Fetching OpenAI API key from backend...
@@ -145,7 +145,7 @@ Q-SCI Auth: OpenAI API key fetched successfully
 
 If endpoint doesn't exist:
 
-```javascript
+```console
 // Console shows:
 Q-SCI Auth: Backend response status: 404
 // UI shows:
@@ -156,7 +156,7 @@ Q-SCI Auth: Backend response status: 404
 
 If OPENAI_API_KEY not set:
 
-```javascript
+```console
 // Console shows:
 Q-SCI Auth: Backend response status: 500
 // UI shows:
@@ -167,7 +167,7 @@ Q-SCI Auth: Backend response status: 500
 
 If session expired:
 
-```javascript
+```console
 // Console shows:
 Q-SCI Auth: Backend response status: 401
 // UI shows:
