@@ -199,9 +199,30 @@ async function handleSignInSuccess(clerk) {
     // Get user's email
     const email = user.primaryEmailAddress?.emailAddress || user.emailAddresses[0]?.emailAddress;
 
-    // Check subscription status from user's metadata or publicMetadata
-    // Clerk allows you to store custom data in user.publicMetadata
-    const subscriptionStatus = user.publicMetadata?.subscription_status || 'free';
+    // Fetch actual subscription status from backend
+    // The backend checks privateMetadata.stripe_customer_id to determine if user is subscribed
+    // We cannot access privateMetadata from client-side, so we must query the backend
+    let subscriptionStatus = 'free';
+    try {
+      const response = await fetch('https://www.q-sci.org/api/auth/subscription-status', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        subscriptionStatus = data.subscription_status || 'free';
+        console.log('Q-SCI Clerk Auth: Fetched subscription status from backend:', subscriptionStatus);
+      } else {
+        console.warn('Q-SCI Clerk Auth: Failed to fetch subscription status, defaulting to free');
+      }
+    } catch (error) {
+      console.error('Q-SCI Clerk Auth: Error fetching subscription status:', error);
+      console.log('Q-SCI Clerk Auth: Defaulting to free tier');
+    }
 
     console.log('Q-SCI Clerk Auth: User data:', {
       email,
