@@ -8,7 +8,7 @@ This extension uses a build system to bundle the Clerk authentication SDK with l
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18 or higher)
 - npm (comes with Node.js)
 
 ### Installation
