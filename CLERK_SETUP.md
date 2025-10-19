@@ -44,9 +44,14 @@ This will update `js/clerk-auth.js` with your new key.
 
 In your Clerk dashboard:
 
-1. **Allowed Redirect URLs**: Add `chrome-extension://[YOUR_EXTENSION_ID]/clerk-auth.html`
-   - You'll get your extension ID after loading it in Chrome
-   - Example: `chrome-extension://abcdefghijklmnopqrstuvwxyz123456/clerk-auth.html`
+1. **Allowed Redirect URLs**: Add the following URLs:
+   - `chrome-extension://[YOUR_EXTENSION_ID]/clerk-auth.html`
+     - You'll get your extension ID after loading it in Chrome
+     - Example: `chrome-extension://abcdefghijklmnopqrstuvwxyz123456/clerk-auth.html`
+   - `https://www.q-sci.org/auth-callback`
+     - This is required to prevent the "Redirect URL is not on one of the allowedRedirectOrigins" warning
+     - Go to **Paths** in your Clerk dashboard
+     - Under **Allowed redirect origins**, add `https://www.q-sci.org/auth-callback`
 
 2. **Enable Sign Up**: Make sure sign-up is enabled if you want users to register
 
@@ -152,6 +157,54 @@ Make sure to set `subscription_status` in user metadata to control this.
 
 ## Troubleshooting
 
+### Warning: "Redirect URL is not on one of the allowedRedirectOrigins"
+
+This warning appears when `https://www.q-sci.org/auth-callback` is not configured in Clerk:
+
+**Solution:**
+1. Go to your Clerk dashboard
+2. Navigate to **Paths** or **Authentication** settings
+3. Find **Allowed redirect origins** or **Redirect URLs**
+4. Add `https://www.q-sci.org/auth-callback`
+5. Save changes
+
+The extension uses this URL as a fallback redirect URL for Clerk authentication. While the actual authentication uses `postMessage` communication, Clerk requires this URL to be whitelisted.
+
+### Warning: "Clerk has been loaded with development keys"
+
+This warning appears when using test/development keys in production:
+
+**Issue:**
+```
+Clerk: Clerk has been loaded with development keys. Development instances have 
+strict usage limits and should not be used when deploying your application to production.
+```
+
+**Solution:**
+1. Get your production publishable key from Clerk dashboard
+   - It should start with `pk_live_` instead of `pk_test_`
+2. Update `src/clerk-auth-main.js` (around line 61):
+   ```javascript
+   const clerk = new Clerk('pk_live_YOUR_PRODUCTION_KEY_HERE');
+   ```
+3. Rebuild the extension:
+   ```bash
+   npm run build
+   ```
+4. Reload the extension in Chrome
+
+Development keys have strict usage limits and should only be used for testing.
+
+### Warning: "Missing element" Console Warnings
+
+If you see console warnings like:
+```
+Q-SCI Debug Popup: Missing element 'journalCategory'
+Q-SCI Debug Popup: Missing element 'detailedQualityCircle'
+```
+
+These are informational warnings that occur during element initialization. The elements exist in the HTML but may not be visible initially (they're in the detailed analysis section which is hidden by default). These warnings are harmless and can be ignored.
+
 ### Pop-up Blocked
 
 - Make sure Chrome's pop-up blocker allows pop-ups from extensions
@@ -178,9 +231,12 @@ Make sure to set `subscription_status` in user metadata to control this.
 
 ## Production Checklist
 
-- [ ] Replace test publishable key with live key
+- [ ] **IMPORTANT**: Replace test publishable key with live/production key
+  - Development keys (starting with `pk_test_`) have strict usage limits
+  - Production keys (starting with `pk_live_`) should be used for production deployments
+  - Update the key in `src/clerk-auth-main.js` and rebuild with `npm run build`
 - [ ] Update Frontend API URL to production
-- [ ] Configure production redirect URLs
+- [ ] Configure production redirect URLs (including `https://www.q-sci.org/auth-callback`)
 - [ ] Set up webhook for subscription status updates
 - [ ] Implement proper error handling for expired sessions
 - [ ] Add analytics/logging for auth events
