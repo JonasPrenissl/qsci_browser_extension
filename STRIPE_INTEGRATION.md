@@ -201,7 +201,7 @@ await clerkClient.users.updateUser(clerkUserId, {
 // When subscription is canceled/deleted
 await clerkClient.users.updateUser(clerkUserId, {
   privateMetadata: {
-    stripe_customer_id: null  // Remove Stripe customer ID
+    stripe_customer_id: undefined  // Use undefined to delete the field
   }
 });
 ```
@@ -249,7 +249,7 @@ switch (event.type) {
         // Subscription not active - remove stripe_customer_id
         await clerkClient.users.updateUser(clerkUserId, {
           privateMetadata: {
-            stripe_customer_id: null
+            stripe_customer_id: undefined  // Use undefined to delete the field
           }
         });
       }
@@ -266,7 +266,7 @@ switch (event.type) {
       // Remove stripe_customer_id when subscription is deleted
       await clerkClient.users.updateUser(clerkUserId, {
         privateMetadata: {
-          stripe_customer_id: null
+          stripe_customer_id: undefined  // Use undefined to delete the field
         }
       });
     }

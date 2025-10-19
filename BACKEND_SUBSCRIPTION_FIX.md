@@ -62,7 +62,8 @@ app.get('/api/auth/subscription-status', async (req, res) => {
     
     // Verify the session token with Clerk
     const session = await clerkClient.sessions.verifyToken(token, {
-      // Your Clerk publishable key here for verification
+      // Note: Token verification uses the Clerk Secret Key (configured in clerkClient initialization)
+      // No additional key parameter needed here
     });
     
     // Get user from Clerk
@@ -171,7 +172,7 @@ app.post('/api/webhooks/stripe', async (req, res) => {
           // Inactive subscription - remove stripe_customer_id
           await clerkClient.users.updateUser(clerkUserId, {
             privateMetadata: {
-              stripe_customer_id: null
+              stripe_customer_id: undefined  // Use undefined to delete the field
             }
           });
         }
@@ -187,7 +188,7 @@ app.post('/api/webhooks/stripe', async (req, res) => {
       if (clerkUserId) {
         await clerkClient.users.updateUser(clerkUserId, {
           privateMetadata: {
-            stripe_customer_id: null
+            stripe_customer_id: undefined  // Use undefined to delete the field
           }
         });
       }
@@ -203,7 +204,7 @@ app.post('/api/webhooks/stripe', async (req, res) => {
 
 ### 1. Test Free User
 1. In Clerk Dashboard, go to Users → Select user → Private metadata
-2. Ensure `stripe_customer_id` is NOT present or is `null`
+2. Ensure `stripe_customer_id` is NOT present (remove it if present)
 3. Call the API endpoint with the user's token:
    ```bash
    curl -H "Authorization: Bearer USER_TOKEN" \
