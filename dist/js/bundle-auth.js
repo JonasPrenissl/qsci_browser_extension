@@ -39407,7 +39407,7 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
 
   // src/auth.js
   console.log("Q-SCI Clerk Auth: Module loaded");
-  var CLERK_PUBLISHABLE_KEY = "pk_test_REPLACE_WITH_YOUR_CLERK_PUBLISHABLE_KEY";
+  var CLERK_PUBLISHABLE_KEY = "pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA";
   var currentLanguage = "de";
   async function initializeI18n() {
     if (window.QSCIi18n) {

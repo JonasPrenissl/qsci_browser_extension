@@ -7,7 +7,7 @@
 const CLERK_CONFIG = {
   // Your Clerk Publishable Key
   // Example: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
-  publishableKey: 'YOUR_CLERK_PUBLISHABLE_KEY',
+  publishableKey: 'pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA',
   
   // Your Clerk Frontend API URL
   // Example: 'clerk.your-app-name.12345.lcl.dev'
@@ -24,7 +24,7 @@ const CLERK_CONFIG = {
 // Find and replace in clerk-auth.html:
 // 
 // Line ~102 (in <script> tag):
-//   data-clerk-publishable-key="YOUR_CLERK_PUBLISHABLE_KEY"
+//   data-clerk-publishable-key="pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA"
 //   src="https://[your-clerk-frontend-api].clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
 // 
 // Replace with:
@@ -32,7 +32,7 @@ const CLERK_CONFIG = {
 //   src="YOUR_ACTUAL_SDK_URL_HERE"
 // 
 // Line ~114 (in JavaScript):
-//   const clerk = new Clerk('YOUR_CLERK_PUBLISHABLE_KEY');
+//   const clerk = new Clerk('pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA');
 // 
 // Replace with:
 //   const clerk = new Clerk('YOUR_ACTUAL_KEY_HERE');
