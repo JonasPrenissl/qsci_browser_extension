@@ -77,10 +77,9 @@ async function initializeClerk() {
     // Mount the sign-in component
     console.log('Q-SCI Clerk Auth: Mounting sign-in component...');
     clerk.mountSignIn(clerkContainer, {
-      // Use a valid HTTPS URL to avoid "Invalid URL scheme" error
-      // Clerk defaults to window.location.href (chrome-extension://) when redirectUrl is undefined
-      // We use postMessage for auth, so the actual redirect is not used
-      redirectUrl: AUTH_CALLBACK_URL,
+      // Use fallbackRedirectUrl instead of deprecated redirectUrl
+      // This is used as a fallback when authentication completes
+      fallbackRedirectUrl: AUTH_CALLBACK_URL,
       afterSignInUrl: AUTH_CALLBACK_URL,
       afterSignUpUrl: AUTH_CALLBACK_URL,
       appearance: {
