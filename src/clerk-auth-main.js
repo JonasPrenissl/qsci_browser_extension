@@ -59,7 +59,15 @@ async function initializeClerk() {
     // Initialize Clerk
     console.log('Q-SCI Clerk Auth: Initializing Clerk...');
     const clerk = new Clerk('pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA');
-    await clerk.load();
+    await clerk.load({
+      // Set all redirect URL variants to ensure OAuth callback works
+      signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      signInForceRedirectUrl: AUTH_CALLBACK_URL,
+      signUpForceRedirectUrl: AUTH_CALLBACK_URL,
+      // Additional redirect URL to handle OAuth callback scenarios
+      redirectUrl: AUTH_CALLBACK_URL
+    });
 
     console.log('Q-SCI Clerk Auth: Clerk initialized successfully');
 
@@ -77,11 +85,20 @@ async function initializeClerk() {
     // Mount the sign-in component
     console.log('Q-SCI Clerk Auth: Mounting sign-in component...');
     clerk.mountSignIn(clerkContainer, {
-      // Use fallbackRedirectUrl instead of deprecated redirectUrl
-      // This is used as a fallback when authentication completes
-      fallbackRedirectUrl: AUTH_CALLBACK_URL,
+      // Use a valid HTTPS URL to avoid "Invalid URL scheme" error
+      // IMPORTANT: Setting all redirect URL parameters is crucial for OAuth flows
+      // (Google, Apple, etc.). When OAuth providers redirect back to Clerk's callback
+      // page (clerk.shared.lcl.dev/v1/oauth_callback), Clerk needs a valid HTTPS
+      // redirect URL to complete the flow.
+      redirectUrl: AUTH_CALLBACK_URL,
       afterSignInUrl: AUTH_CALLBACK_URL,
       afterSignUpUrl: AUTH_CALLBACK_URL,
+      // Force redirect URLs ensure OAuth callbacks use our HTTPS URL
+      signInForceRedirectUrl: AUTH_CALLBACK_URL,
+      signUpForceRedirectUrl: AUTH_CALLBACK_URL,
+      // Fallback URLs as additional safety net
+      signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
       appearance: {
         elements: {
           rootBox: {
