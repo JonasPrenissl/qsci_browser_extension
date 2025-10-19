@@ -537,12 +537,18 @@ function showPageStatus(message, canAnalyze) {
 // Analyze current page - SIMPLIFIED VERSION
 async function analyzePage() {
   console.log('Q-SCI Debug Popup: Starting simplified page analysis...');
+  console.log('Q-SCI Debug Popup: window.qsciEvaluatePaper available:', typeof window.qsciEvaluatePaper !== 'undefined');
+  console.log('Q-SCI Debug Popup: window.QSCIAuth available:', typeof window.QSCIAuth !== 'undefined');
+  console.log('Q-SCI Debug Popup: window.QSCIUsage available:', typeof window.QSCIUsage !== 'undefined');
   
   // Check if user is logged in
   if (!currentUser) {
+    console.error('Q-SCI Debug Popup: No current user, showing error');
     showError('Please login to use analysis features.');
     return;
   }
+  
+  console.log('Q-SCI Debug Popup: Current user:', currentUser.email);
   
   // Check usage limits
   try {
@@ -643,18 +649,28 @@ async function analyzePage() {
     // evaluator is exposed on the global window (qsciEvaluatePaper) and
     // returns an object with quality metrics.  This avoids any
     // network requests and runs entirely within the extension.
+    console.log('Q-SCI Debug Popup: About to call window.qsciEvaluatePaper');
+    console.log('Q-SCI Debug Popup: Text length:', textToEvaluate.length);
+    console.log('Q-SCI Debug Popup: Title:', requestData.title);
+    
     try {
       const textToEvaluate = requestData.text || '';
       // Support both synchronous and asynchronous evaluators.  If
       // qsciEvaluatePaper returns a promise, await it; otherwise use the
       // returned value directly.
+      console.log('Q-SCI Debug Popup: Calling qsciEvaluatePaper...');
       let evaluation = window.qsciEvaluatePaper(
         textToEvaluate,
         requestData.title || 'Unknown Title',
         requestData.source_url || currentTab.url || ''
       );
+      console.log('Q-SCI Debug Popup: qsciEvaluatePaper returned:', evaluation);
+      console.log('Q-SCI Debug Popup: Is promise?', evaluation && typeof evaluation.then === 'function');
+      
       if (evaluation && typeof evaluation.then === 'function') {
+        console.log('Q-SCI Debug Popup: Awaiting promise...');
         evaluation = await evaluation;
+        console.log('Q-SCI Debug Popup: Promise resolved');
       }
       console.log('Q-SCI Debug Popup: Evaluation result:', evaluation);
       currentAnalysis = evaluation;

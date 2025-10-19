@@ -351,14 +351,21 @@
      * @returns {Promise<string>} OpenAI API key
      */
     async getOpenAIApiKey() {
+      console.log('Q-SCI Auth: getOpenAIApiKey() called');
+      
       try {
         const user = await this.getCurrentUser();
+        console.log('Q-SCI Auth: Current user:', user ? 'logged in' : 'not logged in');
         
         if (!user || !user.token) {
-          throw new Error('No authentication token found. Please login first.');
+          const errorMsg = 'No authentication token found. Please login first.';
+          console.error('Q-SCI Auth:', errorMsg);
+          throw new Error(errorMsg);
         }
 
         console.log('Q-SCI Auth: Fetching OpenAI API key from backend...');
+        console.log('Q-SCI Auth: API endpoint:', `${API_BASE_URL}/auth/openai-key`);
+        console.log('Q-SCI Auth: Using token (first 20 chars):', user.token.substring(0, 20) + '...');
 
         // Call backend API to get OpenAI API key
         const response = await fetch(`${API_BASE_URL}/auth/openai-key`, {
@@ -369,26 +376,36 @@
           }
         });
 
+        console.log('Q-SCI Auth: Backend response status:', response.status);
+
         if (!response.ok) {
-          console.error('Q-SCI Auth: Failed to fetch API key from backend:', response.status);
-          throw new Error(`Failed to fetch API key: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.error('Q-SCI Auth: Failed to fetch API key from backend:', response.status, errorText);
+          throw new Error(`Backend returned error ${response.status}: ${response.statusText}. The backend endpoint may not be properly configured. Please contact support.`);
         }
 
         const data = await response.json();
+        console.log('Q-SCI Auth: Response data received:', data ? 'yes' : 'no');
         
         if (!data.api_key) {
-          throw new Error('No API key returned from backend');
+          console.error('Q-SCI Auth: No API key in response:', data);
+          throw new Error('Backend did not return an API key. Please ensure the OPENAI_API_KEY environment variable is set on Vercel.');
         }
 
-        console.log('Q-SCI Auth: OpenAI API key fetched successfully');
+        console.log('Q-SCI Auth: OpenAI API key fetched successfully (length:', data.api_key.length, ')');
         return data.api_key;
         
       } catch (error) {
         console.error('Q-SCI Auth: Error fetching OpenAI API key:', error);
+        console.error('Q-SCI Auth: Error details:', {
+          message: error.message,
+          stack: error.stack,
+          type: error.constructor.name
+        });
         
         // For network errors, inform the user appropriately
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          throw new Error('Unable to fetch API key. Please check your internet connection.');
+          throw new Error('Unable to connect to backend. Please check your internet connection and ensure the backend is running.');
         }
         
         throw error;
