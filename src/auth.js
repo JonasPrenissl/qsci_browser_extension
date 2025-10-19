@@ -6,7 +6,7 @@ import { Clerk } from '@clerk/clerk-js';
 console.log('Q-SCI Clerk Auth: Module loaded');
 
 // Clerk publishable key placeholder - REPLACE WITH YOUR ACTUAL KEY
-const CLERK_PUBLISHABLE_KEY = 'pk_test_REPLACE_WITH_YOUR_CLERK_PUBLISHABLE_KEY';
+const CLERK_PUBLISHABLE_KEY = 'pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA';
 
 // Initialize i18n when DOM is ready
 let currentLanguage = 'de';
