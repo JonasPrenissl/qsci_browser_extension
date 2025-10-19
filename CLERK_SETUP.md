@@ -14,33 +14,31 @@ This guide will help you set up Clerk authentication for the Q-SCI browser exten
 2. Copy your **Publishable Key** (starts with `pk_test_` or `pk_live_`)
 3. Note your **Frontend API** URL (e.g., `your-app-name.clerk.accounts.dev`)
 
-## Step 3: Configure clerk-auth.html
+## Step 3: Configure Clerk Keys
 
-Open `clerk-auth.html` and replace the following placeholders:
+The Clerk SDK is now bundled locally. To update your Clerk publishable key:
 
-### Replace Line 102 (in the script tag):
-```html
-<!-- FROM: -->
-<script
-  data-clerk-publishable-key="YOUR_CLERK_PUBLISHABLE_KEY"
-  src="https://[your-clerk-frontend-api].clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-></script>
+1. Open `src/clerk-auth-main.js`
+2. Find the line with `new Clerk(...)` (around line 58)
+3. Replace the publishable key:
 
-<!-- TO: -->
-<script
-  data-clerk-publishable-key="pk_test_your_actual_key_here"
-  src="https://your-app-name.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-></script>
-```
-
-### Replace Line 114 (in JavaScript initialization):
 ```javascript
 // FROM:
-const clerk = new Clerk('YOUR_CLERK_PUBLISHABLE_KEY');
+const clerk = new Clerk('pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA');
 
 // TO:
 const clerk = new Clerk('pk_test_your_actual_key_here');
 ```
+
+4. Rebuild the bundles:
+```bash
+npm install  # if you haven't already
+npm run build
+```
+
+This will update `js/clerk-auth.js` with your new key.
+
+**Note**: The Clerk SDK is bundled locally instead of loaded from a CDN, which improves security and reliability.
 
 ## Step 4: Configure Clerk Application Settings
 
