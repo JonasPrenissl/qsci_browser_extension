@@ -94,7 +94,7 @@
 
                 resolve({
                   email: authData.email,
-                  subscription_status: authData.subscriptionStatus || 'free',
+                  subscriptionStatus: authData.subscriptionStatus || 'free',
                   userId: authData.userId
                 });
               } catch (error) {

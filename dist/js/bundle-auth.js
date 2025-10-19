@@ -39408,6 +39408,8 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   // src/auth.js
   console.log("Q-SCI Clerk Auth: Module loaded");
   var CLERK_PUBLISHABLE_KEY = "pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA";
+  var SUCCESS_CLOSE_MESSAGE = "Success! Closing window...";
+  var WINDOW_CLOSE_DELAY_MS = 1500;
   var currentLanguage = "de";
   async function initializeI18n() {
     if (window.QSCIi18n) {
@@ -39442,10 +39444,18 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       clerkContainer.innerHTML = "";
       console.log("Q-SCI Clerk Auth: Mounting sign-in component...");
       clerk.mountSignIn(clerkContainer, {
+        // Don't use redirectUrl - we handle auth via postMessage instead
+        redirectUrl: void 0,
+        afterSignInUrl: void 0,
+        afterSignUpUrl: void 0,
         appearance: {
           elements: {
             rootBox: {
-              width: "100%"
+              width: "100%",
+              margin: "0 auto"
+            },
+            card: {
+              margin: "0 auto"
             }
           }
         }
@@ -39530,10 +39540,10 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
           type: "CLERK_AUTH_SUCCESS",
           data: authData
         }, targetOrigin);
-        showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : "Success! You can close this window.");
+        showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : SUCCESS_CLOSE_MESSAGE);
         setTimeout(() => {
           window.close();
-        }, 2e3);
+        }, WINDOW_CLOSE_DELAY_MS);
       } else {
         if (typeof chrome !== "undefined" && chrome.storage) {
           await chrome.storage.local.set({
@@ -39543,7 +39553,10 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
             "qsci_user_id": authData.userId,
             "qsci_clerk_session_id": authData.clerkSessionId
           });
-          showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : "Success! You can close this window.");
+          showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : SUCCESS_CLOSE_MESSAGE);
+          setTimeout(() => {
+            window.close();
+          }, WINDOW_CLOSE_DELAY_MS);
         } else {
           showError(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorExtension") : "Please open this page from the extension.");
         }

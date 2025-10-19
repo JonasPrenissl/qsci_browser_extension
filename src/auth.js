@@ -5,8 +5,10 @@ import { Clerk } from '@clerk/clerk-js';
 
 console.log('Q-SCI Clerk Auth: Module loaded');
 
-// Clerk publishable key placeholder - REPLACE WITH YOUR ACTUAL KEY
+// Constants
 const CLERK_PUBLISHABLE_KEY = 'pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA';
+const SUCCESS_CLOSE_MESSAGE = 'Success! Closing window...';
+const WINDOW_CLOSE_DELAY_MS = 1500;
 
 // Initialize i18n when DOM is ready
 let currentLanguage = 'de';
@@ -77,10 +79,18 @@ async function initializeClerk() {
     // Mount the sign-in component
     console.log('Q-SCI Clerk Auth: Mounting sign-in component...');
     clerk.mountSignIn(clerkContainer, {
+      // Don't use redirectUrl - we handle auth via postMessage instead
+      redirectUrl: undefined,
+      afterSignInUrl: undefined,
+      afterSignUpUrl: undefined,
       appearance: {
         elements: {
           rootBox: {
-            width: '100%'
+            width: '100%',
+            margin: '0 auto'
+          },
+          card: {
+            margin: '0 auto'
           }
         }
       }
@@ -204,10 +214,10 @@ async function handleSignInSuccess(clerk) {
       }, targetOrigin);
 
       // Show success and close window after a short delay
-      showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! You can close this window.');
+      showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : SUCCESS_CLOSE_MESSAGE);
       setTimeout(() => {
         window.close();
-      }, 2000);
+      }, WINDOW_CLOSE_DELAY_MS);
     } else {
       // Fallback: Try to communicate with extension directly via chrome.storage
       if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -219,7 +229,12 @@ async function handleSignInSuccess(clerk) {
           'qsci_clerk_session_id': authData.clerkSessionId
         });
 
-        showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! You can close this window.');
+        showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : SUCCESS_CLOSE_MESSAGE);
+        
+        // Close window after a short delay
+        setTimeout(() => {
+          window.close();
+        }, WINDOW_CLOSE_DELAY_MS);
       } else {
         showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorExtension') : 'Please open this page from the extension.');
       }
