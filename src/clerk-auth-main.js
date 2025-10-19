@@ -1,5 +1,10 @@
 console.log('Q-SCI Clerk Auth: Page loaded');
 
+// Constants
+// Valid HTTPS URL to satisfy Clerk's redirect URL validation
+// (actual authentication uses postMessage, so redirect is never followed)
+const AUTH_CALLBACK_URL = 'https://www.q-sci.org/auth-callback';
+
 // Initialize i18n
 let currentLanguage = 'de';
 document.addEventListener('DOMContentLoaded', async function() {
@@ -72,10 +77,12 @@ async function initializeClerk() {
     // Mount the sign-in component
     console.log('Q-SCI Clerk Auth: Mounting sign-in component...');
     clerk.mountSignIn(clerkContainer, {
-      // Don't use redirectUrl - we handle auth via postMessage instead
-      redirectUrl: undefined,
-      afterSignInUrl: undefined,
-      afterSignUpUrl: undefined,
+      // Use a valid HTTPS URL to avoid "Invalid URL scheme" error
+      // Clerk defaults to window.location.href (chrome-extension://) when redirectUrl is undefined
+      // We use postMessage for auth, so the actual redirect is not used
+      redirectUrl: AUTH_CALLBACK_URL,
+      afterSignInUrl: AUTH_CALLBACK_URL,
+      afterSignUpUrl: AUTH_CALLBACK_URL,
       appearance: {
         elements: {
           rootBox: {
