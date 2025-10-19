@@ -1,8 +1,12 @@
 # Node modules (if any)
 node_modules/
 
-# Build artifacts
-dist/
+# Build artifacts (but allow dist/js/bundle-auth.js)
+dist/*
+!dist/js/
+dist/js/*
+!dist/js/bundle-auth.js
+!dist/js/bundle-auth.js.map
 build/
 
 # IDE files

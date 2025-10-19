@@ -159,13 +159,10 @@
     </div>
   </div>
 
-  <!-- Load i18n before other scripts -->
+  <!-- Load i18n before authentication bundle -->
   <script src="i18n.js"></script>
 
-  <!-- Bundled Clerk JavaScript SDK -->
-  <script src="js/bundle-clerk.js"></script>
-
-  <!-- Clerk authentication logic -->
-  <script src="js/clerk-auth.js"></script>
+  <!-- Bundled Clerk authentication with local scripts -->
+  <script src="dist/js/bundle-auth.js"></script>
 </body>
 </html>

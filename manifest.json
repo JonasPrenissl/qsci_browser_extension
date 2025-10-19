@@ -149,8 +149,8 @@
         "popup.html",
         "clerk-auth.html",
         "i18n.js",
-        "js/bundle-clerk.js",
-        "js/clerk-auth.js"
+        "dist/js/bundle-auth.js",
+        "dist/js/bundle-auth.js.map"
       ],
       "matches": ["<all_urls>"]
     }

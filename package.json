@@ -1,18 +1,15 @@
 {
   "name": "qsci-browser-extension",
   "version": "12.0.0",
-  "description": "Q-SCI: Scientific Paper Quality Evaluator",
+  "description": "Q-SCI: Scientific Paper Quality Evaluator Browser Extension",
   "private": true,
   "scripts": {
-    "build": "webpack --mode production",
-    "build:dev": "webpack --mode development",
-    "watch": "webpack --mode development --watch"
+    "build": "node build.js"
   },
   "devDependencies": {
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4"
+    "esbuild": "^0.19.0"
   },
   "dependencies": {
-    "@clerk/clerk-js": "^4.73.0"
+    "@clerk/clerk-js": "^5.0.0"
   }
 }
