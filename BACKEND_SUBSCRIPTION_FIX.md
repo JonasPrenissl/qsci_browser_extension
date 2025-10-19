@@ -123,6 +123,9 @@ The webhook handler must store `stripe_customer_id` in **privateMetadata** when 
 - `customer.subscription.deleted` - Remove stripe_customer_id
 
 **Example Webhook Handler:**
+
+**Important Note on Field Deletion:** When removing `stripe_customer_id`, use `undefined` instead of `null` or empty string. This ensures the field is completely deleted from privateMetadata rather than just set to a falsy value.
+
 ```javascript
 app.post('/api/webhooks/stripe', async (req, res) => {
   const sig = req.headers['stripe-signature'];
