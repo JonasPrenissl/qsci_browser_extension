@@ -1,7 +1,7 @@
 # Subscription Status Display Fix
 
 ## Problem
-When users logged in with accounts that already have active subscriptions, the extension incorrectly displayed them as "free" accounts with a 10 analyses/day limit instead of showing "subscribed" with 100 analyses/day.
+When users log in with accounts that already have active subscriptions, the extension incorrectly displays them as "free" accounts with a 10 analyses/day limit instead of showing "subscribed" with 100 analyses/day.
 
 ## Root Cause
 The subscription status fetching code in `clerk-auth-main.js` was defaulting to 'free' status whenever the backend API call to `/api/auth/subscription-status` failed due to:
@@ -87,10 +87,11 @@ The presence of `plan_id` in publicMetadata indicates an active subscription, ma
 3. Add:
    ```json
    {
-     "plan_id": "price_test123",
+     "plan_id": "price_1234567890abcdef",
      "current_period_end": "2024-12-31T23:59:59.000Z"
    }
    ```
+   Note: Use your actual Stripe price ID, or any non-empty value for testing
 4. Save changes
 
 #### Create a Free Test User
@@ -122,7 +123,7 @@ The fix includes detailed console logging to help debug subscription status issu
 
 ## Known Limitations
 1. The fallback relies on `publicMetadata.plan_id` being correctly set by backend webhooks
-2. If a subscription is cancelled but the webhook hasn't updated publicMetadata yet, the user may still appear as subscribed
+2. If a subscription is canceled but the webhook hasn't updated publicMetadata yet, the user may still appear as subscribed
 3. The fallback cannot distinguish between different subscription statuses (active vs past_due)
 
 ## Recommendations
