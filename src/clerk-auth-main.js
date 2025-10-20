@@ -217,11 +217,24 @@ async function handleSignInSuccess(clerk) {
         subscriptionStatus = data.subscription_status || 'free';
         console.log('Q-SCI Clerk Auth: Fetched subscription status from backend:', subscriptionStatus);
       } else {
-        console.warn('Q-SCI Clerk Auth: Failed to fetch subscription status, defaulting to free');
+        console.warn('Q-SCI Clerk Auth: Failed to fetch subscription status from backend, status:', response.status);
+        // Fallback: Check publicMetadata for plan_id as indicator of subscription
+        if (user.publicMetadata && user.publicMetadata.plan_id) {
+          subscriptionStatus = 'subscribed';
+          console.log('Q-SCI Clerk Auth: Using publicMetadata fallback - user has plan_id, treating as subscribed');
+        } else {
+          console.log('Q-SCI Clerk Auth: No plan_id in publicMetadata, defaulting to free');
+        }
       }
     } catch (error) {
       console.error('Q-SCI Clerk Auth: Error fetching subscription status:', error);
-      console.log('Q-SCI Clerk Auth: Defaulting to free tier');
+      // Fallback: Check publicMetadata for plan_id as indicator of subscription
+      if (user.publicMetadata && user.publicMetadata.plan_id) {
+        subscriptionStatus = 'subscribed';
+        console.log('Q-SCI Clerk Auth: Network error, using publicMetadata fallback - user has plan_id, treating as subscribed');
+      } else {
+        console.log('Q-SCI Clerk Auth: Network error and no plan_id in publicMetadata, defaulting to free tier');
+      }
     }
 
     console.log('Q-SCI Clerk Auth: User data:', {
