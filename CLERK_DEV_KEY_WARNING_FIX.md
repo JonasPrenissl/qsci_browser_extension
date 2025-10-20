@@ -75,6 +75,7 @@ Make sure it shows `pk_live_...` not `pk_test_...`
 **Rebuild and reload**:
 ```bash
 npm run build
+
 # Then reload extension in Chrome
 ```
 

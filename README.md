@@ -140,6 +140,7 @@ qsci_browser_extension/
 - See [FEHLERBEHEBUNG.md](FEHLERBEHEBUNG.md)
 
 **Authentication fails**
+- Ensure `clerk-config.js` exists (copy from `clerk-config.example.js` if needed)
 - Check Clerk configuration in `clerk-config.js`
 - Verify you've run `npm run build` after updating configuration
 - Verify redirect URL in Clerk dashboard
