@@ -26,7 +26,10 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
 
 2. **Configure Clerk** (see [CLERK_SETUP.md](CLERK_SETUP.md))
    - Get Clerk account and publishable key
-   - Update `clerk-auth.html` with your keys
+   - Copy `clerk-config.example.js` to `clerk-config.js`
+   - Update `clerk-config.js` with your keys
+   - **IMPORTANT**: For production, use production keys (`pk_live_...`) not test keys (`pk_test_...`)
+   - See [CLERK_CONFIGURATION.md](CLERK_CONFIGURATION.md) for detailed configuration guide
 
 3. **Load in Chrome**
    - Open `chrome://extensions/`
@@ -51,6 +54,7 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
 - **[INSTALLATION.md](INSTALLATION.md)** - Complete installation guide (English)
 - **[FEHLERBEHEBUNG.md](FEHLERBEHEBUNG.md)** - Troubleshooting guide (German)
 - **[CLERK_SETUP.md](CLERK_SETUP.md)** - Clerk authentication setup
+- **[CLERK_CONFIGURATION.md](CLERK_CONFIGURATION.md)** - Clerk key configuration guide
 
 ### Technical Documentation
 - **[AUTHENTICATION.md](AUTHENTICATION.md)** - Authentication system details
@@ -136,9 +140,18 @@ qsci_browser_extension/
 - See [FEHLERBEHEBUNG.md](FEHLERBEHEBUNG.md)
 
 **Authentication fails**
-- Check Clerk configuration in `clerk-auth.html`
+- Ensure `clerk-config.js` exists (copy from `clerk-config.example.js` if needed)
+- Check Clerk configuration in `clerk-config.js`
+- Verify you've run `npm run build` after updating configuration
 - Verify redirect URL in Clerk dashboard
 - Allow pop-ups in Chrome
+
+**Warning: "Clerk has been loaded with development keys"**
+- You're using a test key (`pk_test_...`) instead of production key
+- Get production key from Clerk dashboard (starts with `pk_live_...`)
+- Update `clerk-config.js` with production key
+- Run `npm run build` and reload extension
+- See [CLERK_CONFIGURATION.md](CLERK_CONFIGURATION.md) for details
 
 **Usage counter not working**
 - Ensure you're logged in

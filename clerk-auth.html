@@ -172,6 +172,11 @@
   <!-- Load i18n before authentication bundle -->
   <script src="i18n.js"></script>
 
+  <!-- Load Clerk configuration (contains your publishable key) -->
+  <!-- For production: ensure clerk-config.js contains your production key (pk_live_...) -->
+  <!-- Development keys (pk_test_...) have strict usage limits -->
+  <script src="clerk-config.js"></script>
+
   <!-- Bundled Clerk authentication with local scripts -->
   <script src="dist/js/bundle-auth.js"></script>
 </body>

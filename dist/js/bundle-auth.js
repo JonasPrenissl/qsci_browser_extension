@@ -1,4 +1,47 @@
 (() => {
+  var __create = Object.create;
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __getProtoOf = Object.getPrototypeOf;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __commonJS = (cb, mod) => function __require() {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+    // If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+    mod
+  ));
+
+  // clerk-config.js
+  var require_clerk_config = __commonJS({
+    "clerk-config.js"(exports, module) {
+      var CLERK_CONFIG2 = {
+        // Your Clerk Publishable Key
+        // Replace this with your actual key from the Clerk dashboard
+        publishableKey: "pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA"
+      };
+      if (typeof module !== "undefined" && module.exports) {
+        module.exports = CLERK_CONFIG2;
+      }
+      if (typeof window !== "undefined") {
+        window.CLERK_CONFIG = CLERK_CONFIG2;
+      }
+    }
+  });
+
   // node_modules/@clerk/clerk-js/dist/clerk.mjs
   var e;
   var t;
@@ -39406,8 +39449,9 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   var b = i.ay;
 
   // src/auth.js
+  var import_clerk_config = __toESM(require_clerk_config());
   console.log("Q-SCI Clerk Auth: Module loaded");
-  var CLERK_PUBLISHABLE_KEY = "pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA";
+  var CLERK_PUBLISHABLE_KEY = import_clerk_config.default.publishableKey;
   var SUCCESS_CLOSE_MESSAGE = "Success! Closing window...";
   var WINDOW_CLOSE_DELAY_MS = 1500;
   var AUTH_CALLBACK_URL = "https://www.q-sci.org/auth-callback";

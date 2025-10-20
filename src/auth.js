@@ -2,11 +2,12 @@
 // Handles Clerk authentication initialization and user sign-in flow
 
 import { Clerk } from '@clerk/clerk-js';
+import CLERK_CONFIG from '../clerk-config.js';
 
 console.log('Q-SCI Clerk Auth: Module loaded');
 
 // Constants
-const CLERK_PUBLISHABLE_KEY = 'pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA';
+const CLERK_PUBLISHABLE_KEY = CLERK_CONFIG.publishableKey;
 const SUCCESS_CLOSE_MESSAGE = 'Success! Closing window...';
 const WINDOW_CLOSE_DELAY_MS = 1500;
 // Valid HTTPS URL to satisfy Clerk's redirect URL validation
