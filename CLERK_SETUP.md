@@ -16,29 +16,50 @@ This guide will help you set up Clerk authentication for the Q-SCI browser exten
 
 ## Step 3: Configure Clerk Keys
 
-The Clerk SDK is now bundled locally. To update your Clerk publishable key:
+**IMPORTANT: This step is critical for production deployment!**
 
-1. Open `src/clerk-auth-main.js`
-2. Find the line with `new Clerk(...)` (around line 58)
-3. Replace the publishable key:
+The extension now uses a configuration file for Clerk keys. This allows you to easily switch between development and production keys.
 
-```javascript
-// FROM:
-const clerk = new Clerk('YOUR_CURRENT_KEY');
+### Setup Instructions
 
-// TO:
-const clerk = new Clerk('pk_test_your_actual_key_here');
-```
+1. **Copy the example configuration file:**
+   ```bash
+   cp clerk-config.example.js clerk-config.js
+   ```
 
-4. Rebuild the bundles:
-```bash
-npm install  # if you haven't already
-npm run build
-```
+2. **Edit `clerk-config.js` with your Clerk publishable key:**
+   ```javascript
+   const CLERK_CONFIG = {
+     // For development/testing - use test keys
+     publishableKey: 'pk_test_your_actual_key_here',
+     
+     // For production - use live/production keys  
+     // publishableKey: 'pk_live_your_production_key_here',
+   };
+   ```
 
-This will update `js/clerk-auth.js` with your new key.
+3. **Rebuild the extension:**
+   ```bash
+   npm install  # if you haven't already
+   npm run build
+   ```
 
-**Note**: The Clerk SDK is bundled locally instead of loaded from a CDN, which improves security and reliability.
+### Important Notes
+
+- **Development Keys (`pk_test_...`)**:
+  - Start with `pk_test_`
+  - Have strict usage limits
+  - Should ONLY be used for testing
+  - Will show warning: "Clerk has been loaded with development keys"
+
+- **Production Keys (`pk_live_...`)**:
+  - Start with `pk_live_`
+  - No usage warnings
+  - Must be used for production deployments
+  - Get from Clerk dashboard under "Production" instance
+
+- The `clerk-config.js` file is git-ignored for security
+- Always rebuild (`npm run build`) after changing the configuration
 
 ## Step 4: Configure Clerk Application Settings
 
@@ -172,7 +193,7 @@ The extension uses this URL as a fallback redirect URL for Clerk authentication.
 
 ### Warning: "Clerk has been loaded with development keys"
 
-This warning appears when using test/development keys in production:
+This warning appears when using test/development keys (starting with `pk_test_`) in your deployment:
 
 **Issue:**
 ```
@@ -181,19 +202,31 @@ strict usage limits and should not be used when deploying your application to pr
 ```
 
 **Solution:**
-1. Get your production publishable key from Clerk dashboard
-   - It should start with `pk_live_` instead of `pk_test_`
-2. Update `src/clerk-auth-main.js` (around line 61):
+
+1. Get your **production** publishable key from Clerk dashboard:
+   - Go to Clerk Dashboard > Your App > API Keys
+   - Switch to "Production" instance (top of dashboard)
+   - Copy the publishable key (starts with `pk_live_`)
+
+2. Update your `clerk-config.js`:
    ```javascript
-   const clerk = new Clerk('pk_live_YOUR_PRODUCTION_KEY_HERE');
+   const CLERK_CONFIG = {
+     // Use production key (pk_live_...) instead of test key (pk_test_...)
+     publishableKey: 'pk_live_YOUR_PRODUCTION_KEY_HERE',
+   };
    ```
+
 3. Rebuild the extension:
    ```bash
    npm run build
    ```
-4. Reload the extension in Chrome
 
-Development keys have strict usage limits and should only be used for testing.
+4. Reload the extension in Chrome (chrome://extensions > click reload icon)
+
+**Important**: 
+- Development keys (`pk_test_...`) have strict usage limits
+- Production keys (`pk_live_...`) should ALWAYS be used for production deployments
+- Never commit `clerk-config.js` to version control (it's git-ignored)
 
 ### Warning: "Missing element" Console Warnings
 
@@ -231,11 +264,12 @@ These are informational warnings that occur during element initialization. The e
 
 ## Production Checklist
 
-- [ ] **IMPORTANT**: Replace test publishable key with live/production key
-  - Development keys (starting with `pk_test_`) have strict usage limits
-  - Production keys (starting with `pk_live_`) should be used for production deployments
-  - Update the key in `src/clerk-auth-main.js` and rebuild with `npm run build`
-- [ ] Update Frontend API URL to production
+- [ ] **CRITICAL: Use production Clerk keys**
+  - Get production key from Clerk dashboard (starts with `pk_live_`)
+  - Copy `clerk-config.example.js` to `clerk-config.js`
+  - Update `clerk-config.js` with production key
+  - Run `npm run build` to rebuild with production key
+  - Verify no "development keys" warning appears in console
 - [ ] Configure production redirect URLs (including `https://www.q-sci.org/auth-callback`)
 - [ ] Set up webhook for subscription status updates
 - [ ] Implement proper error handling for expired sessions
@@ -246,10 +280,19 @@ These are informational warnings that occur during element initialization. The e
 
 ## Security Best Practices
 
-1. **Never commit keys**: Keep publishable keys in configuration, not in code
-2. **Use environment-specific keys**: Different keys for development/production
+1. **Keep configuration files secure**:
+   - Never commit `clerk-config.js` (it's in `.gitignore`)
+   - Use environment-specific keys (test vs production)
+   - Store production keys securely
+   
+2. **Use appropriate keys for each environment**:
+   - Development/Testing: Use test keys (`pk_test_...`)
+   - Production: Use production keys (`pk_live_...`)
+   
 3. **Validate tokens**: Consider adding backend validation for sensitive operations
+
 4. **Monitor sessions**: Set up alerts for unusual authentication patterns
+
 5. **Regular updates**: Keep Clerk SDK updated to latest version
 
 ## Resources

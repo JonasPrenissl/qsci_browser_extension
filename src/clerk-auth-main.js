@@ -1,5 +1,18 @@
 console.log('Q-SCI Clerk Auth: Page loaded');
 
+// Import Clerk configuration
+// Note: In production, ensure clerk-config.js contains your production publishable key (pk_live_...)
+// Development keys (pk_test_...) have strict usage limits and should only be used for testing
+let CLERK_PUBLISHABLE_KEY = 'pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA'; // Default fallback
+
+// Try to load configuration if available
+if (typeof window !== 'undefined' && window.CLERK_CONFIG && window.CLERK_CONFIG.publishableKey) {
+  CLERK_PUBLISHABLE_KEY = window.CLERK_CONFIG.publishableKey;
+  console.log('Q-SCI Clerk Auth: Using configuration from clerk-config.js');
+} else {
+  console.warn('Q-SCI Clerk Auth: clerk-config.js not found, using default test key. For production, create clerk-config.js from clerk-config.example.js');
+}
+
 // Constants
 // Valid HTTPS URL to satisfy Clerk's redirect URL validation
 // (actual authentication uses postMessage, so redirect is never followed)
@@ -58,7 +71,7 @@ async function initializeClerk() {
 
     // Initialize Clerk
     console.log('Q-SCI Clerk Auth: Initializing Clerk...');
-    const clerk = new Clerk('pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA');
+    const clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
     await clerk.load({
       // Set all redirect URL variants to ensure OAuth callback works
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,

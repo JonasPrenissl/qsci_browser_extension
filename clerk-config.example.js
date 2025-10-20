@@ -1,41 +1,31 @@
 // Example Clerk Configuration
-// Copy this file and update with your actual Clerk credentials
+// Copy this file to 'clerk-config.js' and update with your actual Clerk credentials
+// 
+// COMMAND: cp clerk-config.example.js clerk-config.js
+// Then edit clerk-config.js with your actual key
 
-// STEP 1: Get these values from your Clerk Dashboard
+// STEP 1: Get your Clerk Publishable Key
 // Go to: https://dashboard.clerk.com > Your App > API Keys
+
+// IMPORTANT: For production deployment
+// - Development keys start with: pk_test_
+// - Production keys start with: pk_live_
+// - ALWAYS use production keys (pk_live_) for production deployments
+// - Development keys have strict usage limits and should ONLY be used for testing
 
 const CLERK_CONFIG = {
   // Your Clerk Publishable Key
-  // Example: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
-  publishableKey: 'pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA',
-  
-  // Your Clerk Frontend API URL
-  // Example: 'clerk.your-app-name.12345.lcl.dev'
-  // or: 'your-app-name.clerk.accounts.dev'
-  frontendApi: '[your-clerk-frontend-api]',
-  
-  // Full Clerk JS SDK URL (constructed from frontendApi)
-  // Example: 'https://clerk.your-app-name.12345.lcl.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js'
-  sdkUrl: 'https://[your-clerk-frontend-api].clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js'
+  // Replace 'YOUR_CLERK_PUBLISHABLE_KEY_HERE' with your actual key
+  // Development example: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
+  // Production example: 'pk_live_Y2xlcmsuZXhhbXBsZS5jb20k'
+  publishableKey: 'YOUR_CLERK_PUBLISHABLE_KEY_HERE',
 };
 
-// STEP 2: Update clerk-auth.html with these values
+// STEP 2: After updating clerk-config.js, rebuild the extension
 // 
-// Find and replace in clerk-auth.html:
+// Run: npm run build
 // 
-// Line ~102 (in <script> tag):
-//   data-clerk-publishable-key="pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA"
-//   src="https://[your-clerk-frontend-api].clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-// 
-// Replace with:
-//   data-clerk-publishable-key="YOUR_ACTUAL_KEY_HERE"
-//   src="YOUR_ACTUAL_SDK_URL_HERE"
-// 
-// Line ~114 (in JavaScript):
-//   const clerk = new Clerk('pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA');
-// 
-// Replace with:
-//   const clerk = new Clerk('YOUR_ACTUAL_KEY_HERE');
+// This will bundle your Clerk configuration into the extension
 
 // STEP 3: Set up user metadata in Clerk
 // 
@@ -51,10 +41,22 @@ const CLERK_CONFIG = {
 
 // STEP 4: Test the integration
 // 
-// 1. Load extension in Chrome (chrome://extensions)
-// 2. Click extension icon
-// 3. Click "Login with Clerk"
-// 4. Complete authentication
-// 5. Verify you're logged in
+// 1. Ensure clerk-config.js has your actual key
+// 2. Run: npm run build
+// 3. Load extension in Chrome (chrome://extensions)
+// 4. Click extension icon
+// 5. Click "Login with Clerk"
+// 6. Complete authentication
+// 7. Verify you're logged in and no warnings appear in console
 
 // For more detailed instructions, see CLERK_SETUP.md
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = CLERK_CONFIG;
+}
+
+// Also make available as global variable for direct script includes
+if (typeof window !== 'undefined') {
+  window.CLERK_CONFIG = CLERK_CONFIG;
+}
