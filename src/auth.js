@@ -126,6 +126,10 @@ async function initializeClerk() {
     await clerk.load({
       // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
       isSatellite: true,
+      // IMPORTANT: signInUrl is required when using isSatellite: true for development instances
+      // This tells Clerk where the main sign-in page is located
+      signInUrl: AUTH_CALLBACK_URL,
+      signUpUrl: AUTH_CALLBACK_URL,
       // Set all redirect URL variants to ensure OAuth callback works
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
