@@ -528,7 +528,10 @@ function showPageStatus(message, canAnalyze) {
     elements.pageStatus.textContent = message;
   }
   
-  if (elements.analyzeBtn) {
+  // Only disable the analyze button if the user is not logged in
+  // If the user is logged in, keep the button enabled even on unsupported sites
+  // because they can still use manual text analysis
+  if (elements.analyzeBtn && !currentUser) {
     elements.analyzeBtn.disabled = !canAnalyze;
     elements.analyzeBtn.style.opacity = canAnalyze ? '1' : '0.5';
   }
