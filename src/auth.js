@@ -87,9 +87,7 @@ async function initializeClerk() {
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signInForceRedirectUrl: AUTH_CALLBACK_URL,
-      signUpForceRedirectUrl: AUTH_CALLBACK_URL,
-      // Additional redirect URL to handle OAuth callback scenarios
-      redirectUrl: AUTH_CALLBACK_URL
+      signUpForceRedirectUrl: AUTH_CALLBACK_URL
     });
 
     console.log('Q-SCI Clerk Auth: Clerk initialized successfully');
@@ -109,14 +107,13 @@ async function initializeClerk() {
     console.log('Q-SCI Clerk Auth: Mounting sign-in component...');
     clerk.mountSignIn(clerkContainer, {
       // Use a valid HTTPS URL to avoid "Invalid URL scheme" error
-      // Clerk defaults to window.location.href (chrome-extension://) when redirectUrl is undefined
+      // Clerk defaults to window.location.href (chrome-extension://) when no redirect URL is specified
       // We use postMessage for auth, so the actual redirect is not used
       // 
       // IMPORTANT: Setting all redirect URL parameters is crucial for OAuth flows
       // (Google, Apple, etc.). When OAuth providers redirect back to Clerk's callback
       // page (clerk.shared.lcl.dev/v1/oauth_callback), Clerk needs a valid HTTPS
       // redirect URL to complete the flow.
-      redirectUrl: AUTH_CALLBACK_URL,
       afterSignInUrl: AUTH_CALLBACK_URL,
       afterSignUpUrl: AUTH_CALLBACK_URL,
       // Force redirect URLs ensure OAuth callbacks use our HTTPS URL
@@ -228,11 +225,18 @@ async function handleSignInSuccess(clerk) {
       });
       
       if (response.ok) {
-        const data = await response.json();
-        subscriptionStatus = data.subscription_status || 'free';
-        console.log('Q-SCI Clerk Auth: Fetched subscription status from backend:', subscriptionStatus);
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          subscriptionStatus = data.subscription_status || 'free';
+          console.log('Q-SCI Clerk Auth: Fetched subscription status from backend:', subscriptionStatus);
+        } else {
+          console.warn('Q-SCI Clerk Auth: Backend returned non-JSON response, defaulting to free');
+          console.warn('Q-SCI Clerk Auth: Content-Type:', contentType);
+        }
       } else {
-        console.warn('Q-SCI Clerk Auth: Failed to fetch subscription status, defaulting to free');
+        console.warn('Q-SCI Clerk Auth: Failed to fetch subscription status (status:', response.status, '), defaulting to free');
       }
     } catch (error) {
       console.error('Q-SCI Clerk Auth: Error fetching subscription status:', error);
