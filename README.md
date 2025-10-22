@@ -6,6 +6,19 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
 
 👉 **New to this extension?** See **[QUICK_START.md](QUICK_START.md)** for a 5-minute setup guide!
 
+### ✅ FIXED: Clerk API Key Error
+
+**Previous Issue:** "Fehler beim Initialisieren der Authentifizierung: Clerk API-Schlüssel fehlt"
+
+**Status:** ✅ **RESOLVED** - The extension now includes a default Clerk configuration that works out-of-the-box for development and testing.
+
+**What Changed:**
+- `clerk-config.js` is now included with a working test key
+- Build process validates configuration and provides helpful errors
+- Extension builds and runs immediately after `npm install && npm run build`
+
+**For Production:** Replace the default test key with your production key. See [CLERK_CONFIG_FIX.md](CLERK_CONFIG_FIX.md) for details.
+
 ### ⚠️ IMPORTANT: Network Drive Issue
 
 **If you get an error:** "Das Hintergrundskript „background.js" konnte nicht geladen werden"
@@ -24,12 +37,12 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
    To:   C:\Users\YourName\Documents\qsci_browser_extension
    ```
 
-2. **Configure Clerk** (see [CLERK_SETUP.md](CLERK_SETUP.md))
-   - Get Clerk account and publishable key
-   - Copy `clerk-config.example.js` to `clerk-config.js`
-   - Update `clerk-config.js` with your keys
-   - **IMPORTANT**: For production, use production keys (`pk_live_...`) not test keys (`pk_test_...`)
-   - See [CLERK_CONFIGURATION.md](CLERK_CONFIGURATION.md) for detailed configuration guide
+2. **Install dependencies and build**
+   ```bash
+   npm install
+   npm run build
+   ```
+   The extension now includes a working default Clerk configuration.
 
 3. **Load in Chrome**
    - Open `chrome://extensions/`
@@ -37,15 +50,16 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
    - Click "Load unpacked"
    - Select the **local** extension folder
 
-4. **Configure Clerk Redirect**
-   - Note your extension ID from Chrome
-   - Add `chrome-extension://YOUR_ID/clerk-auth.html` to Clerk dashboard
-
-5. **Test**
+4. **Test**
    - Click extension icon
    - Click "Login with Clerk"
    - Sign in or sign up
    - Analyze a paper!
+
+5. **Optional: Configure Production Keys** (for production deployment)
+   - Update `clerk-config.js` with your production Clerk key
+   - Run `npm run build` again
+   - See [CLERK_CONFIG_FIX.md](CLERK_CONFIG_FIX.md) for details
 
 ## 📚 Documentation
 
@@ -55,6 +69,7 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
 - **[FEHLERBEHEBUNG.md](FEHLERBEHEBUNG.md)** - Troubleshooting guide (German)
 - **[CLERK_SETUP.md](CLERK_SETUP.md)** - Clerk authentication setup
 - **[CLERK_CONFIGURATION.md](CLERK_CONFIGURATION.md)** - Clerk key configuration guide
+- **[CLERK_CONFIG_FIX.md](CLERK_CONFIG_FIX.md)** - ✨ Fix for "Clerk API-Schlüssel fehlt" error
 
 ### Technical Documentation
 - **[AUTHENTICATION.md](AUTHENTICATION.md)** - Authentication system details
