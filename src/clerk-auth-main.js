@@ -73,11 +73,15 @@ async function initializeClerk() {
     console.log('Q-SCI Clerk Auth: Initializing Clerk...');
     const clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
     await clerk.load({
+      // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
+      isSatellite: true,
       // Set all redirect URL variants to ensure OAuth callback works
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signInForceRedirectUrl: AUTH_CALLBACK_URL,
       signUpForceRedirectUrl: AUTH_CALLBACK_URL,
+      afterSignInUrl: AUTH_CALLBACK_URL,
+      afterSignUpUrl: AUTH_CALLBACK_URL,
       // Additional redirect URL to handle OAuth callback scenarios
       redirectUrl: AUTH_CALLBACK_URL
     });
@@ -112,6 +116,10 @@ async function initializeClerk() {
       // Fallback URLs as additional safety net
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      // Additional routing configuration to prevent chrome-extension:// URL usage
+      routing: 'hash',
+      // Explicitly tell Clerk this is embedded/popup context
+      transferable: false,
       appearance: {
         elements: {
           rootBox: {

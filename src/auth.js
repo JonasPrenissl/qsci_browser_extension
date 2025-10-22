@@ -95,13 +95,22 @@ async function initializeClerk() {
      * We set both "fallback" and "force" variants to ensure comprehensive coverage:
      * - Fallback URLs are used when no other redirect URL is specified
      * - Force URLs override any other redirect URL settings
+     * 
+     * The isSatellite option tells Clerk this is a popup/satellite window, which
+     * prevents it from using window.location.href (chrome-extension://) as a redirect URL.
      */
     await clerk.load({
+      // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
+      isSatellite: true,
       // Set all redirect URL variants to ensure OAuth callback works
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signInForceRedirectUrl: AUTH_CALLBACK_URL,
-      signUpForceRedirectUrl: AUTH_CALLBACK_URL
+      signUpForceRedirectUrl: AUTH_CALLBACK_URL,
+      afterSignInUrl: AUTH_CALLBACK_URL,
+      afterSignUpUrl: AUTH_CALLBACK_URL,
+      // Additional redirect URL to handle OAuth callback scenarios
+      redirectUrl: AUTH_CALLBACK_URL
     });
 
     console.log('Q-SCI Clerk Auth: Clerk initialized successfully');
@@ -128,6 +137,7 @@ async function initializeClerk() {
       // (Google, Apple, etc.). When OAuth providers redirect back to Clerk's callback
       // page (clerk.shared.lcl.dev/v1/oauth_callback), Clerk needs a valid HTTPS
       // redirect URL to complete the flow.
+      redirectUrl: AUTH_CALLBACK_URL,
       afterSignInUrl: AUTH_CALLBACK_URL,
       afterSignUpUrl: AUTH_CALLBACK_URL,
       // Force redirect URLs ensure OAuth callbacks use our HTTPS URL
@@ -136,6 +146,10 @@ async function initializeClerk() {
       // Fallback URLs as additional safety net
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
+      // Additional routing configuration to prevent chrome-extension:// URL usage
+      routing: 'hash',
+      // Explicitly tell Clerk this is embedded/popup context
+      transferable: false,
       appearance: {
         elements: {
           rootBox: {
