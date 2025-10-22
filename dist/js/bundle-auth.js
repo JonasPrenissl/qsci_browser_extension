@@ -39453,7 +39453,9 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   // src/auth.js
   var import_clerk_config = __toESM(require_clerk_config());
   console.log("Q-SCI Clerk Auth: Module loaded");
-  var CLERK_PUBLISHABLE_KEY = import_clerk_config.default.publishableKey;
+  console.log("Q-SCI Clerk Auth: CLERK_CONFIG:", import_clerk_config.default);
+  console.log("Q-SCI Clerk Auth: CLERK_CONFIG.publishableKey:", import_clerk_config.default ? import_clerk_config.default.publishableKey : "undefined");
+  var CLERK_PUBLISHABLE_KEY = import_clerk_config.default ? import_clerk_config.default.publishableKey : void 0;
   var SUCCESS_CLOSE_MESSAGE = "Success! Closing window...";
   var WINDOW_CLOSE_DELAY_MS = 1500;
   var AUTH_CALLBACK_URL = "https://www.q-sci.org/auth-callback";
@@ -39486,7 +39488,10 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
         return;
       }
       console.log("Q-SCI Clerk Auth: Using publishable key:", CLERK_PUBLISHABLE_KEY.substring(0, 10) + "...");
+      console.log("Q-SCI Clerk Auth: Creating Clerk instance...");
       const clerk = new o(CLERK_PUBLISHABLE_KEY);
+      console.log("Q-SCI Clerk Auth: Clerk instance created successfully");
+      console.log("Q-SCI Clerk Auth: Loading Clerk SDK...");
       await clerk.load({
         // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
         isSatellite: true,
@@ -39576,7 +39581,16 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       }, 1e3);
     } catch (error) {
       console.error("Q-SCI Clerk Auth: Initialization error:", error);
-      showError(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorInit") : "Failed to initialize authentication. Please try again.");
+      console.error("Q-SCI Clerk Auth: Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      let errorMessage = window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorInit") : "Failed to initialize authentication. Please try again.";
+      if (error.message) {
+        errorMessage += ` (${error.message})`;
+      }
+      showError(errorMessage);
     }
   }
   var isHandlingSignIn = false;

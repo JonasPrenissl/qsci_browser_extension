@@ -5,9 +5,11 @@ import { Clerk } from '@clerk/clerk-js';
 import CLERK_CONFIG from '../clerk-config.js';
 
 console.log('Q-SCI Clerk Auth: Module loaded');
+console.log('Q-SCI Clerk Auth: CLERK_CONFIG:', CLERK_CONFIG);
+console.log('Q-SCI Clerk Auth: CLERK_CONFIG.publishableKey:', CLERK_CONFIG ? CLERK_CONFIG.publishableKey : 'undefined');
 
 // Constants
-const CLERK_PUBLISHABLE_KEY = CLERK_CONFIG.publishableKey;
+const CLERK_PUBLISHABLE_KEY = CLERK_CONFIG ? CLERK_CONFIG.publishableKey : undefined;
 const SUCCESS_CLOSE_MESSAGE = 'Success! Closing window...';
 const WINDOW_CLOSE_DELAY_MS = 1500;
 // Valid HTTPS URL to satisfy Clerk's redirect URL validation
@@ -78,7 +80,9 @@ async function initializeClerk() {
     console.log('Q-SCI Clerk Auth: Using publishable key:', CLERK_PUBLISHABLE_KEY.substring(0, 10) + '...');
     
     // Initialize Clerk with the publishable key
+    console.log('Q-SCI Clerk Auth: Creating Clerk instance...');
     const clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
+    console.log('Q-SCI Clerk Auth: Clerk instance created successfully');
     
     /**
      * Load Clerk with redirect URL options to prevent "Invalid URL scheme" errors.
@@ -99,6 +103,7 @@ async function initializeClerk() {
      * The isSatellite option tells Clerk this is a popup/satellite window, which
      * prevents it from using window.location.href (chrome-extension://) as a redirect URL.
      */
+    console.log('Q-SCI Clerk Auth: Loading Clerk SDK...');
     await clerk.load({
       // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
       isSatellite: true,
@@ -208,7 +213,21 @@ async function initializeClerk() {
 
   } catch (error) {
     console.error('Q-SCI Clerk Auth: Initialization error:', error);
-    showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorInit') : 'Failed to initialize authentication. Please try again.');
+    console.error('Q-SCI Clerk Auth: Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // Provide more specific error message if possible
+    let errorMessage = window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorInit') : 'Failed to initialize authentication. Please try again.';
+    
+    // Add more context based on error type
+    if (error.message) {
+      errorMessage += ` (${error.message})`;
+    }
+    
+    showError(errorMessage);
   }
 }
 
