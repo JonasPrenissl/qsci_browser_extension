@@ -39453,7 +39453,16 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   // src/auth.js
   var import_clerk_config = __toESM(require_clerk_config());
   console.log("Q-SCI Clerk Auth: Module loaded");
-  var CLERK_PUBLISHABLE_KEY = import_clerk_config.default.publishableKey;
+  console.log("Q-SCI Clerk Auth: CLERK_CONFIG:", import_clerk_config.default);
+  console.log("Q-SCI Clerk Auth: CLERK_CONFIG type:", typeof import_clerk_config.default);
+  console.log("Q-SCI Clerk Auth: CLERK_CONFIG.publishableKey:", import_clerk_config.default ? import_clerk_config.default.publishableKey : "undefined");
+  var clerkConfig = import_clerk_config.default;
+  if (!clerkConfig && typeof window !== "undefined" && window.CLERK_CONFIG) {
+    console.log("Q-SCI Clerk Auth: Using CLERK_CONFIG from window object");
+    clerkConfig = window.CLERK_CONFIG;
+  }
+  var CLERK_PUBLISHABLE_KEY = clerkConfig ? clerkConfig.publishableKey : void 0;
+  console.log("Q-SCI Clerk Auth: CLERK_PUBLISHABLE_KEY extracted:", CLERK_PUBLISHABLE_KEY ? "YES" : "NO");
   var SUCCESS_CLOSE_MESSAGE = "Success! Closing window...";
   var WINDOW_CLOSE_DELAY_MS = 1500;
   var AUTH_CALLBACK_URL = "https://www.q-sci.org/auth-callback";
@@ -39479,14 +39488,25 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   async function initializeClerk() {
     try {
       console.log("Q-SCI Clerk Auth: Initializing Clerk...");
+      if (typeof o === "undefined") {
+        const errorMsg = "Clerk SDK not loaded. Please check your internet connection and try again.";
+        console.error("Q-SCI Clerk Auth:", errorMsg);
+        showError(errorMsg);
+        return;
+      }
+      console.log("Q-SCI Clerk Auth: Clerk SDK loaded successfully");
       if (!CLERK_PUBLISHABLE_KEY || CLERK_PUBLISHABLE_KEY === "YOUR_CLERK_PUBLISHABLE_KEY_HERE" || CLERK_PUBLISHABLE_KEY.trim() === "") {
         const errorMsg = window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorMissingKey") : "Fehler beim Initialisieren der Authentifizierung: Clerk API-Schl\xFCssel fehlt. Bitte kontaktieren Sie den Administrator.";
         console.error("Q-SCI Clerk Auth: Invalid or missing Clerk publishable key");
+        console.error("Q-SCI Clerk Auth: CLERK_PUBLISHABLE_KEY value:", CLERK_PUBLISHABLE_KEY);
         showError(errorMsg);
         return;
       }
       console.log("Q-SCI Clerk Auth: Using publishable key:", CLERK_PUBLISHABLE_KEY.substring(0, 10) + "...");
+      console.log("Q-SCI Clerk Auth: Creating Clerk instance...");
       const clerk = new o(CLERK_PUBLISHABLE_KEY);
+      console.log("Q-SCI Clerk Auth: Clerk instance created successfully");
+      console.log("Q-SCI Clerk Auth: Loading Clerk SDK...");
       await clerk.load({
         // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
         isSatellite: true,
@@ -39576,7 +39596,16 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       }, 1e3);
     } catch (error) {
       console.error("Q-SCI Clerk Auth: Initialization error:", error);
-      showError(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorInit") : "Failed to initialize authentication. Please try again.");
+      console.error("Q-SCI Clerk Auth: Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      let errorMessage = window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorInit") : "Failed to initialize authentication. Please try again.";
+      if (error.message) {
+        errorMessage += ` (${error.message})`;
+      }
+      showError(errorMessage);
     }
   }
   var isHandlingSignIn = false;
