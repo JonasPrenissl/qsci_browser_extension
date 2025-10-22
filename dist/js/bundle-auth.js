@@ -39454,8 +39454,15 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   var import_clerk_config = __toESM(require_clerk_config());
   console.log("Q-SCI Clerk Auth: Module loaded");
   console.log("Q-SCI Clerk Auth: CLERK_CONFIG:", import_clerk_config.default);
+  console.log("Q-SCI Clerk Auth: CLERK_CONFIG type:", typeof import_clerk_config.default);
   console.log("Q-SCI Clerk Auth: CLERK_CONFIG.publishableKey:", import_clerk_config.default ? import_clerk_config.default.publishableKey : "undefined");
-  var CLERK_PUBLISHABLE_KEY = import_clerk_config.default ? import_clerk_config.default.publishableKey : void 0;
+  var clerkConfig = import_clerk_config.default;
+  if (!clerkConfig && typeof window !== "undefined" && window.CLERK_CONFIG) {
+    console.log("Q-SCI Clerk Auth: Using CLERK_CONFIG from window object");
+    clerkConfig = window.CLERK_CONFIG;
+  }
+  var CLERK_PUBLISHABLE_KEY = clerkConfig ? clerkConfig.publishableKey : void 0;
+  console.log("Q-SCI Clerk Auth: CLERK_PUBLISHABLE_KEY extracted:", CLERK_PUBLISHABLE_KEY ? "YES" : "NO");
   var SUCCESS_CLOSE_MESSAGE = "Success! Closing window...";
   var WINDOW_CLOSE_DELAY_MS = 1500;
   var AUTH_CALLBACK_URL = "https://www.q-sci.org/auth-callback";
@@ -39481,9 +39488,17 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   async function initializeClerk() {
     try {
       console.log("Q-SCI Clerk Auth: Initializing Clerk...");
+      if (typeof o === "undefined") {
+        const errorMsg = "Clerk SDK not loaded. Please check your internet connection and try again.";
+        console.error("Q-SCI Clerk Auth:", errorMsg);
+        showError(errorMsg);
+        return;
+      }
+      console.log("Q-SCI Clerk Auth: Clerk SDK loaded successfully");
       if (!CLERK_PUBLISHABLE_KEY || CLERK_PUBLISHABLE_KEY === "YOUR_CLERK_PUBLISHABLE_KEY_HERE" || CLERK_PUBLISHABLE_KEY.trim() === "") {
         const errorMsg = window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorMissingKey") : "Fehler beim Initialisieren der Authentifizierung: Clerk API-Schl\xFCssel fehlt. Bitte kontaktieren Sie den Administrator.";
         console.error("Q-SCI Clerk Auth: Invalid or missing Clerk publishable key");
+        console.error("Q-SCI Clerk Auth: CLERK_PUBLISHABLE_KEY value:", CLERK_PUBLISHABLE_KEY);
         showError(errorMsg);
         return;
       }
