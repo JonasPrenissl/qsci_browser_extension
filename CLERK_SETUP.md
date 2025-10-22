@@ -278,6 +278,55 @@ These are informational warnings that occur during element initialization. The e
 - [ ] Document subscription upgrade flow
 - [ ] Set up customer support for auth issues
 
+## Troubleshooting
+
+### Error: "Clerk API-Schlüssel fehlt" or "Clerk API key is missing"
+
+This error occurs when the Clerk publishable key is not configured or is still set to the placeholder value.
+
+**Solution:**
+
+1. Ensure you've created `clerk-config.js` from the example:
+   ```bash
+   cp clerk-config.example.js clerk-config.js
+   ```
+
+2. Edit `clerk-config.js` and replace `YOUR_CLERK_PUBLISHABLE_KEY_HERE` with your actual Clerk publishable key
+
+3. Rebuild the extension:
+   ```bash
+   npm run build
+   ```
+
+4. Reload the extension in Chrome (go to `chrome://extensions` and click the reload icon)
+
+### Authentication Window Shows "Failed to initialize authentication"
+
+This can happen if:
+
+1. **The Clerk key is invalid**: Double-check your publishable key in the Clerk dashboard
+2. **Network connection issues**: Ensure you have internet connectivity
+3. **Clerk service outage**: Check [Clerk status page](https://status.clerk.com/)
+
+**Solution:**
+- Verify your Clerk key is correct
+- Click the "Retry Authentication" button in the auth window
+- Check browser console for detailed error messages
+
+### 404 Error Loading clerk-config.js
+
+This is expected behavior. The `clerk-config.js` file is bundled into `dist/js/bundle-auth.js` during the build process and doesn't need to be loaded separately.
+
+If you see this error, it won't affect functionality as long as you've run `npm run build` after creating/updating `clerk-config.js`.
+
+### Authentication Works in Development but Not in Production
+
+Make sure you're using production keys (`pk_live_...`) instead of test keys (`pk_test_...`) in your production build:
+
+1. Update `clerk-config.js` with your production key
+2. Run `npm run build`
+3. Deploy the updated extension
+
 ## Security Best Practices
 
 1. **Keep configuration files secure**:
