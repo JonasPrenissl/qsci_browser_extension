@@ -32,3 +32,4 @@ Thumbs.db
 clerk-config.js
 .env
 .env.local
+verify-fix.js

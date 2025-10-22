@@ -97,6 +97,7 @@
       'clerkAuth.authSuccess': 'Authentifizierung erfolgreich! Verarbeite...',
       'clerkAuth.successClose': 'Erfolg! Sie können dieses Fenster schließen.',
       'clerkAuth.errorInit': 'Fehler beim Initialisieren der Authentifizierung. Bitte versuchen Sie es erneut.',
+      'clerkAuth.errorMissingKey': 'Fehler beim Initialisieren der Authentifizierung: Clerk API-Schlüssel fehlt. Bitte kontaktieren Sie den Administrator.',
       'clerkAuth.errorProcess': 'Fehler beim Verarbeiten der Authentifizierung. Bitte versuchen Sie es erneut.',
       'clerkAuth.errorExtension': 'Bitte öffnen Sie diese Seite über die Erweiterung.'
     },
@@ -191,6 +192,7 @@
       'clerkAuth.authSuccess': 'Authentication successful! Processing...',
       'clerkAuth.successClose': 'Success! You can close this window.',
       'clerkAuth.errorInit': 'Failed to initialize authentication. Please try again.',
+      'clerkAuth.errorMissingKey': 'Failed to initialize authentication: Clerk API key is missing. Please contact the administrator.',
       'clerkAuth.errorProcess': 'Failed to process authentication. Please try again.',
       'clerkAuth.errorExtension': 'Please open this page from the extension.'
     }

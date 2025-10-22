@@ -39479,6 +39479,13 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   async function initializeClerk() {
     try {
       console.log("Q-SCI Clerk Auth: Initializing Clerk...");
+      if (!CLERK_PUBLISHABLE_KEY || CLERK_PUBLISHABLE_KEY === "YOUR_CLERK_PUBLISHABLE_KEY_HERE" || CLERK_PUBLISHABLE_KEY.trim() === "") {
+        const errorMsg = window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorMissingKey") : "Fehler beim Initialisieren der Authentifizierung: Clerk API-Schl\xFCssel fehlt. Bitte kontaktieren Sie den Administrator.";
+        console.error("Q-SCI Clerk Auth: Invalid or missing Clerk publishable key");
+        showError(errorMsg);
+        return;
+      }
+      console.log("Q-SCI Clerk Auth: Using publishable key:", CLERK_PUBLISHABLE_KEY.substring(0, 10) + "...");
       const clerk = new o(CLERK_PUBLISHABLE_KEY);
       await clerk.load({
         // Set all redirect URL variants to ensure OAuth callback works

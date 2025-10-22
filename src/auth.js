@@ -63,6 +63,20 @@ async function initializeClerk() {
   try {
     console.log('Q-SCI Clerk Auth: Initializing Clerk...');
     
+    // Validate Clerk publishable key
+    if (!CLERK_PUBLISHABLE_KEY || 
+        CLERK_PUBLISHABLE_KEY === 'YOUR_CLERK_PUBLISHABLE_KEY_HERE' ||
+        CLERK_PUBLISHABLE_KEY.trim() === '') {
+      const errorMsg = window.QSCIi18n ? 
+        window.QSCIi18n.t('clerkAuth.errorMissingKey') : 
+        'Fehler beim Initialisieren der Authentifizierung: Clerk API-Schlüssel fehlt. Bitte kontaktieren Sie den Administrator.';
+      console.error('Q-SCI Clerk Auth: Invalid or missing Clerk publishable key');
+      showError(errorMsg);
+      return;
+    }
+    
+    console.log('Q-SCI Clerk Auth: Using publishable key:', CLERK_PUBLISHABLE_KEY.substring(0, 10) + '...');
+    
     // Initialize Clerk with the publishable key
     const clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
     
