@@ -29,7 +29,8 @@ Thumbs.db
 *.log
 
 # Sensitive configuration
-clerk-config.js
+# Note: clerk-config.js is now tracked with a default test key
+# Users can override it locally for production deployment
 .env
 .env.local
 verify-fix.js

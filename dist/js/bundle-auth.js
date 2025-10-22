@@ -30,10 +30,10 @@
     "clerk-config.js"(exports, module) {
       var CLERK_CONFIG2 = {
         // Your Clerk Publishable Key
-        // Replace 'YOUR_CLERK_PUBLISHABLE_KEY_HERE' with your actual key
+        // This is a default test key - replace with your actual key for production
         // Development example: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
         // Production example: 'pk_live_Y2xlcmsuZXhhbXBsZS5jb20k'
-        publishableKey: "YOUR_CLERK_PUBLISHABLE_KEY_HERE"
+        publishableKey: "pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA"
       };
       if (typeof module !== "undefined" && module.exports) {
         module.exports = CLERK_CONFIG2;
