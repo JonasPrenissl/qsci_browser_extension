@@ -240,22 +240,30 @@
           });
           
           if (response.ok) {
-            const data = await response.json();
-            const newSubscriptionStatus = data.subscription_status || 'free';
-            
-            // Update stored subscription status
-            await chrome.storage.local.set({
-              [STORAGE_KEYS.SUBSCRIPTION_STATUS]: newSubscriptionStatus
-            });
-            
-            console.log('Q-SCI Auth: Subscription status verified and updated:', newSubscriptionStatus);
-            
-            return {
-              ...user,
-              subscriptionStatus: newSubscriptionStatus
-            };
+            // Check if response is JSON before parsing
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const data = await response.json();
+              const newSubscriptionStatus = data.subscription_status || 'free';
+              
+              // Update stored subscription status
+              await chrome.storage.local.set({
+                [STORAGE_KEYS.SUBSCRIPTION_STATUS]: newSubscriptionStatus
+              });
+              
+              console.log('Q-SCI Auth: Subscription status verified and updated:', newSubscriptionStatus);
+              
+              return {
+                ...user,
+                subscriptionStatus: newSubscriptionStatus
+              };
+            } else {
+              console.warn('Q-SCI Auth: Backend returned non-JSON response, using cached data');
+              console.warn('Q-SCI Auth: Content-Type:', contentType);
+              return user;
+            }
           } else {
-            console.warn('Q-SCI Auth: Failed to verify subscription status, using cached data');
+            console.warn('Q-SCI Auth: Failed to verify subscription status (status:', response.status, '), using cached data');
             return user;
           }
         } catch (fetchError) {
@@ -308,7 +316,15 @@
         });
 
         if (!response.ok) {
-          console.warn('Q-SCI Auth: Failed to refresh subscription status from backend, using cached data');
+          console.warn('Q-SCI Auth: Failed to refresh subscription status from backend (status:', response.status, '), using cached data');
+          return user;
+        }
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Q-SCI Auth: Backend returned non-JSON response, using cached data');
+          console.warn('Q-SCI Auth: Content-Type:', contentType);
           return user;
         }
 
