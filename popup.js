@@ -650,11 +650,12 @@ async function analyzePage() {
     // returns an object with quality metrics.  This avoids any
     // network requests and runs entirely within the extension.
     console.log('Q-SCI Debug Popup: About to call window.qsciEvaluatePaper');
-    console.log('Q-SCI Debug Popup: Text length:', textToEvaluate.length);
-    console.log('Q-SCI Debug Popup: Title:', requestData.title);
     
     try {
       const textToEvaluate = requestData.text || '';
+      console.log('Q-SCI Debug Popup: Text length:', textToEvaluate.length);
+      console.log('Q-SCI Debug Popup: Title:', requestData.title);
+      
       // Support both synchronous and asynchronous evaluators.  If
       // qsciEvaluatePaper returns a promise, await it; otherwise use the
       // returned value directly.
