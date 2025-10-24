@@ -253,16 +253,24 @@ async function initializeClerk() {
     }
     
     // Check if this might be a file loading issue
-    if (error.message && (error.message.includes('Failed to fetch') || 
-                           error.message.includes('NetworkError') ||
-                           error.message.includes('Failed to load') ||
-                           error.message.includes('Cannot load') ||
-                           error.message.includes('import failed') ||
-                           error.message.includes('Module not found'))) {
+    const fileLoadingErrorPatterns = [
+      'Failed to fetch',
+      'NetworkError',
+      'Failed to load',
+      'Cannot load',
+      'import failed',
+      'Module not found'
+    ];
+    
+    const isFileLoadingError = fileLoadingErrorPatterns.some(pattern => 
+      error.message && error.message.includes(pattern)
+    );
+    
+    if (isFileLoadingError) {
       errorMessage = 'Failed to load authentication components. Please check your internet connection and ensure the extension is properly installed.';
     }
     
-    showError(errorMessage, true); // true = show retry button
+    showError(errorMessage, true); // Show retry button on initialization errors
   }
 }
 
