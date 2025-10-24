@@ -174,10 +174,11 @@ const checkClosed = setInterval(async () => {
 
 ### Automated Testing
 
-Run the test page:
+The test-auth-flow.html file is available in the repository for automated verification:
+
 ```bash
-# Open in browser
-open test-auth-flow.html
+# Open test-auth-flow.html in your browser to run automated tests
+# The page will verify that the fixes are properly implemented
 ```
 
 The test page will verify:

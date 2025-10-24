@@ -67,7 +67,10 @@ fi
 echo "✓ Check 7: Verify bundle was rebuilt"
 if [ -f "dist/js/bundle-auth.js" ]; then
   BUNDLE_SIZE=$(wc -c < dist/js/bundle-auth.js)
-  if [ "$BUNDLE_SIZE" -gt 1000000 ]; then
+  # Minimum expected bundle size (includes Clerk SDK and auth logic)
+  # A properly built bundle with Clerk SDK should be > 1MB
+  MIN_BUNDLE_SIZE=1000000
+  if [ "$BUNDLE_SIZE" -gt "$MIN_BUNDLE_SIZE" ]; then
     echo "  ✅ Bundle exists and is properly sized ($BUNDLE_SIZE bytes)"
   else
     echo "  ⚠️  Bundle exists but may be incomplete ($BUNDLE_SIZE bytes)"
