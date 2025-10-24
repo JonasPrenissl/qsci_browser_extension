@@ -11,16 +11,19 @@ Fehler beim Initialisieren der Authentifizierung. Bitte versuchen Sie es erneut.
 When using ClerkJS in satellite mode (`isSatellite: true`), Clerk requires either a `domain` or `proxyUrl` parameter to be specified. The satellite mode is necessary for browser extensions to prevent chrome-extension:// URL issues in OAuth flows.
 
 ## Solution
-Added the `domain` parameter to the Clerk initialization configuration in `src/auth.js`:
+Added both the `domain` and `proxyUrl` parameters to the Clerk initialization configuration in `src/auth.js`:
 
 ```javascript
 await clerk.load({
   isSatellite: true,
-  domain: 'www.q-sci.org',  // <- Added this line
+  domain: 'www.q-sci.org',          // <- Domain without protocol
+  proxyUrl: 'https://www.q-sci.org', // <- Full URL with HTTPS protocol
   signInUrl: AUTH_CALLBACK_URL,
   // ... other configuration
 });
 ```
+
+**Note:** While the initial fix only added `domain`, testing revealed that Clerk requires **both** `domain` and `proxyUrl` when using satellite mode. The `domain` should be the domain name without protocol, while `proxyUrl` should be the full URL with HTTPS.
 
 ## Technical Details
 
@@ -29,10 +32,11 @@ await clerk.load({
 - OAuth providers (Google, Apple, etc.) require HTTPS redirect URLs
 - Satellite mode tells Clerk to use the specified domain for OAuth callbacks instead of `window.location.href`
 
-### Why Domain Parameter?
-- When `isSatellite: true` is set, Clerk needs to know which domain the satellite is associated with
-- The domain parameter tells Clerk where the main application is hosted
-- This enables proper OAuth flow completion
+### Why Domain and ProxyUrl Parameters?
+- When `isSatellite: true` is set, Clerk requires **both** `domain` and `proxyUrl` to be specified
+- The `domain` parameter (without protocol) tells Clerk which domain the satellite is associated with
+- The `proxyUrl` parameter (with HTTPS protocol) specifies the full URL for OAuth redirect handling
+- Both parameters are necessary for proper OAuth flow completion and to prevent the "Missing domain and proxyUrl" error
 
 ### Files Modified
 1. `src/auth.js` - Added domain parameter to clerk.load()
