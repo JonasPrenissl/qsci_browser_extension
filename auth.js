@@ -75,13 +75,18 @@
             return;
           }
 
+          let messageReceived = false;
+
           // Listen for message from auth window
           const messageHandler = async (event) => {
             // Verify the message is from our auth window
             if (event.data && event.data.type === 'CLERK_AUTH_SUCCESS') {
               console.log('Q-SCI Auth: Received authentication success from Clerk');
               
+              messageReceived = true;
               window.removeEventListener('message', messageHandler);
+              clearInterval(checkClosed);
+              clearTimeout(timeoutId);
               
               try {
                 const authData = event.data.data;
@@ -111,7 +116,10 @@
               }
             } else if (event.data && event.data.type === 'CLERK_AUTH_ERROR') {
               console.error('Q-SCI Auth: Authentication error from Clerk');
+              messageReceived = true;
               window.removeEventListener('message', messageHandler);
+              clearInterval(checkClosed);
+              clearTimeout(timeoutId);
               
               if (authWindow && !authWindow.closed) {
                 authWindow.close();
@@ -124,22 +132,50 @@
           window.addEventListener('message', messageHandler);
 
           // Check if window was closed without completing auth
-          const checkClosed = setInterval(() => {
+          const checkClosed = setInterval(async () => {
             if (authWindow.closed) {
               clearInterval(checkClosed);
+              clearTimeout(timeoutId);
               window.removeEventListener('message', messageHandler);
-              reject(new Error('Authentication window was closed'));
+              
+              // Window closed - check if auth data was stored in chrome.storage
+              // This handles the case where postMessage was missed or failed
+              console.log('Q-SCI Auth: Auth window closed, checking for stored credentials...');
+              
+              // Wait a moment for any pending storage writes to complete
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              try {
+                const user = await this.getCurrentUser();
+                if (user && user.token && !messageReceived) {
+                  console.log('Q-SCI Auth: Found stored credentials after window close');
+                  resolve({
+                    email: user.email,
+                    subscriptionStatus: user.subscriptionStatus || 'free',
+                    userId: user.userId
+                  });
+                } else if (!messageReceived) {
+                  reject(new Error('Authentication window was closed before completing authentication'));
+                }
+              } catch (error) {
+                console.error('Q-SCI Auth: Error checking stored credentials:', error);
+                if (!messageReceived) {
+                  reject(new Error('Authentication window was closed'));
+                }
+              }
             }
-          }, 1000);
+          }, 500);
 
           // Timeout after 5 minutes
-          setTimeout(() => {
+          const timeoutId = setTimeout(() => {
             clearInterval(checkClosed);
             window.removeEventListener('message', messageHandler);
             if (authWindow && !authWindow.closed) {
               authWindow.close();
             }
-            reject(new Error('Authentication timeout'));
+            if (!messageReceived) {
+              reject(new Error('Authentication timeout'));
+            }
           }, 5 * 60 * 1000);
 
         } catch (error) {

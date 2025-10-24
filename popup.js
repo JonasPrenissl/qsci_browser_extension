@@ -252,6 +252,7 @@ async function handleLogin() {
   
   try {
     const userData = await window.QSCIAuth.login();
+    console.log('Q-SCI Debug Popup: Login completed, user data:', userData);
     currentUser = userData;
     
     // Show user status
@@ -262,6 +263,26 @@ async function handleLogin() {
     showSuccess('Login successful!');
   } catch (error) {
     console.error('Q-SCI Debug Popup: Login failed:', error);
+    
+    // Check if we have stored credentials even though login promise failed
+    // This handles edge cases where auth succeeded but promise resolution failed
+    try {
+      const isLoggedIn = await window.QSCIAuth.isLoggedIn();
+      if (isLoggedIn) {
+        console.log('Q-SCI Debug Popup: Found stored credentials despite error, attempting to use them');
+        currentUser = await window.QSCIAuth.getCurrentUser();
+        if (currentUser) {
+          showUserStatus(currentUser);
+          await updateUsageDisplay();
+          updatePageStatus();
+          showSuccess('Login successful!');
+          return;
+        }
+      }
+    } catch (checkError) {
+      console.error('Q-SCI Debug Popup: Error checking stored credentials:', checkError);
+    }
+    
     showError(error.message || 'Login failed. Please try again.');
   } finally {
     // Re-enable login button
