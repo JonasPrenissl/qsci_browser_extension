@@ -70,15 +70,11 @@ async function initializeClerk() {
     await waitForClerk();
 
     // Initialize Clerk
+    // IMPORTANT: This is a main app configuration, NOT a satellite app.
+    // We do NOT set isSatellite, domain, or proxyUrl as this extension is standalone.
     console.log('Q-SCI Clerk Auth: Initializing Clerk...');
     const clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
     await clerk.load({
-      // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
-      isSatellite: true,
-      // Provide both domain and proxyUrl for satellite configuration
-      // This prevents the "Missing domain and proxyUrl" error
-      domain: 'www.q-sci.org',
-      proxyUrl: 'https://www.q-sci.org',
       // Set all redirect URL variants to ensure OAuth callback works
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,

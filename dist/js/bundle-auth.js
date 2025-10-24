@@ -39508,16 +39508,6 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       console.log("Q-SCI Clerk Auth: Clerk instance created successfully");
       console.log("Q-SCI Clerk Auth: Loading Clerk SDK...");
       await clerk.load({
-        // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
-        isSatellite: true,
-        // Provide both domain and proxyUrl for satellite configuration
-        // This prevents the "Missing domain and proxyUrl" error
-        domain: "www.q-sci.org",
-        proxyUrl: "https://www.q-sci.org",
-        // IMPORTANT: signInUrl is required when using isSatellite: true for development instances
-        // This tells Clerk where the main sign-in page is located
-        signInUrl: AUTH_CALLBACK_URL,
-        signUpUrl: AUTH_CALLBACK_URL,
         // Set all redirect URL variants to ensure OAuth callback works
         signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
         signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,

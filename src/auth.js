@@ -119,21 +119,11 @@ async function initializeClerk() {
      * - Fallback URLs are used when no other redirect URL is specified
      * - Force URLs override any other redirect URL settings
      * 
-     * The isSatellite option tells Clerk this is a popup/satellite window, which
-     * prevents it from using window.location.href (chrome-extension://) as a redirect URL.
+     * IMPORTANT: This is a main app configuration, NOT a satellite app.
+     * We do NOT set isSatellite, domain, or proxyUrl as this extension is standalone.
      */
     console.log('Q-SCI Clerk Auth: Loading Clerk SDK...');
     await clerk.load({
-      // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
-      isSatellite: true,
-      // Provide both domain and proxyUrl for satellite configuration
-      // This prevents the "Missing domain and proxyUrl" error
-      domain: 'www.q-sci.org',
-      proxyUrl: 'https://www.q-sci.org',
-      // IMPORTANT: signInUrl is required when using isSatellite: true for development instances
-      // This tells Clerk where the main sign-in page is located
-      signInUrl: AUTH_CALLBACK_URL,
-      signUpUrl: AUTH_CALLBACK_URL,
       // Set all redirect URL variants to ensure OAuth callback works
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
