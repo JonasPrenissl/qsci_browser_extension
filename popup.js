@@ -199,9 +199,24 @@ function setupEventListeners() {
 async function initializeAuth() {
   console.log('Q-SCI Debug Popup: Initializing authentication...');
   
+  // Debug: Check all storage keys
+  try {
+    const allStorage = await chrome.storage.local.get(null);
+    console.log('Q-SCI Debug Popup: All chrome.storage.local keys:', Object.keys(allStorage));
+    console.log('Q-SCI Debug Popup: Auth-related storage:', {
+      hasAuthToken: !!allStorage.qsci_auth_token,
+      hasEmail: !!allStorage.qsci_user_email,
+      hasUserId: !!allStorage.qsci_user_id,
+      subscriptionStatus: allStorage.qsci_subscription_status
+    });
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error checking storage:', error);
+  }
+  
   try {
     // Check if user is logged in
     const isLoggedIn = await window.QSCIAuth.isLoggedIn();
+    console.log('Q-SCI Debug Popup: isLoggedIn returned:', isLoggedIn);
     
     if (isLoggedIn) {
       // Get current user and verify auth
@@ -232,6 +247,7 @@ async function initializeAuth() {
         }
       }
     } else {
+      console.log('Q-SCI Debug Popup: User not logged in, showing login form');
       showLoginForm();
     }
   } catch (error) {

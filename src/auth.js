@@ -78,7 +78,7 @@ async function initializeClerk() {
     if (typeof Clerk === 'undefined') {
       const errorMsg = 'Clerk SDK not loaded. Please check your internet connection and try again.';
       console.error('Q-SCI Clerk Auth:', errorMsg);
-      showError(errorMsg);
+      showError(errorMsg, true);
       return;
     }
     console.log('Q-SCI Clerk Auth: Clerk SDK loaded successfully');
@@ -92,7 +92,7 @@ async function initializeClerk() {
         'Fehler beim Initialisieren der Authentifizierung: Clerk API-Schlüssel fehlt. Bitte kontaktieren Sie den Administrator.';
       console.error('Q-SCI Clerk Auth: Invalid or missing Clerk publishable key');
       console.error('Q-SCI Clerk Auth: CLERK_PUBLISHABLE_KEY value:', CLERK_PUBLISHABLE_KEY);
-      showError(errorMsg);
+      showError(errorMsg, true);
       return;
     }
     
@@ -223,13 +223,9 @@ async function initializeClerk() {
         } else if (checkCount >= maxChecks) {
           console.warn('Q-SCI Clerk Auth: Maximum check attempts reached');
           clearInterval(sessionCheckInterval);
-          showError('Authentication timeout. Please try again.');
+          showError('Authentication timeout. Please try again.', true);
           
-          // Show retry section
-          const retrySection = document.getElementById('retry-section');
-          if (retrySection) {
-            retrySection.style.display = 'block';
-          }
+          // Retry section will be shown by showError
         }
         
         // Update tracking state
@@ -256,7 +252,25 @@ async function initializeClerk() {
       errorMessage += ` (${error.message})`;
     }
     
-    showError(errorMessage);
+    // Check if this might be a file loading issue
+    const fileLoadingErrorPatterns = [
+      'Failed to fetch',
+      'NetworkError',
+      'Failed to load',
+      'Cannot load',
+      'import failed',
+      'Module not found'
+    ];
+    
+    const isFileLoadingError = fileLoadingErrorPatterns.some(pattern => 
+      error.message && error.message.includes(pattern)
+    );
+    
+    if (isFileLoadingError) {
+      errorMessage = 'Failed to load authentication components. Please check your internet connection and ensure the extension is properly installed.';
+    }
+    
+    showError(errorMessage, true); // Show retry button on initialization errors
   }
 }
 
@@ -336,16 +350,27 @@ async function handleSignInSuccess(clerk) {
 
     // ALWAYS store auth data in chrome.storage first before closing window
     // This ensures data is persisted even if postMessage fails or is delayed
-    if (typeof chrome !== 'undefined' && chrome.storage) {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       console.log('Q-SCI Clerk Auth: Saving auth data to chrome.storage...');
-      await chrome.storage.local.set({
-        'qsci_auth_token': authData.token,
-        'qsci_user_email': authData.email,
-        'qsci_subscription_status': authData.subscriptionStatus,
-        'qsci_user_id': authData.userId,
-        'qsci_clerk_session_id': authData.clerkSessionId
-      });
-      console.log('Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully');
+      try {
+        await chrome.storage.local.set({
+          'qsci_auth_token': authData.token,
+          'qsci_user_email': authData.email,
+          'qsci_subscription_status': authData.subscriptionStatus,
+          'qsci_user_id': authData.userId,
+          'qsci_clerk_session_id': authData.clerkSessionId
+        });
+        console.log('Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully');
+        
+        // Verify the write was successful
+        const verification = await chrome.storage.local.get(['qsci_auth_token', 'qsci_user_email']);
+        console.log('Q-SCI Clerk Auth: Verification - token saved:', !!verification.qsci_auth_token, 'email saved:', !!verification.qsci_user_email);
+      } catch (storageError) {
+        console.error('Q-SCI Clerk Auth: Failed to save to chrome.storage:', storageError);
+        // Don't throw - still try postMessage as fallback
+      }
+    } else {
+      console.warn('Q-SCI Clerk Auth: chrome.storage not available, relying on postMessage only');
     }
 
     // If we're in an extension context (opened as popup from extension)
@@ -369,29 +394,32 @@ async function handleSignInSuccess(clerk) {
       console.log('Q-SCI Clerk Auth: Messages sent to opener window');
 
       // Show success and close window after a longer delay to ensure message delivery
+      // and storage persistence
       showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
+      
+      // Wait longer to ensure chrome.storage has fully persisted
       setTimeout(() => {
         console.log('Q-SCI Clerk Auth: Closing authentication window');
         window.close();
-      }, 2000);
+      }, 2500); // Increased from 2000ms to 2500ms
     } else {
       console.log('Q-SCI Clerk Auth: No opener window, auth data already saved to storage');
       showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
       
-      // Close window after a short delay
+      // Close window after ensuring storage is persisted
       setTimeout(() => {
         window.close();
-      }, 2000);
+      }, 2500); // Increased from 2000ms to 2500ms
     }
 
   } catch (error) {
     console.error('Q-SCI Clerk Auth: Sign-in handling error:', error);
-    showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorProcess') : 'Failed to process authentication. Please try again.');
+    showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorProcess') : 'Failed to process authentication. Please try again.', true);
     isHandlingSignIn = false; // Reset on error
   }
 }
 
-function showError(message) {
+function showError(message, showRetry = false) {
   const errorEl = document.getElementById('error-message');
   if (errorEl) {
     errorEl.textContent = message;
@@ -403,10 +431,10 @@ function showError(message) {
     successEl.style.display = 'none';
   }
   
-  // Show retry button on error
+  // Show or hide retry button based on parameter
   const retrySection = document.getElementById('retry-section');
   if (retrySection) {
-    retrySection.style.display = 'block';
+    retrySection.style.display = showRetry ? 'block' : 'none';
   }
 }
 
