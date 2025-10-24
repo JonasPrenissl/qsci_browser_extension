@@ -82,6 +82,11 @@
             // Verify the message is from our auth window
             if (event.data && event.data.type === 'CLERK_AUTH_SUCCESS') {
               console.log('Q-SCI Auth: Received authentication success from Clerk');
+              console.log('Q-SCI Auth: Auth data received:', {
+                hasToken: !!event.data.data?.token,
+                hasEmail: !!event.data.data?.email,
+                hasUserId: !!event.data.data?.userId
+              });
               
               messageReceived = true;
               window.removeEventListener('message', messageHandler);
@@ -91,7 +96,12 @@
               try {
                 const authData = event.data.data;
                 
+                if (!authData || !authData.token || !authData.email) {
+                  throw new Error('Invalid auth data received from Clerk window');
+                }
+                
                 // Store auth data
+                console.log('Q-SCI Auth: Storing received auth data...');
                 await this._storeAuthData({
                   token: authData.token,
                   email: authData.email,
@@ -99,6 +109,7 @@
                   clerkSessionId: authData.clerkSessionId,
                   subscriptionStatus: authData.subscriptionStatus || 'free'
                 });
+                console.log('Q-SCI Auth: Auth data stored via postMessage');
 
                 // Close the auth window if still open
                 if (authWindow && !authWindow.closed) {
