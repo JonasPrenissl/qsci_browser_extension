@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q-SCI Extension Login</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 450px;
+      padding: 40px;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .logo-text {
+      font-size: 36px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+
+    .logo-subtitle {
+      font-size: 16px;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+
+    .extension-badge {
+      display: inline-block;
+      background: #eff6ff;
+      color: #1e40af;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    #clerk-container {
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #clerk-container > div {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 0;
+      color: #6b7280;
+    }
+
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 16px;
+      text-align: center;
+      display: none;
+    }
+
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 16px;
+      text-align: center;
+      display: none;
+    }
+
+    .info-box {
+      background: #f3f4f6;
+      padding: 16px;
+      border-radius: 6px;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #374151;
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #1f2937;
+    }
+
+    .info-box ul {
+      list-style-position: inside;
+      padding-left: 0;
+    }
+
+    .info-box li {
+      margin: 4px 0;
+    }
+
+    .help-text {
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <div class="logo-text">Q‑SCI</div>
+      <div class="logo-subtitle">Scientific Paper Quality Evaluator</div>
+      <div class="extension-badge">🔌 Browser Extension Login</div>
+    </div>
+
+    <div id="clerk-container">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>Loading authentication...</div>
+      </div>
+    </div>
+
+    <div id="error-message" class="error"></div>
+    <div id="success-message" class="success"></div>
+
+    <div class="info-box">
+      <strong>What you get:</strong>
+      <ul>
+        <li><strong>Free:</strong> 10 analyses per day</li>
+        <li><strong>Subscribed:</strong> 100 analyses per day</li>
+      </ul>
+    </div>
+
+    <div class="help-text">
+      Please sign in to continue using the Q-SCI browser extension
+    </div>
+  </div>
+
+  <!-- Load Clerk from CDN -->
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA"
+    src="https://optimal-jennet-35.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+
+  <script>
+    console.log('Q-SCI Extension Login: Page loaded');
+
+    // Callback URL for Clerk after authentication
+    const AUTH_SUCCESS_URL = 'https://www.q-sci.org/extension-auth-success';
+
+    // Function to wait for Clerk to be available
+    function waitForClerk(timeout = 30000) {
+      return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        
+        const checkClerk = () => {
+          if (typeof Clerk !== 'undefined') {
+            console.log('Q-SCI Extension Login: Clerk SDK loaded');
+            resolve();
+          } else if (Date.now() - startTime > timeout) {
+            reject(new Error('Timeout waiting for Clerk SDK'));
+          } else {
+            setTimeout(checkClerk, 100);
+          }
+        };
+        
+        checkClerk();
+      });
+    }
+
+    // Initialize Clerk authentication
+    async function initializeClerk() {
+      try {
+        console.log('Q-SCI Extension Login: Waiting for Clerk SDK...');
+        await waitForClerk();
+
+        console.log('Q-SCI Extension Login: Initializing Clerk...');
+        const clerk = new Clerk('pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA');
+        await clerk.load({
+          signInFallbackRedirectUrl: AUTH_SUCCESS_URL,
+          signUpFallbackRedirectUrl: AUTH_SUCCESS_URL,
+          signInForceRedirectUrl: AUTH_SUCCESS_URL,
+          signUpForceRedirectUrl: AUTH_SUCCESS_URL,
+          afterSignInUrl: AUTH_SUCCESS_URL,
+          afterSignUpUrl: AUTH_SUCCESS_URL
+        });
+
+        console.log('Q-SCI Extension Login: Clerk initialized');
+
+        // Check if user is already signed in
+        if (clerk.user) {
+          console.log('Q-SCI Extension Login: User already signed in, redirecting...');
+          window.location.href = AUTH_SUCCESS_URL;
+          return;
+        }
+
+        // Mount Clerk sign-in component
+        const clerkContainer = document.getElementById('clerk-container');
+        clerkContainer.innerHTML = '';
+
+        console.log('Q-SCI Extension Login: Mounting sign-in component...');
+        clerk.mountSignIn(clerkContainer, {
+          signInForceRedirectUrl: AUTH_SUCCESS_URL,
+          signUpForceRedirectUrl: AUTH_SUCCESS_URL,
+          signInFallbackRedirectUrl: AUTH_SUCCESS_URL,
+          signUpFallbackRedirectUrl: AUTH_SUCCESS_URL,
+          afterSignInUrl: AUTH_SUCCESS_URL,
+          afterSignUpUrl: AUTH_SUCCESS_URL,
+          routing: 'hash',
+          appearance: {
+            elements: {
+              rootBox: {
+                width: '100%',
+                margin: '0 auto'
+              },
+              card: {
+                margin: '0 auto'
+              }
+            }
+          }
+        });
+
+        console.log('Q-SCI Extension Login: Sign-in component mounted');
+
+      } catch (error) {
+        console.error('Q-SCI Extension Login: Initialization error:', error);
+        showError('Failed to initialize authentication. Please refresh the page.');
+      }
+    }
+
+    // Start initialization when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeClerk);
+    } else {
+      initializeClerk();
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error-message');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      
+      const successEl = document.getElementById('success-message');
+      successEl.style.display = 'none';
+    }
+
+    function showSuccess(message) {
+      const successEl = document.getElementById('success-message');
+      successEl.textContent = message;
+      successEl.style.display = 'block';
+      
+      const errorEl = document.getElementById('error-message');
+      errorEl.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

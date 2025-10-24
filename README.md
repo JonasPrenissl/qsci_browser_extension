@@ -6,6 +6,20 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
 
 👉 **New to this extension?** See **[QUICK_START.md](QUICK_START.md)** for a 5-minute setup guide!
 
+### ✅ FIXED: Clerk Invalid URL Scheme Error
+
+**Previous Issue:** `{"errors":[{"message":"Invalid URL scheme",...}]}`
+
+**Status:** ✅ **RESOLVED** - The extension now uses web-based authentication to avoid chrome-extension:// URL issues.
+
+**What Changed:**
+- Authentication now happens on `https://www.q-sci.org/extension-login` (website)
+- After login, token is sent back to extension via postMessage
+- No more "Invalid URL scheme" errors from Clerk
+- Seamless authentication flow with auto-closing tab
+
+**For Production:** Deploy the website authentication pages. See [CLERK_EXTENSION_AUTH_DEPLOYMENT.md](CLERK_EXTENSION_AUTH_DEPLOYMENT.md) for details.
+
 ### ✅ FIXED: Clerk API Key Error
 
 **Previous Issue:** "Fehler beim Initialisieren der Authentifizierung: Clerk API-Schlüssel fehlt"

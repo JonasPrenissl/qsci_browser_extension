@@ -5,10 +5,11 @@
   'use strict';
 
   // Clerk authentication configuration
-  // The extension uses Clerk for authentication via a pop-up window
-  // Users authenticate through Clerk's hosted UI, and the extension receives
+  // The extension uses Clerk for authentication via a website page
+  // This avoids the "Invalid URL scheme" error that occurs when using chrome-extension:// URLs
+  // Users authenticate through a website page, and the extension receives
   // the session token and user information via postMessage
-  const CLERK_AUTH_URL = chrome.runtime.getURL('clerk-auth.html');
+  const CLERK_AUTH_URL = 'https://www.q-sci.org/extension-login';
   
   // Backend API base URL - points to q-sci.org backend (if needed for additional verification)
   const API_BASE_URL = 'https://www.q-sci.org/api';

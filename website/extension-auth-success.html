@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q-SCI Login Successful</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 450px;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .logo-text {
+      font-size: 36px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+
+    .success-icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+    }
+
+    .message {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 12px;
+    }
+
+    .submessage {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 24px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px 0;
+      color: #6b7280;
+    }
+
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 16px;
+      text-align: center;
+      display: none;
+    }
+
+    .close-button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .close-button:hover {
+      background: #5568d3;
+    }
+
+    .info-text {
+      color: #6b7280;
+      font-size: 13px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <div class="logo-text">Q‑SCI</div>
+    </div>
+
+    <div id="content">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>Processing authentication...</div>
+      </div>
+    </div>
+
+    <div id="error-message" class="error"></div>
+    
+    <button id="close-button" class="close-button" onclick="window.close()">Close Window</button>
+  </div>
+
+  <!-- Load Clerk from CDN -->
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA"
+    src="https://optimal-jennet-35.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+
+  <script>
+    console.log('Q-SCI Auth Success: Page loaded');
+
+    const API_BASE_URL = 'https://www.q-sci.org/api';
+
+    // Function to wait for Clerk to be available
+    function waitForClerk(timeout = 30000) {
+      return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        
+        const checkClerk = () => {
+          if (typeof Clerk !== 'undefined') {
+            console.log('Q-SCI Auth Success: Clerk SDK loaded');
+            resolve();
+          } else if (Date.now() - startTime > timeout) {
+            reject(new Error('Timeout waiting for Clerk SDK'));
+          } else {
+            setTimeout(checkClerk, 100);
+          }
+        };
+        
+        checkClerk();
+      });
+    }
+
+    // Process authentication and send token to extension
+    async function processAuthentication() {
+      try {
+        console.log('Q-SCI Auth Success: Waiting for Clerk SDK...');
+        await waitForClerk();
+
+        console.log('Q-SCI Auth Success: Initializing Clerk...');
+        const clerk = new Clerk('pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA');
+        await clerk.load();
+
+        console.log('Q-SCI Auth Success: Clerk initialized');
+
+        // Check if user is signed in
+        if (!clerk.user || !clerk.session) {
+          throw new Error('No active session found');
+        }
+
+        const user = clerk.user;
+        const session = clerk.session;
+
+        console.log('Q-SCI Auth Success: User authenticated:', user.id);
+
+        // Get session token
+        const token = await session.getToken();
+
+        // Get user email
+        const email = user.primaryEmailAddress?.emailAddress || user.emailAddresses[0]?.emailAddress;
+
+        // Fetch subscription status from backend
+        let subscriptionStatus = 'free';
+        try {
+          const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const data = await response.json();
+              subscriptionStatus = data.subscription_status || 'free';
+              console.log('Q-SCI Auth Success: Subscription status from backend:', subscriptionStatus);
+            }
+          } else {
+            console.warn('Q-SCI Auth Success: Failed to fetch subscription status, using fallback');
+            // Fallback: Check publicMetadata for plan_id
+            if (user.publicMetadata && user.publicMetadata.plan_id) {
+              subscriptionStatus = 'subscribed';
+            }
+          }
+        } catch (error) {
+          console.error('Q-SCI Auth Success: Error fetching subscription status:', error);
+          // Fallback: Check publicMetadata for plan_id
+          if (user.publicMetadata && user.publicMetadata.plan_id) {
+            subscriptionStatus = 'subscribed';
+          }
+        }
+
+        // Prepare auth data
+        const authData = {
+          token: token,
+          email: email,
+          subscriptionStatus: subscriptionStatus,
+          userId: user.id,
+          clerkSessionId: session.id
+        };
+
+        console.log('Q-SCI Auth Success: Sending auth data to extension via postMessage');
+
+        // Send message to extension via window.opener (popup case)
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({
+            type: 'CLERK_AUTH_SUCCESS',
+            data: authData
+          }, '*');
+
+          showSuccess('Authentication successful! You can close this window.');
+          
+          // Auto-close after 2 seconds
+          setTimeout(() => {
+            window.close();
+          }, 2000);
+        } else {
+          // Fallback: Try to communicate via chrome.runtime if extension context available
+          console.log('Q-SCI Auth Success: No opener window, trying chrome.runtime...');
+          
+          // Send message to any listening extension
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            try {
+              // Try to send to the extension
+              // Note: This requires the extension to have a message listener
+              chrome.runtime.sendMessage(
+                // Extension ID would need to be known or we broadcast
+                {
+                  type: 'CLERK_AUTH_SUCCESS',
+                  data: authData
+                },
+                (response) => {
+                  if (chrome.runtime.lastError) {
+                    console.log('Q-SCI Auth Success: chrome.runtime.sendMessage failed:', chrome.runtime.lastError.message);
+                    showManualInstructions(authData);
+                  } else {
+                    console.log('Q-SCI Auth Success: Message sent successfully');
+                    showSuccess('Authentication successful! You can close this window.');
+                    document.getElementById('close-button').style.display = 'inline-block';
+                  }
+                }
+              );
+            } catch (error) {
+              console.error('Q-SCI Auth Success: Error sending message:', error);
+              showManualInstructions(authData);
+            }
+          } else {
+            showManualInstructions(authData);
+          }
+        }
+
+      } catch (error) {
+        console.error('Q-SCI Auth Success: Error processing authentication:', error);
+        showError('Authentication processing failed: ' + error.message);
+        document.getElementById('close-button').style.display = 'inline-block';
+      }
+    }
+
+    function showSuccess(message) {
+      const content = document.getElementById('content');
+      content.innerHTML = `
+        <div class="success-icon">✅</div>
+        <div class="message">Success!</div>
+        <div class="submessage">${message}</div>
+      `;
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error-message');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      
+      const content = document.getElementById('content');
+      content.innerHTML = '';
+    }
+
+    function showManualInstructions(authData) {
+      const content = document.getElementById('content');
+      content.innerHTML = `
+        <div class="success-icon">✅</div>
+        <div class="message">Authentication Successful!</div>
+        <div class="submessage">Please return to the extension and try logging in again.</div>
+        <div class="info-text">The extension should automatically detect your login. If not, please close this window and click the login button in the extension again.</div>
+      `;
+      document.getElementById('close-button').style.display = 'inline-block';
+    }
+
+    // Start processing when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', processAuthentication);
+    } else {
+      processAuthentication();
+    }
+  </script>
+</body>
+</html>
