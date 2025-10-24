@@ -39463,8 +39463,6 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   }
   var CLERK_PUBLISHABLE_KEY = clerkConfig ? clerkConfig.publishableKey : void 0;
   console.log("Q-SCI Clerk Auth: CLERK_PUBLISHABLE_KEY extracted:", CLERK_PUBLISHABLE_KEY ? "YES" : "NO");
-  var SUCCESS_CLOSE_MESSAGE = "Success! Closing window...";
-  var WINDOW_CLOSE_DELAY_MS = 1500;
   var AUTH_CALLBACK_URL = "https://www.q-sci.org/auth-callback";
   var currentLanguage = "de";
   async function initializeI18n() {
@@ -39662,39 +39660,40 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
         userId: user.id,
         clerkSessionId: session.id
       };
-      let targetOrigin = "*";
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        console.log("Q-SCI Clerk Auth: Saving auth data to chrome.storage...");
+        await chrome.storage.local.set({
+          "qsci_auth_token": authData.token,
+          "qsci_user_email": authData.email,
+          "qsci_subscription_status": authData.subscriptionStatus,
+          "qsci_user_id": authData.userId,
+          "qsci_clerk_session_id": authData.clerkSessionId
+        });
+        console.log("Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully");
+      }
       if (window.opener && !window.opener.closed) {
-        try {
-          if (window.opener.location && window.opener.location.origin) {
-            targetOrigin = window.opener.location.origin;
+        console.log("Q-SCI Clerk Auth: Posting message to opener window...");
+        for (let i2 = 0; i2 < 3; i2++) {
+          window.opener.postMessage({
+            type: "CLERK_AUTH_SUCCESS",
+            data: authData
+          }, "*");
+          if (i2 < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
           }
-        } catch (e2) {
-          console.log("Q-SCI Clerk Auth: Cannot determine opener origin, using wildcard");
         }
-        window.opener.postMessage({
-          type: "CLERK_AUTH_SUCCESS",
-          data: authData
-        }, targetOrigin);
-        showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : SUCCESS_CLOSE_MESSAGE);
+        console.log("Q-SCI Clerk Auth: Messages sent to opener window");
+        showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : "Success! Closing window...");
+        setTimeout(() => {
+          console.log("Q-SCI Clerk Auth: Closing authentication window");
+          window.close();
+        }, 2e3);
+      } else {
+        console.log("Q-SCI Clerk Auth: No opener window, auth data already saved to storage");
+        showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : "Success! Closing window...");
         setTimeout(() => {
           window.close();
-        }, WINDOW_CLOSE_DELAY_MS);
-      } else {
-        if (typeof chrome !== "undefined" && chrome.storage) {
-          await chrome.storage.local.set({
-            "qsci_auth_token": authData.token,
-            "qsci_user_email": authData.email,
-            "qsci_subscription_status": authData.subscriptionStatus,
-            "qsci_user_id": authData.userId,
-            "qsci_clerk_session_id": authData.clerkSessionId
-          });
-          showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : SUCCESS_CLOSE_MESSAGE);
-          setTimeout(() => {
-            window.close();
-          }, WINDOW_CLOSE_DELAY_MS);
-        } else {
-          showError(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorExtension") : "Please open this page from the extension.");
-        }
+        }, 2e3);
       }
     } catch (error) {
       console.error("Q-SCI Clerk Auth: Sign-in handling error:", error);

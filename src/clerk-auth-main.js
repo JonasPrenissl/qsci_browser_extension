@@ -282,39 +282,54 @@ async function handleSignInSuccess(clerk) {
       clerkSessionId: session.id
     };
 
+    // ALWAYS store auth data in chrome.storage first before closing window
+    // This ensures data is persisted even if postMessage fails or is delayed
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      console.log('Q-SCI Clerk Auth: Saving auth data to chrome.storage...');
+      await chrome.storage.local.set({
+        'qsci_auth_token': authData.token,
+        'qsci_user_email': authData.email,
+        'qsci_subscription_status': authData.subscriptionStatus,
+        'qsci_user_id': authData.userId,
+        'qsci_clerk_session_id': authData.clerkSessionId
+      });
+      console.log('Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully');
+    }
+
     // If we're in an extension context (opened as popup from extension)
     if (window.opener && !window.opener.closed) {
-      // Post message to opener window
-      window.opener.postMessage({
-        type: 'CLERK_AUTH_SUCCESS',
-        data: authData
-      }, '*');
+      console.log('Q-SCI Clerk Auth: Posting message to opener window...');
+      
+      // Post message to opener window multiple times to ensure delivery
+      // Sometimes the first message can be missed if timing is off
+      for (let i = 0; i < 3; i++) {
+        window.opener.postMessage({
+          type: 'CLERK_AUTH_SUCCESS',
+          data: authData
+        }, '*');
+        
+        // Small delay between retries
+        if (i < 2) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      console.log('Q-SCI Clerk Auth: Messages sent to opener window');
 
-      // Show success and close window after a short delay
+      // Show success and close window after a longer delay to ensure message delivery
       showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
       setTimeout(() => {
+        console.log('Q-SCI Clerk Auth: Closing authentication window');
         window.close();
-      }, 1500);
+      }, 2000);
     } else {
-      // Try to communicate with extension directly via chrome.storage
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        await chrome.storage.local.set({
-          'qsci_auth_token': authData.token,
-          'qsci_user_email': authData.email,
-          'qsci_subscription_status': authData.subscriptionStatus,
-          'qsci_user_id': authData.userId,
-          'qsci_clerk_session_id': authData.clerkSessionId
-        });
-
-        showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
-        
-        // Close window after a short delay
-        setTimeout(() => {
-          window.close();
-        }, 1500);
-      } else {
-        showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorExtension') : 'Please open this page from the extension.');
-      }
+      console.log('Q-SCI Clerk Auth: No opener window, auth data already saved to storage');
+      showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
+      
+      // Close window after a short delay
+      setTimeout(() => {
+        window.close();
+      }, 2000);
     }
 
   } catch (error) {

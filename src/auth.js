@@ -334,54 +334,54 @@ async function handleSignInSuccess(clerk) {
       clerkSessionId: session.id
     };
 
-    // Validate opener origin if possible (best security practice)
-    let targetOrigin = '*';
-    
-    // Try to determine if we're in an extension context
+    // ALWAYS store auth data in chrome.storage first before closing window
+    // This ensures data is persisted even if postMessage fails or is delayed
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      console.log('Q-SCI Clerk Auth: Saving auth data to chrome.storage...');
+      await chrome.storage.local.set({
+        'qsci_auth_token': authData.token,
+        'qsci_user_email': authData.email,
+        'qsci_subscription_status': authData.subscriptionStatus,
+        'qsci_user_id': authData.userId,
+        'qsci_clerk_session_id': authData.clerkSessionId
+      });
+      console.log('Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully');
+    }
+
+    // If we're in an extension context (opened as popup from extension)
     if (window.opener && !window.opener.closed) {
-      // For browser extensions, the opener might have a chrome-extension:// origin
-      // We use '*' for now but could be more restrictive if needed
-      try {
-        // Attempt to get the opener's origin (may fail due to CORS)
-        if (window.opener.location && window.opener.location.origin) {
-          targetOrigin = window.opener.location.origin;
+      console.log('Q-SCI Clerk Auth: Posting message to opener window...');
+      
+      // Post message to opener window multiple times to ensure delivery
+      // Sometimes the first message can be missed if timing is off
+      for (let i = 0; i < 3; i++) {
+        window.opener.postMessage({
+          type: 'CLERK_AUTH_SUCCESS',
+          data: authData
+        }, '*');
+        
+        // Small delay between retries
+        if (i < 2) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
-      } catch (e) {
-        // If we can't access opener's origin (cross-origin), use '*'
-        console.log('Q-SCI Clerk Auth: Cannot determine opener origin, using wildcard');
       }
       
-      // Post message to opener window
-      window.opener.postMessage({
-        type: 'CLERK_AUTH_SUCCESS',
-        data: authData
-      }, targetOrigin);
+      console.log('Q-SCI Clerk Auth: Messages sent to opener window');
 
-      // Show success and close window after a short delay
-      showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : SUCCESS_CLOSE_MESSAGE);
+      // Show success and close window after a longer delay to ensure message delivery
+      showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
+      setTimeout(() => {
+        console.log('Q-SCI Clerk Auth: Closing authentication window');
+        window.close();
+      }, 2000);
+    } else {
+      console.log('Q-SCI Clerk Auth: No opener window, auth data already saved to storage');
+      showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : 'Success! Closing window...');
+      
+      // Close window after a short delay
       setTimeout(() => {
         window.close();
-      }, WINDOW_CLOSE_DELAY_MS);
-    } else {
-      // Fallback: Try to communicate with extension directly via chrome.storage
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        await chrome.storage.local.set({
-          'qsci_auth_token': authData.token,
-          'qsci_user_email': authData.email,
-          'qsci_subscription_status': authData.subscriptionStatus,
-          'qsci_user_id': authData.userId,
-          'qsci_clerk_session_id': authData.clerkSessionId
-        });
-
-        showSuccess(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.successClose') : SUCCESS_CLOSE_MESSAGE);
-        
-        // Close window after a short delay
-        setTimeout(() => {
-          window.close();
-        }, WINDOW_CLOSE_DELAY_MS);
-      } else {
-        showError(window.QSCIi18n ? window.QSCIi18n.t('clerkAuth.errorExtension') : 'Please open this page from the extension.');
-      }
+      }, 2000);
     }
 
   } catch (error) {
