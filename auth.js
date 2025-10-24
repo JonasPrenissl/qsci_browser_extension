@@ -142,8 +142,9 @@
               // This handles the case where postMessage was missed or failed
               console.log('Q-SCI Auth: Auth window closed, checking for stored credentials...');
               
-              // Wait a moment for any pending storage writes to complete
-              await new Promise(resolve => setTimeout(resolve, 500));
+              // Wait longer for any pending storage writes to complete
+              // Increased from 500ms to 1000ms to ensure storage persistence
+              await new Promise(resolve => setTimeout(resolve, 1000));
               
               try {
                 const user = await this.getCurrentUser();
@@ -212,8 +213,11 @@
      */
     async isLoggedIn() {
       try {
+        console.log('Q-SCI Auth: Checking if user is logged in...');
         const result = await chrome.storage.local.get(STORAGE_KEYS.AUTH_TOKEN);
-        return !!(result && result[STORAGE_KEYS.AUTH_TOKEN]);
+        const isLoggedIn = !!(result && result[STORAGE_KEYS.AUTH_TOKEN]);
+        console.log('Q-SCI Auth: isLoggedIn result:', isLoggedIn, 'token exists:', !!result[STORAGE_KEYS.AUTH_TOKEN]);
+        return isLoggedIn;
       } catch (error) {
         console.error('Q-SCI Auth: Error checking login status:', error);
         return false;
@@ -226,6 +230,7 @@
      */
     async getCurrentUser() {
       try {
+        console.log('Q-SCI Auth: Getting current user...');
         const result = await chrome.storage.local.get([
           STORAGE_KEYS.AUTH_TOKEN,
           STORAGE_KEYS.USER_EMAIL,
@@ -234,17 +239,28 @@
           STORAGE_KEYS.SUBSCRIPTION_STATUS
         ]);
 
+        console.log('Q-SCI Auth: Storage keys retrieved:', {
+          hasToken: !!result[STORAGE_KEYS.AUTH_TOKEN],
+          hasEmail: !!result[STORAGE_KEYS.USER_EMAIL],
+          hasUserId: !!result[STORAGE_KEYS.USER_ID],
+          subscriptionStatus: result[STORAGE_KEYS.SUBSCRIPTION_STATUS]
+        });
+
         if (!result || !result[STORAGE_KEYS.AUTH_TOKEN]) {
+          console.log('Q-SCI Auth: No auth token found in storage');
           return null;
         }
 
-        return {
+        const user = {
           token: result[STORAGE_KEYS.AUTH_TOKEN],
           email: result[STORAGE_KEYS.USER_EMAIL],
           userId: result[STORAGE_KEYS.USER_ID],
           clerkSessionId: result[STORAGE_KEYS.CLERK_SESSION_ID],
           subscriptionStatus: result[STORAGE_KEYS.SUBSCRIPTION_STATUS] || 'free'
         };
+        
+        console.log('Q-SCI Auth: Current user:', { email: user.email, subscriptionStatus: user.subscriptionStatus });
+        return user;
       } catch (error) {
         console.error('Q-SCI Auth: Error getting current user:', error);
         return null;
@@ -403,13 +419,39 @@
      * @private
      */
     async _storeAuthData({ token, email, userId, clerkSessionId, subscriptionStatus }) {
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.AUTH_TOKEN]: token,
-        [STORAGE_KEYS.USER_EMAIL]: email,
-        [STORAGE_KEYS.USER_ID]: userId,
-        [STORAGE_KEYS.CLERK_SESSION_ID]: clerkSessionId,
-        [STORAGE_KEYS.SUBSCRIPTION_STATUS]: subscriptionStatus
+      console.log('Q-SCI Auth: Storing auth data...', {
+        hasToken: !!token,
+        email: email,
+        userId: userId,
+        subscriptionStatus: subscriptionStatus
       });
+      
+      try {
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.AUTH_TOKEN]: token,
+          [STORAGE_KEYS.USER_EMAIL]: email,
+          [STORAGE_KEYS.USER_ID]: userId,
+          [STORAGE_KEYS.CLERK_SESSION_ID]: clerkSessionId,
+          [STORAGE_KEYS.SUBSCRIPTION_STATUS]: subscriptionStatus
+        });
+        
+        console.log('Q-SCI Auth: Auth data stored successfully');
+        
+        // Verify the data was written correctly
+        const verification = await chrome.storage.local.get([
+          STORAGE_KEYS.AUTH_TOKEN,
+          STORAGE_KEYS.USER_EMAIL,
+          STORAGE_KEYS.USER_ID
+        ]);
+        console.log('Q-SCI Auth: Verification - data in storage:', {
+          hasToken: !!verification[STORAGE_KEYS.AUTH_TOKEN],
+          email: verification[STORAGE_KEYS.USER_EMAIL],
+          userId: verification[STORAGE_KEYS.USER_ID]
+        });
+      } catch (error) {
+        console.error('Q-SCI Auth: Error storing auth data:', error);
+        throw error;
+      }
     },
 
     /**

@@ -39660,16 +39660,24 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
         userId: user.id,
         clerkSessionId: session.id
       };
-      if (typeof chrome !== "undefined" && chrome.storage) {
+      if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
         console.log("Q-SCI Clerk Auth: Saving auth data to chrome.storage...");
-        await chrome.storage.local.set({
-          "qsci_auth_token": authData.token,
-          "qsci_user_email": authData.email,
-          "qsci_subscription_status": authData.subscriptionStatus,
-          "qsci_user_id": authData.userId,
-          "qsci_clerk_session_id": authData.clerkSessionId
-        });
-        console.log("Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully");
+        try {
+          await chrome.storage.local.set({
+            "qsci_auth_token": authData.token,
+            "qsci_user_email": authData.email,
+            "qsci_subscription_status": authData.subscriptionStatus,
+            "qsci_user_id": authData.userId,
+            "qsci_clerk_session_id": authData.clerkSessionId
+          });
+          console.log("Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully");
+          const verification = await chrome.storage.local.get(["qsci_auth_token", "qsci_user_email"]);
+          console.log("Q-SCI Clerk Auth: Verification - token saved:", !!verification.qsci_auth_token, "email saved:", !!verification.qsci_user_email);
+        } catch (storageError) {
+          console.error("Q-SCI Clerk Auth: Failed to save to chrome.storage:", storageError);
+        }
+      } else {
+        console.warn("Q-SCI Clerk Auth: chrome.storage not available, relying on postMessage only");
       }
       if (window.opener && !window.opener.closed) {
         console.log("Q-SCI Clerk Auth: Posting message to opener window...");
@@ -39687,13 +39695,13 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
         setTimeout(() => {
           console.log("Q-SCI Clerk Auth: Closing authentication window");
           window.close();
-        }, 2e3);
+        }, 2500);
       } else {
         console.log("Q-SCI Clerk Auth: No opener window, auth data already saved to storage");
         showSuccess(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.successClose") : "Success! Closing window...");
         setTimeout(() => {
           window.close();
-        }, 2e3);
+        }, 2500);
       }
     } catch (error) {
       console.error("Q-SCI Clerk Auth: Sign-in handling error:", error);
