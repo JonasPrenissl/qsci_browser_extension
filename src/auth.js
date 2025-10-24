@@ -256,7 +256,21 @@ async function initializeClerk() {
       errorMessage += ` (${error.message})`;
     }
     
+    // Check if this might be a file loading issue
+    if (error.message && (error.message.includes('Failed to fetch') || 
+                           error.message.includes('NetworkError') ||
+                           error.message.includes('load') ||
+                           error.message.includes('import'))) {
+      errorMessage = 'Failed to load authentication components. Please check your internet connection and ensure the extension is properly installed.';
+    }
+    
     showError(errorMessage);
+    
+    // Show retry section
+    const retrySection = document.getElementById('retry-section');
+    if (retrySection) {
+      retrySection.style.display = 'block';
+    }
   }
 }
 

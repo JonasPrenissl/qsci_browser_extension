@@ -39601,7 +39601,14 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       if (error.message) {
         errorMessage += ` (${error.message})`;
       }
+      if (error.message && (error.message.includes("Failed to fetch") || error.message.includes("NetworkError") || error.message.includes("load") || error.message.includes("import"))) {
+        errorMessage = "Failed to load authentication components. Please check your internet connection and ensure the extension is properly installed.";
+      }
       showError(errorMessage);
+      const retrySection = document.getElementById("retry-section");
+      if (retrySection) {
+        retrySection.style.display = "block";
+      }
     }
   }
   var isHandlingSignIn = false;
