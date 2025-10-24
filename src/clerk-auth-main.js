@@ -75,6 +75,8 @@ async function initializeClerk() {
     await clerk.load({
       // Tell Clerk this is a satellite/popup window to prevent chrome-extension:// URL usage
       isSatellite: true,
+      // Domain is required when using isSatellite mode
+      domain: 'www.q-sci.org',
       // Set all redirect URL variants to ensure OAuth callback works
       signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
       signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
