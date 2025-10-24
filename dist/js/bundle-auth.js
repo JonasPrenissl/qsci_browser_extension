@@ -39489,7 +39489,7 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       if (typeof o === "undefined") {
         const errorMsg = "Clerk SDK not loaded. Please check your internet connection and try again.";
         console.error("Q-SCI Clerk Auth:", errorMsg);
-        showError(errorMsg);
+        showError(errorMsg, true);
         return;
       }
       console.log("Q-SCI Clerk Auth: Clerk SDK loaded successfully");
@@ -39497,7 +39497,7 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
         const errorMsg = window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorMissingKey") : "Fehler beim Initialisieren der Authentifizierung: Clerk API-Schl\xFCssel fehlt. Bitte kontaktieren Sie den Administrator.";
         console.error("Q-SCI Clerk Auth: Invalid or missing Clerk publishable key");
         console.error("Q-SCI Clerk Auth: CLERK_PUBLISHABLE_KEY value:", CLERK_PUBLISHABLE_KEY);
-        showError(errorMsg);
+        showError(errorMsg, true);
         return;
       }
       console.log("Q-SCI Clerk Auth: Using publishable key:", CLERK_PUBLISHABLE_KEY.substring(0, 10) + "...");
@@ -39578,11 +39578,7 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
           } else if (checkCount >= maxChecks) {
             console.warn("Q-SCI Clerk Auth: Maximum check attempts reached");
             clearInterval(sessionCheckInterval);
-            showError("Authentication timeout. Please try again.");
-            const retrySection = document.getElementById("retry-section");
-            if (retrySection) {
-              retrySection.style.display = "block";
-            }
+            showError("Authentication timeout. Please try again.", true);
           }
           hadSession = hasSession;
           hadUser = hasUser;
@@ -39601,14 +39597,10 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       if (error.message) {
         errorMessage += ` (${error.message})`;
       }
-      if (error.message && (error.message.includes("Failed to fetch") || error.message.includes("NetworkError") || error.message.includes("load") || error.message.includes("import"))) {
+      if (error.message && (error.message.includes("Failed to fetch") || error.message.includes("NetworkError") || error.message.includes("Failed to load") || error.message.includes("Cannot load") || error.message.includes("import failed") || error.message.includes("Module not found"))) {
         errorMessage = "Failed to load authentication components. Please check your internet connection and ensure the extension is properly installed.";
       }
-      showError(errorMessage);
-      const retrySection = document.getElementById("retry-section");
-      if (retrySection) {
-        retrySection.style.display = "block";
-      }
+      showError(errorMessage, true);
     }
   }
   var isHandlingSignIn = false;
@@ -39712,11 +39704,11 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       }
     } catch (error) {
       console.error("Q-SCI Clerk Auth: Sign-in handling error:", error);
-      showError(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorProcess") : "Failed to process authentication. Please try again.");
+      showError(window.QSCIi18n ? window.QSCIi18n.t("clerkAuth.errorProcess") : "Failed to process authentication. Please try again.", true);
       isHandlingSignIn = false;
     }
   }
-  function showError(message) {
+  function showError(message, showRetry = false) {
     const errorEl = document.getElementById("error-message");
     if (errorEl) {
       errorEl.textContent = message;
@@ -39728,7 +39720,7 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
     }
     const retrySection = document.getElementById("retry-section");
     if (retrySection) {
-      retrySection.style.display = "block";
+      retrySection.style.display = showRetry ? "block" : "none";
     }
   }
   function showSuccess(message) {
