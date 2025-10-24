@@ -43,6 +43,8 @@
       });
     
     // Test 2: Check if session state tracking is implemented
+    // Note: This test uses string matching which is simple but could break with formatting changes.
+    // For production, consider more robust approaches like AST parsing or integration tests.
     fetch('src/auth.js')
       .then(r => r.text())
       .then(code => {
