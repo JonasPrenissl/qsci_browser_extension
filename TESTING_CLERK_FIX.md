@@ -40,9 +40,14 @@ npm run build
 **Expected Output:**
 ```
 ⚠️  Warning: Using development/test Clerk key (pk_test_...)
-...
+
+Development keys have strict usage limits and should ONLY be used for testing.
+For production, use a production key (pk_live_...) from your Clerk dashboard.
+
 ✓ Build complete: dist/js/bundle-auth.js
 ```
+
+**Note:** The warning about the test key is expected if you're using the default configuration. For production deployment, you'll need to update `clerk-config.js` with a production key (`pk_live_...`).
 
 ### Step 3: Load in Chrome
 
@@ -58,10 +63,12 @@ npm run build
 2. The popup should open
 3. Click "Mit Clerk anmelden" or "Login with Clerk"
 4. **KEY TEST:** The authentication window should open **without showing the error:**
+   
+   **Error that should NOT appear (OLD):**
    ```
-   ❌ OLD ERROR (should NOT appear):
-   "Fehler beim Initialisieren der Authentifizierung. Bitte versuchen Sie es erneut.
-   (ClerkJS: Missing domain and proxyUrl...)"
+   German: "Fehler beim Initialisieren der Authentifizierung. Bitte versuchen Sie es erneut."
+   English: "Failed to initialize authentication. Please try again."
+   Technical: "(ClerkJS: Missing domain and proxyUrl. A satellite application needs to specify a domain or a proxyUrl.)"
    ```
 5. ✅ Instead, you should see the Clerk login form
 6. Complete the authentication flow
@@ -103,10 +110,16 @@ Q-SCI Clerk Auth: Sign-in component mounted
 
 ### To verify the fix was applied:
 
+Run the automated verification script:
 ```bash
-# Check that isSatellite is NOT in the configuration
-grep "isSatellite.*true" dist/js/bundle-auth.js
-# Should return nothing (empty)
+node verify-clerk-satellite-fix.js
+```
+
+Or manually verify:
+```bash
+# Check that isSatellite is NOT in the configuration (with flexible whitespace matching)
+grep -E 'isSatellite\s*:\s*true' dist/js/bundle-auth.js
+# Should return nothing (empty output = fix applied correctly)
 
 # Check that redirect URLs ARE present
 grep "signInFallbackRedirectUrl" dist/js/bundle-auth.js
@@ -115,7 +128,7 @@ grep "signInFallbackRedirectUrl" dist/js/bundle-auth.js
 
 ## What Changed
 
-### Before (Incorrect - Satellite Configuration)
+### Before (Incorrect Configuration - REMOVED)
 ```javascript
 await clerk.load({
   isSatellite: true,                    // ❌ REMOVED
@@ -125,7 +138,7 @@ await clerk.load({
 });
 ```
 
-### After (Correct - Main App Configuration)
+### After (Correct Configuration - Main App)
 ```javascript
 await clerk.load({
   // No satellite configuration - this is a standalone app
