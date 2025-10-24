@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Auth Flow</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+    .pass { background-color: #d4edda; }
+    .fail { background-color: #f8d7da; }
+  </style>
+</head>
+<body>
+  <h1>Q-SCI Authentication Flow Test</h1>
+  
+  <div class="test-case">
+    <h3>Test 1: Verify src/auth.js doesn't check for existing sessions</h3>
+    <div id="test1-result">Running...</div>
+  </div>
+  
+  <div class="test-case">
+    <h3>Test 2: Verify session polling detects state transitions</h3>
+    <div id="test2-result">Running...</div>
+  </div>
+  
+  <script>
+    // Test 1: Check if the problematic code is removed
+    fetch('dist/js/bundle-auth.js')
+      .then(r => r.text())
+      .then(code => {
+        const hasProblematicCode = code.includes('User already signed in');
+        const hasNewLogic = code.includes('New authentication detected');
+        
+        const result = document.getElementById('test1-result');
+        if (!hasProblematicCode && hasNewLogic) {
+          result.parentElement.className = 'test-case pass';
+          result.innerHTML = '✓ PASS: Old immediate session check removed, new detection logic present';
+        } else {
+          result.parentElement.className = 'test-case fail';
+          result.innerHTML = '✗ FAIL: ' + 
+            (hasProblematicCode ? 'Old code still present. ' : '') +
+            (!hasNewLogic ? 'New logic missing.' : '');
+        }
+      });
+    
+    // Test 2: Check if session state tracking is implemented
+    // Note: This test uses string matching which is simple but could break with formatting changes.
+    // For production, consider more robust approaches like AST parsing or integration tests.
+    fetch('src/auth.js')
+      .then(r => r.text())
+      .then(code => {
+        const hasStateTracking = code.includes('hadSession') && code.includes('hadUser');
+        const hasTransitionCheck = code.includes('!hadSession || !hadUser');
+        
+        const result = document.getElementById('test2-result');
+        if (hasStateTracking && hasTransitionCheck) {
+          result.parentElement.className = 'test-case pass';
+          result.innerHTML = '✓ PASS: Session state tracking and transition detection implemented';
+        } else {
+          result.parentElement.className = 'test-case fail';
+          result.innerHTML = '✗ FAIL: Missing session state tracking or transition detection';
+        }
+      });
+  </script>
+</body>
+</html>

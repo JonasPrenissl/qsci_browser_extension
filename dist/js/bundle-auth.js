@@ -39519,11 +39519,6 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
         redirectUrl: AUTH_CALLBACK_URL
       });
       console.log("Q-SCI Clerk Auth: Clerk initialized successfully");
-      if (clerk.user) {
-        console.log("Q-SCI Clerk Auth: User already signed in:", clerk.user.id);
-        await handleSignInSuccess(clerk);
-        return;
-      }
       const clerkContainer = document.getElementById("clerk-container");
       clerkContainer.innerHTML = "";
       console.log("Q-SCI Clerk Auth: Mounting sign-in component...");
@@ -39563,20 +39558,23 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       });
       console.log("Q-SCI Clerk Auth: Sign-in component mounted");
       console.log("Q-SCI Clerk Auth: Setting up session listeners...");
-      let sessionCheckInterval = null;
+      let hadSession = !!clerk.session;
+      let hadUser = !!clerk.user;
+      console.log("Q-SCI Clerk Auth: Initial state - session:", hadSession, "user:", hadUser);
       let checkCount = 0;
       const maxChecks = 300;
-      sessionCheckInterval = setInterval(async () => {
+      const sessionCheckInterval = setInterval(async () => {
         try {
           checkCount++;
           await clerk.load();
+          const hasSession = !!clerk.session;
+          const hasUser = !!clerk.user;
           if (checkCount % 5 === 0) {
             console.log(`Q-SCI Clerk Auth: Checking session... (attempt ${checkCount}/${maxChecks})`);
-            console.log("Q-SCI Clerk Auth: Session exists:", !!clerk.session);
-            console.log("Q-SCI Clerk Auth: User exists:", !!clerk.user);
+            console.log("Q-SCI Clerk Auth: Session exists:", hasSession, "User exists:", hasUser);
           }
-          if (clerk.session && clerk.user) {
-            console.log("Q-SCI Clerk Auth: Session detected, user signed in");
+          if (hasSession && hasUser && (!hadSession || !hadUser)) {
+            console.log("Q-SCI Clerk Auth: New authentication detected!");
             clearInterval(sessionCheckInterval);
             await handleSignInSuccess(clerk);
           } else if (checkCount >= maxChecks) {
@@ -39588,6 +39586,8 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
               retrySection.style.display = "block";
             }
           }
+          hadSession = hasSession;
+          hadUser = hasUser;
         } catch (error) {
           console.error("Q-SCI Clerk Auth: Error checking session:", error);
         }

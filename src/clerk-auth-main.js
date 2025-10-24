@@ -88,12 +88,11 @@ async function initializeClerk() {
 
     console.log('Q-SCI Clerk Auth: Clerk initialized successfully');
 
-    // Check if user is already signed in
-    if (clerk.user) {
-      console.log('Q-SCI Clerk Auth: User already signed in:', clerk.user.id);
-      await handleSignInSuccess(clerk);
-      return;
-    }
+    // Note: We intentionally do NOT check for existing sessions here.
+    // The user should always be shown the sign-in component and must
+    // complete the authentication flow explicitly in this popup window.
+    // This prevents the issue where cached sessions trigger immediate
+    // "Authentication Successful" messages without actual authentication.
 
     // Mount Clerk sign-in component
     const clerkContainer = document.getElementById('clerk-container');
@@ -135,32 +134,38 @@ async function initializeClerk() {
 
     console.log('Q-SCI Clerk Auth: Sign-in component mounted');
 
-    // Listen for sign-in events using multiple approaches
+    // Listen for sign-in events using session polling
     console.log('Q-SCI Clerk Auth: Setting up session listeners...');
     
-    // Approach 1: Listen for session events using modern Clerk API
-    // The clerk instance emits events when the session changes
-    let sessionCheckInterval = null;
+    // Track if we've seen a session to detect new sign-ins
+    let hadSession = !!clerk.session;
+    let hadUser = !!clerk.user;
     
-    // Approach 2: Use more aggressive session polling with reload check
+    console.log('Q-SCI Clerk Auth: Initial state - session:', hadSession, 'user:', hadUser);
+    
+    // Use session polling to detect when user completes authentication
     let checkCount = 0;
     const maxChecks = 300; // 5 minutes with 1 second interval
-    sessionCheckInterval = setInterval(async () => {
+    const sessionCheckInterval = setInterval(async () => {
       try {
         checkCount++;
         
         // Reload clerk state to ensure we have the latest session
         await clerk.load();
         
-        // Log every 5 seconds for debugging (more frequent for better UX)
+        const hasSession = !!clerk.session;
+        const hasUser = !!clerk.user;
+        
+        // Log every 5 seconds for debugging
         if (checkCount % 5 === 0) {
           console.log(`Q-SCI Clerk Auth: Checking session... (attempt ${checkCount}/${maxChecks})`);
-          console.log('Q-SCI Clerk Auth: Session exists:', !!clerk.session);
-          console.log('Q-SCI Clerk Auth: User exists:', !!clerk.user);
+          console.log('Q-SCI Clerk Auth: Session exists:', hasSession, 'User exists:', hasUser);
         }
         
-        if (clerk.session && clerk.user) {
-          console.log('Q-SCI Clerk Auth: Session detected, user signed in');
+        // Only trigger success if we transition from no-session to session
+        // This ensures we only respond to new authentications, not cached sessions
+        if (hasSession && hasUser && (!hadSession || !hadUser)) {
+          console.log('Q-SCI Clerk Auth: New authentication detected!');
           clearInterval(sessionCheckInterval);
           await handleSignInSuccess(clerk);
         } else if (checkCount >= maxChecks) {
@@ -174,6 +179,10 @@ async function initializeClerk() {
             retrySection.style.display = 'block';
           }
         }
+        
+        // Update tracking state
+        hadSession = hasSession;
+        hadUser = hasUser;
       } catch (error) {
         console.error('Q-SCI Clerk Auth: Error checking session:', error);
       }
