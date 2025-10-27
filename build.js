@@ -47,8 +47,11 @@ try {
   process.exit(1);
 }
 
+// Check if watch mode is enabled
+const isWatchMode = process.argv.includes('--watch');
+
 // Build configuration
-esbuild.build({
+const buildConfig = {
   entryPoints: ['src/auth.js'],
   bundle: true,
   outfile: 'dist/js/bundle-auth.js',
@@ -60,19 +63,33 @@ esbuild.build({
   define: {
     'process.env.NODE_ENV': '"production"'
   }
-}).then(() => {
-  console.log('✓ Build complete: dist/js/bundle-auth.js');
-}).catch((error) => {
-  console.error('✗ Build failed:', error);
-  
-  // Provide helpful error messages for common issues
-  if (error.message && error.message.includes('clerk-config.js')) {
-    console.error('\n❌ Error: clerk-config.js file issue detected.\n');
-    console.error('Make sure:');
-    console.error('1. The file exists in the root directory');
-    console.error('2. It exports a CLERK_CONFIG object with a publishableKey');
-    console.error('\nFor help, see CLERK_SETUP.md\n');
-  }
-  
-  process.exit(1);
-});
+};
+
+if (isWatchMode) {
+  // Watch mode
+  esbuild.context(buildConfig).then((ctx) => {
+    ctx.watch();
+    console.log('✓ Watching for changes...');
+  }).catch((error) => {
+    console.error('✗ Watch failed:', error);
+    process.exit(1);
+  });
+} else {
+  // Regular build
+  esbuild.build(buildConfig).then(() => {
+    console.log('✓ Build complete: dist/js/bundle-auth.js');
+  }).catch((error) => {
+    console.error('✗ Build failed:', error);
+    
+    // Provide helpful error messages for common issues
+    if (error.message && error.message.includes('clerk-config.js')) {
+      console.error('\n❌ Error: clerk-config.js file issue detected.\n');
+      console.error('Make sure:');
+      console.error('1. The file exists in the root directory');
+      console.error('2. It exports a CLERK_CONFIG object with a publishableKey');
+      console.error('\nFor help, see CLERK_SETUP.md\n');
+    }
+    
+    process.exit(1);
+  });
+}

@@ -7,6 +7,9 @@
     "build": "node build.js",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
+    "build:watch": "node build.js --watch",
+    "reload:server": "node tools/reloader.mjs",
+    "dev": "npm-run-all -p build:watch reload:server",
     "test-server": "node test-server.js",
     "verify": "node verify-auth-redirect.js"
   },
@@ -14,6 +17,10 @@
     "@playwright/test": "^1.56.1",
     "esbuild": "^0.19.0",
     "typescript": "^5.9.3"
+    "chokidar": "^3.6.0",
+    "esbuild": "^0.19.0",
+    "npm-run-all": "^4.1.5",
+    "ws": "^8.18.0"
   },
   "dependencies": {
     "@clerk/clerk-js": "^5.0.0"

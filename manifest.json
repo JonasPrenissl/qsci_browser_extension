@@ -55,6 +55,7 @@
     "https://www.kidney-international.org/*",
     "https://www.sciencemag.org/*",
     "http://localhost:5000/*",
+    "http://localhost:35729/*",
     "https://3000-ihim6em9vakbhsgb4zp4p-b38323ba.manusvm.computer/*",
     "https://api.openai.com/*",
     "https://q-sci.org/*",
