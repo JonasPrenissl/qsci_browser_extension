@@ -63,26 +63,30 @@ console.log('');
 
 // Check if auth.js uses the correct URL
 const authJsPath = path.join(__dirname, 'src', 'auth.js');
-const authJsAltPath = path.join(__dirname, 'auth.js');
-const authJsFile = fs.existsSync(authJsPath) ? authJsPath : authJsAltPath;
 
-checkFileContains(
-  authJsFile,
-  "const CLERK_AUTH_URL = 'https://www.q-sci.org/extension-login'",
-  'auth.js uses correct production URL'
-);
+if (!fs.existsSync(authJsPath)) {
+  console.log(`❌ src/auth.js not found (required for HTTPS redirect flow)`);
+  console.log(`   The extension should use src/auth.js with HTTPS URLs`);
+  allChecksPass = false;
+} else {
+  checkFileContains(
+    authJsPath,
+    "const CLERK_AUTH_URL = 'https://www.q-sci.org/extension-login'",
+    'src/auth.js uses correct production URL'
+  );
 
-checkFileContains(
-  authJsFile,
-  'window.open(',
-  'auth.js opens authentication in new window'
-);
+  checkFileContains(
+    authJsPath,
+    'window.open(',
+    'src/auth.js opens authentication in new window'
+  );
 
-checkFileContains(
-  authJsFile,
-  "CLERK_AUTH_SUCCESS",
-  'auth.js listens for correct message type'
-);
+  checkFileContains(
+    authJsPath,
+    "CLERK_AUTH_SUCCESS",
+    'src/auth.js listens for correct message type'
+  );
+}
 
 console.log('');
 console.log('🔍 Checking Website Pages Configuration:');

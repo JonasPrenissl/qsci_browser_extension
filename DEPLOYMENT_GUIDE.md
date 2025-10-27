@@ -109,7 +109,7 @@ The HTML files already reference the correct URLs, but verify:
 
 If you're using a **different domain**, you'll need to update the authentication URL:
 
-1. Open `src/auth.js` (or `auth.js` if no `src/` folder)
+1. Open `src/auth.js` (this is the correct file - **not** the `auth.js` in the root directory which uses the old approach)
 
 2. Find and update the `CLERK_AUTH_URL` constant:
    ```javascript

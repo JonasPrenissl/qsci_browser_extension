@@ -13,7 +13,8 @@ Extension → HTTPS Login → Clerk → HTTPS Success → Extension
 ## Files in This Solution
 
 ### 📄 Documentation
-- **[AUTH_REDIRECT_COMPLETE.md](AUTH_REDIRECT_COMPLETE.md)** - Complete implementation summary ⭐ **START HERE**
+- **[AUTH_REDIRECT_README.md](AUTH_REDIRECT_README.md)** - Quick reference guide ⭐ **START HERE**
+- **[AUTH_REDIRECT_COMPLETE.md](AUTH_REDIRECT_COMPLETE.md)** - Complete implementation summary
 - **[TESTING_AUTH_REDIRECT.md](TESTING_AUTH_REDIRECT.md)** - Comprehensive testing guide
 - **[AUTH_REDIRECT_SOLUTION.md](AUTH_REDIRECT_SOLUTION.md)** - Technical architecture
 - **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Production deployment steps
