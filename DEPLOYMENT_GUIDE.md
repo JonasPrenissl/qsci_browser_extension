@@ -105,17 +105,24 @@ The HTML files already reference the correct URLs, but verify:
 
 ## Step 4: Update Extension Configuration (if needed)
 
-If you're using a different domain than `www.q-sci.org`, update the URL in `src/auth.js`:
+**Note:** The default configuration uses `https://www.q-sci.org/extension-login`.
 
-```javascript
-// Change this line if using a different domain
-const CLERK_AUTH_URL = 'https://YOUR-DOMAIN.com/extension-login';
-```
+If you're using a **different domain**, you'll need to update the authentication URL:
 
-Then rebuild:
-```bash
-npm run build
-```
+1. Open `src/auth.js` (or `auth.js` if no `src/` folder)
+
+2. Find and update the `CLERK_AUTH_URL` constant:
+   ```javascript
+   // Change this line if using a different domain
+   const CLERK_AUTH_URL = 'https://YOUR-DOMAIN.com/extension-login';
+   ```
+
+3. Rebuild the extension:
+   ```bash
+   npm run build
+   ```
+
+**For production deployment on www.q-sci.org:** No changes needed! The extension is already configured for this domain.
 
 ## Step 5: Update Clerk Keys for Production
 
@@ -124,10 +131,12 @@ npm run build
 1. Get your production Clerk key from [Clerk Dashboard](https://dashboard.clerk.com) → API Keys
    - Should start with `pk_live_...` (not `pk_test_...`)
 
-2. Update in these files:
-   - `website/extension-login.html` (line ~184 and ~222)
-   - `website/extension-auth-success.html` (line ~142 and ~179)
-   - `clerk-config.js`
+2. Update the publishable key in these files:
+   - `website/extension-login.html` - Look for the Clerk SDK script tag and the Clerk initialization
+   - `website/extension-auth-success.html` - Look for the Clerk SDK script tag and the Clerk initialization
+   - `clerk-config.js` - Update the publishableKey property
+
+   Search for `pk_test_` and replace all occurrences with your production key `pk_live_...`
 
 3. Rebuild the extension:
    ```bash
