@@ -15,9 +15,9 @@ test('Extension loads and popup shows correct UI', async () => {
   }
 
   // Launch browser with extension loaded
-  // MV3 requires persistent context
+  // MV3 requires persistent context with headed mode for extensions to load properly
   const context = await chromium.launchPersistentContext('', {
-    headless: true, // Headless mode for CI
+    headless: false, // Extensions require headed mode
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -26,65 +26,14 @@ test('Extension loads and popup shows correct UI', async () => {
     ],
   });
 
-  // Wait a bit for extension to initialize
-  await new Promise(resolve => setTimeout(resolve, 3000));
-
-  // Get extension ID using a more reliable method
-  // Navigate to a test page and check for the extension
-  const page = await context.newPage();
+  // Wait for the service worker to be registered (MV3 extension)
+  await context.waitForEvent('serviceworker');
+  const [serviceWorker] = context.serviceWorkers();
   
-  // Get extension ID from chrome://extensions page via CDP
-  const client = await context.newCDPSession(page);
-  let extensionId: string | undefined;
+  // Extract extension ID from service worker URL
+  const extensionId = serviceWorker.url().split('/')[2];
   
-  try {
-    // Use Chrome DevTools Protocol to get extension info
-    const {targetInfos}: any = await client.send('Target.getTargets');
-    
-    for (const target of targetInfos) {
-      if (target.type === 'service_worker' && target.url.includes('chrome-extension://')) {
-        const match = target.url.match(/chrome-extension:\/\/([a-p]{32})\//);
-        if (match) {
-          extensionId = match[1];
-          break;
-        }
-      }
-    }
-  } catch (e) {
-    console.error('CDP method failed:', e);
-  }
-  
-  // Fallback methods if CDP doesn't work
-  if (!extensionId) {
-    // Check service workers
-    const workers = context.serviceWorkers();
-    for (const worker of workers) {
-      const url = worker.url();
-      const match = url.match(/chrome-extension:\/\/([a-p]{32})\//);
-      if (match) {
-        extensionId = match[1];
-        break;
-      }
-    }
-  }
-  
-  if (!extensionId) {
-    // Check background pages
-    const backgrounds = context.backgroundPages();
-    for (const bg of backgrounds) {
-      const url = bg.url();
-      const match = url.match(/chrome-extension:\/\/([a-p]{32})\//);
-      if (match) {
-        extensionId = match[1];
-        break;
-      }
-    }
-  }
-  
-  await client.detach();
-  await page.close();
-  
-  if (!extensionId) {
+  if (!extensionId || !extensionId.match(/^[a-p]{32}$/)) {
     throw new Error('Extension ID not found - extension may not have loaded');
   }
 
@@ -118,7 +67,7 @@ test('Content script is injectable on supported pages', async () => {
   const extensionPath = path.resolve('.');
 
   const context = await chromium.launchPersistentContext('', {
-    headless: true,
+    headless: false, // Extensions require headed mode
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -127,8 +76,8 @@ test('Content script is injectable on supported pages', async () => {
     ],
   });
 
-  // Wait for extension to initialize
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // Wait for service worker to be registered
+  await context.waitForEvent('serviceworker');
 
   // Open a page where content script should load
   const page = await context.newPage();
