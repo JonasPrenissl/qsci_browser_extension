@@ -1,4 +1,4 @@
-import { test, expect, chromium } from '@playwright/test';
+import { test, expect, chromium, BrowserContext } from '@playwright/test';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -27,28 +27,66 @@ test('Extension loads and popup shows correct UI', async () => {
   });
 
   // Wait a bit for extension to initialize
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise(resolve => setTimeout(resolve, 3000));
 
-  // Get extension ID from service worker or background pages
-  const extensionId = await (async () => {
-    // Try to get from service workers
+  // Get extension ID using a more reliable method
+  // Navigate to a test page and check for the extension
+  const page = await context.newPage();
+  
+  // Get extension ID from chrome://extensions page via CDP
+  const client = await context.newCDPSession(page);
+  let extensionId: string | undefined;
+  
+  try {
+    // Use Chrome DevTools Protocol to get extension info
+    const {targetInfos}: any = await client.send('Target.getTargets');
+    
+    for (const target of targetInfos) {
+      if (target.type === 'service_worker' && target.url.includes('chrome-extension://')) {
+        const match = target.url.match(/chrome-extension:\/\/([a-p]{32})\//);
+        if (match) {
+          extensionId = match[1];
+          break;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('CDP method failed:', e);
+  }
+  
+  // Fallback methods if CDP doesn't work
+  if (!extensionId) {
+    // Check service workers
     const workers = context.serviceWorkers();
     for (const worker of workers) {
       const url = worker.url();
       const match = url.match(/chrome-extension:\/\/([a-p]{32})\//);
-      if (match) return match[1];
+      if (match) {
+        extensionId = match[1];
+        break;
+      }
     }
-    
-    // Fallback: try background pages
+  }
+  
+  if (!extensionId) {
+    // Check background pages
     const backgrounds = context.backgroundPages();
     for (const bg of backgrounds) {
       const url = bg.url();
       const match = url.match(/chrome-extension:\/\/([a-p]{32})\//);
-      if (match) return match[1];
+      if (match) {
+        extensionId = match[1];
+        break;
+      }
     }
-    
+  }
+  
+  await client.detach();
+  await page.close();
+  
+  if (!extensionId) {
     throw new Error('Extension ID not found - extension may not have loaded');
-  })();
+  }
 
   console.log('Extension loaded with ID:', extensionId);
 
