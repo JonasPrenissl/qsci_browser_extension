@@ -1,0 +1,157 @@
+name: Try AutoFix (Opt-in)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to fix (leave empty for current branch)'
+        required: false
+  issue_comment:
+    types: [created]
+
+jobs:
+  propose-fix:
+    # Only run on workflow_dispatch or when comment contains '/autofix'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && 
+       contains(github.event.comment.body, '/autofix') &&
+       github.event.issue.pull_request)
+    
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Clerk config for build
+        run: |
+          if [ ! -f clerk-config.js ]; then
+            cp clerk-config.example.js clerk-config.js
+          fi
+
+      - name: Build extension (allow failure)
+        run: npm run build || true
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run tests and capture output
+        id: tests
+        continue-on-error: true
+        run: |
+          set +e
+          npx playwright test --reporter=json > test-report.json 2>&1
+          TEST_EXIT_CODE=$?
+          echo "exit_code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+          if [ $TEST_EXIT_CODE -ne 0 ]; then
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate patch proposal with LLM
+        if: steps.tests.outputs.failed == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "Warning: OPENAI_API_KEY not set. Skipping LLM patch generation."
+            echo "To enable this feature, add OPENAI_API_KEY to repository secrets."
+            exit 0
+          fi
+          node scripts/generate_patch_from_report.js test-report.json > patch.diff || true
+
+      - name: Check if patch was generated
+        id: check_patch
+        if: steps.tests.outputs.failed == 'true'
+        run: |
+          if [ -f patch.diff ] && [ -s patch.diff ]; then
+            echo "has_patch=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_patch=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Apply patch and create PR
+        if: steps.tests.outputs.failed == 'true' && steps.check_patch.outputs.has_patch == 'true'
+        run: |
+          # Create a new branch
+          BRANCH_NAME="autofix/run-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH_NAME"
+          
+          # Apply the patch
+          git apply --reject --whitespace=fix patch.diff || true
+          
+          # Check if there are changes
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          git add -A
+          git commit -m "AutoFix: Attempt to fix failing tests [automated]"
+          git push -u origin "$BRANCH_NAME"
+
+      - name: Create Pull Request
+        if: steps.tests.outputs.failed == 'true' && steps.check_patch.outputs.has_patch == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: autofix/run-${{ github.run_id }}
+          title: "🤖 AutoFix: Attempt to fix failing tests"
+          body: |
+            ## Automated Fix Proposal
+            
+            This PR was automatically generated to address failing tests.
+            
+            **⚠️ IMPORTANT: Review carefully before merging!**
+            
+            - Triggered by: ${{ github.event_name }}
+            - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ### What to check:
+            - [ ] Code changes are correct and minimal
+            - [ ] No unintended side effects
+            - [ ] Tests now pass
+            - [ ] No security issues introduced
+            - [ ] No manifest/permissions modified inappropriately
+            
+            ### Test Results
+            See the workflow run for detailed test output.
+            
+            ---
+            *This is an experimental feature. Always review automated changes thoroughly.*
+          labels: automated, needs-review
+
+      - name: Comment on failure if no API key
+        if: steps.tests.outputs.failed == 'true' && env.OPENAI_API_KEY == ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'issue_comment') {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '❌ Tests are failing, but OPENAI_API_KEY is not configured. Cannot generate automatic fix. Please add the secret to enable this feature.'
+              })
+            }

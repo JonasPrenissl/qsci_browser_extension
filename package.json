@@ -5,11 +5,15 @@
   "private": true,
   "scripts": {
     "build": "node build.js",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
     "test-server": "node test-server.js",
     "verify": "node verify-auth-redirect.js"
   },
   "devDependencies": {
-    "esbuild": "^0.19.0"
+    "@playwright/test": "^1.56.1",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@clerk/clerk-js": "^5.0.0"
