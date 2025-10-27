@@ -91,6 +91,7 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
 - **[README_DE.md](README_DE.md)** - Implementation summary (German)
 - **[FLOW_DIAGRAM.md](FLOW_DIAGRAM.md)** - Authentication flow diagrams
 - **[FILE_GUIDE.md](FILE_GUIDE.md)** - File structure guide
+- **[TESTING.md](TESTING.md)** - 🧪 Automated testing and CI/CD setup
 
 ## ✨ Features
 
@@ -156,8 +157,50 @@ qsci_browser_extension/
 ├── content-script.js      # Website integration
 ├── qsci_evaluator.js      # Analysis engine
 ├── options.html/js        # Settings page
+├── tests/                 # Playwright E2E tests
+├── scripts/               # Build and automation scripts
 └── icons/                 # Extension icons
 ```
+
+## 🧪 Testing & CI/CD
+
+This extension includes automated testing with Playwright and GitHub Actions.
+
+### Running Tests
+
+```bash
+# Install dependencies (first time only)
+npm install
+
+# Build the extension
+npm run build
+
+# Install Playwright browsers (first time only)
+npx playwright install --with-deps chromium
+
+# Run tests
+npm test
+
+# Run tests with visible browser (for debugging)
+npm run test:headed
+```
+
+### Continuous Integration
+
+- **Automatic Testing**: Tests run on every push and pull request
+- **Multi-Branch Support**: CI runs on main, dev, feature/**, and copilot/** branches
+- **Test Reports**: Results are uploaded as artifacts in GitHub Actions
+
+### Auto-Fix Workflow (Opt-in)
+
+An experimental AI-powered auto-fix workflow can suggest fixes for failing tests:
+
+- **Trigger**: Comment `/autofix` on a PR, or run manually from Actions tab
+- **Requires**: `OPENAI_API_KEY` secret in repository settings
+- **Safety**: Never auto-merges, always requires manual review
+- **Output**: Creates a new PR with suggested fixes
+
+👉 **See [TESTING.md](TESTING.md) for complete testing documentation.**
 
 ## 🐛 Troubleshooting
 
