@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Clerk Redirect Fix</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+    .pass { background-color: #d4edda; }
+    .fail { background-color: #f8d7da; }
+    .info { background-color: #d1ecf1; }
+  </style>
+</head>
+<body>
+  <h1>Q-SCI Clerk Redirect Fix Verification</h1>
+  
+  <div class="test-case info">
+    <h3>Issue Being Fixed</h3>
+    <p>Clerk was not opening because URL redirect was applied BEFORE Clerk integration.</p>
+    <p>The fix removes premature redirect URLs from clerk.load() and clerk.mountSignIn() initialization,
+       keeping only afterSignInUrl and afterSignUpUrl which apply AFTER authentication completes.</p>
+  </div>
+  
+  <div class="test-case">
+    <h3>Test 1: Verify clerk.load() has no redirect URLs</h3>
+    <div id="test1-result">Running...</div>
+  </div>
+  
+  <div class="test-case">
+    <h3>Test 2: Verify clerk.mountSignIn() has minimal redirect config</h3>
+    <div id="test2-result">Running...</div>
+  </div>
+
+  <div class="test-case">
+    <h3>Test 3: Verify force redirect URLs are removed</h3>
+    <div id="test3-result">Running...</div>
+  </div>
+  
+  <script>
+    // Test 1: Check that clerk.load() is called without redirect parameters
+    fetch('src/clerk-auth-main.js')
+      .then(r => r.text())
+      .then(code => {
+        const result = document.getElementById('test1-result');
+        
+        // Check for the fix comment indicating redirect URLs were removed
+        const hasFixComment = code.includes('Do NOT set redirect URLs during load()');
+        
+        // Check that clerk.load is called without parameters (or empty params)
+        const clerkLoadPattern = /await\s+clerk\.load\(\s*\)/;
+        const hasCleanLoad = clerkLoadPattern.test(code);
+        
+        // Make sure old redirect URLs are NOT present in load()
+        const hasOldRedirects = code.includes('clerk.load({') && 
+                                code.includes('signInForceRedirectUrl: AUTH_CALLBACK_URL');
+        
+        if (hasFixComment && hasCleanLoad && !hasOldRedirects) {
+          result.parentElement.className = 'test-case pass';
+          result.innerHTML = '✓ PASS: clerk.load() is called without redirect URLs that would cause immediate redirects';
+        } else {
+          result.parentElement.className = 'test-case fail';
+          result.innerHTML = '✗ FAIL: ' + 
+            (!hasFixComment ? 'Fix comment missing. ' : '') +
+            (!hasCleanLoad ? 'clerk.load() not clean. ' : '') +
+            (hasOldRedirects ? 'Old redirect URLs still present in load().' : '');
+        }
+      })
+      .catch(err => {
+        document.getElementById('test1-result').parentElement.className = 'test-case fail';
+        document.getElementById('test1-result').innerHTML = '✗ ERROR: ' + err.message;
+      });
+    
+    // Test 2: Check that clerk.mountSignIn() has minimal redirect configuration
+    fetch('src/clerk-auth-main.js')
+      .then(r => r.text())
+      .then(code => {
+        const result = document.getElementById('test2-result');
+        
+        // Check for the explanation comment
+        const hasOAuthComment = code.includes('OAuth redirect URLs will be set by Clerk AFTER user chooses OAuth provider');
+        
+        // Check that afterSignInUrl and afterSignUpUrl are still present (needed for OAuth callback)
+        const hasAfterSignInUrl = code.includes('afterSignInUrl: AUTH_CALLBACK_URL');
+        const hasAfterSignUpUrl = code.includes('afterSignUpUrl: AUTH_CALLBACK_URL');
+        
+        if (hasOAuthComment && hasAfterSignInUrl && hasAfterSignUpUrl) {
+          result.parentElement.className = 'test-case pass';
+          result.innerHTML = '✓ PASS: clerk.mountSignIn() has minimal redirect config (only after* URLs)';
+        } else {
+          result.parentElement.className = 'test-case fail';
+          result.innerHTML = '✗ FAIL: ' + 
+            (!hasOAuthComment ? 'OAuth explanation comment missing. ' : '') +
+            (!hasAfterSignInUrl ? 'afterSignInUrl missing. ' : '') +
+            (!hasAfterSignUpUrl ? 'afterSignUpUrl missing.' : '');
+        }
+      })
+      .catch(err => {
+        document.getElementById('test2-result').parentElement.className = 'test-case fail';
+        document.getElementById('test2-result').innerHTML = '✗ ERROR: ' + err.message;
+      });
+
+    // Test 3: Verify force redirect URLs and other premature redirects are removed
+    fetch('src/clerk-auth-main.js')
+      .then(r => r.text())
+      .then(code => {
+        const result = document.getElementById('test3-result');
+        
+        // These should NOT be present as they cause immediate redirects
+        const hasForceRedirect = code.includes('signInForceRedirectUrl') || 
+                                 code.includes('signUpForceRedirectUrl');
+        const hasFallbackRedirect = code.includes('signInFallbackRedirectUrl') || 
+                                    code.includes('signUpFallbackRedirectUrl');
+        const hasPlainRedirectUrl = code.match(/redirectUrl:\s*AUTH_CALLBACK_URL/g);
+        
+        // We allow afterSignInUrl and afterSignUpUrl (2 occurrences)
+        // But no plain redirectUrl in mountSignIn
+        const hasProblematicRedirect = hasPlainRedirectUrl && hasPlainRedirectUrl.length > 2;
+        
+        if (!hasForceRedirect && !hasFallbackRedirect && !hasProblematicRedirect) {
+          result.parentElement.className = 'test-case pass';
+          result.innerHTML = '✓ PASS: Force redirect URLs and premature redirects successfully removed';
+        } else {
+          result.parentElement.className = 'test-case fail';
+          result.innerHTML = '✗ FAIL: ' + 
+            (hasForceRedirect ? 'Force redirect URLs still present. ' : '') +
+            (hasFallbackRedirect ? 'Fallback redirect URLs still present. ' : '') +
+            (hasProblematicRedirect ? 'Problematic redirectUrl still present. ' : '');
+        }
+      })
+      .catch(err => {
+        document.getElementById('test3-result').parentElement.className = 'test-case fail';
+        document.getElementById('test3-result').innerHTML = '✗ ERROR: ' + err.message;
+      });
+  </script>
+</body>
+</html>
