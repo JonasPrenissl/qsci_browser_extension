@@ -74,17 +74,9 @@ async function initializeClerk() {
     // We do NOT set isSatellite, domain, or proxyUrl as this extension is standalone.
     console.log('Q-SCI Clerk Auth: Initializing Clerk...');
     const clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
-    await clerk.load({
-      // Set all redirect URL variants to ensure OAuth callback works
-      signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
-      signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
-      signInForceRedirectUrl: AUTH_CALLBACK_URL,
-      signUpForceRedirectUrl: AUTH_CALLBACK_URL,
-      afterSignInUrl: AUTH_CALLBACK_URL,
-      afterSignUpUrl: AUTH_CALLBACK_URL,
-      // Additional redirect URL to handle OAuth callback scenarios
-      redirectUrl: AUTH_CALLBACK_URL
-    });
+    // Do NOT set redirect URLs during load() - this causes immediate redirects
+    // Redirect URLs should only be used AFTER Clerk UI is shown and user authenticates
+    await clerk.load();
 
     console.log('Q-SCI Clerk Auth: Clerk initialized successfully');
 
@@ -101,20 +93,12 @@ async function initializeClerk() {
     // Mount the sign-in component
     console.log('Q-SCI Clerk Auth: Mounting sign-in component...');
     clerk.mountSignIn(clerkContainer, {
-      // Use a valid HTTPS URL to avoid "Invalid URL scheme" error
-      // IMPORTANT: Setting all redirect URL parameters is crucial for OAuth flows
-      // (Google, Apple, etc.). When OAuth providers redirect back to Clerk's callback
-      // page (clerk.shared.lcl.dev/v1/oauth_callback), Clerk needs a valid HTTPS
-      // redirect URL to complete the flow.
-      redirectUrl: AUTH_CALLBACK_URL,
+      // OAuth redirect URLs will be set by Clerk AFTER user chooses OAuth provider
+      // Not setting them here prevents immediate redirects and allows Clerk UI to show
+      // When user clicks "Sign in with Google", Clerk will handle the OAuth flow
+      // and redirect appropriately, then return to complete authentication
       afterSignInUrl: AUTH_CALLBACK_URL,
       afterSignUpUrl: AUTH_CALLBACK_URL,
-      // Force redirect URLs ensure OAuth callbacks use our HTTPS URL
-      signInForceRedirectUrl: AUTH_CALLBACK_URL,
-      signUpForceRedirectUrl: AUTH_CALLBACK_URL,
-      // Fallback URLs as additional safety net
-      signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
-      signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
       // Additional routing configuration to prevent chrome-extension:// URL usage
       routing: 'hash',
       // Explicitly tell Clerk this is embedded/popup context
