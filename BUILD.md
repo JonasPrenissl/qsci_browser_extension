@@ -27,13 +27,34 @@ This will create/update the following files in the `js/` directory:
 - `bundle-clerk.js` - The bundled Clerk SDK
 - `clerk-auth.js` - The authentication logic
 
-### 3. Development Mode
+### 3. Development Mode with Auto-Reload
 
-For development with auto-rebuilding on file changes:
+For development with auto-rebuilding on file changes AND automatic extension reload:
 
 ```bash
-npm run watch
+npm run dev
 ```
+
+This command runs both:
+- **build:watch**: Automatically rebuilds bundles when source files change
+- **reload:server**: Runs a WebSocket server that triggers the extension to reload when files change
+
+The dev reload server:
+- Watches for changes in the extension directory
+- Serves dev-reload.js on http://localhost:35729/dev-reload.js
+- Broadcasts reload signals via WebSocket to the extension
+- The extension's service worker automatically reloads on file changes
+
+#### Setting Up Chrome for Development
+
+1. Open `chrome://extensions`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the repository root directory
+5. Start development mode: `npm run dev`
+6. Edit files → they'll rebuild → extension auto-reloads
+
+Note: The dev reload functionality only activates when the dev server is running. In production, the extension works normally without any dev dependencies.
 
 ## What's Bundled
 
