@@ -17,7 +17,7 @@ test('Extension loads and popup shows correct UI', async () => {
   // Launch browser with extension loaded
   // MV3 requires persistent context
   const context = await chromium.launchPersistentContext('', {
-    headless: false, // For better debugging in CI
+    headless: true, // Headless mode for CI
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -80,7 +80,7 @@ test('Content script is injectable on supported pages', async () => {
   const extensionPath = path.resolve('.');
 
   const context = await chromium.launchPersistentContext('', {
-    headless: false,
+    headless: true,
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
