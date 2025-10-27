@@ -27,8 +27,8 @@ test('Extension loads and popup shows correct UI', async () => {
   });
 
   // Wait for the service worker to be registered (MV3 extension)
-  await context.waitForEvent('serviceworker');
-  const [serviceWorker] = context.serviceWorkers();
+  // Use a longer timeout as service workers can take time to start
+  const serviceWorker = await context.waitForEvent('serviceworker', { timeout: 30000 });
   
   // Extract extension ID from service worker URL
   const extensionId = serviceWorker.url().split('/')[2];
@@ -76,23 +76,25 @@ test('Content script is injectable on supported pages', async () => {
     ],
   });
 
-  // Wait for service worker to be registered
-  await context.waitForEvent('serviceworker');
+  // Wait for service worker to be registered with longer timeout
+  await context.waitForEvent('serviceworker', { timeout: 30000 });
 
-  // Open a page where content script should load
+  // Create a new page (persistent context starts with default page that may not support extensions)
   const page = await context.newPage();
+  
+  // Navigate to an https URL where content scripts can run
   await page.goto('https://example.com');
   
   // Wait for page to load
   await page.waitForLoadState('domcontentloaded');
 
   // Check if content script loaded by checking for the global flag
-  const contentScriptLoaded = await page.evaluate(() => {
-    return window.qsciContentScriptLoaded === true;
-  });
-
   // Note: example.com is not in the content_scripts matches,
   // so this test just verifies the extension doesn't crash on arbitrary pages
+  const contentScriptLoaded = await page.evaluate(() => {
+    return (window as any).qsciContentScriptLoaded === true;
+  });
+
   expect(contentScriptLoaded).toBe(false);
 
   await context.close();
