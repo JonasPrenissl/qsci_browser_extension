@@ -2,6 +2,11 @@
 // This is a Manifest V3 service worker that handles extension lifecycle events
 'use strict';
 
+// Dev reload (development only) - loads from local dev server when running
+if (typeof importScripts === "function") {
+  try { importScripts("http://localhost:35729/dev-reload.js"); } catch (e) {}
+}
+
 console.log('Q-SCI Background: Service worker starting...');
 
 // Extension installation and update handling

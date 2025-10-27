@@ -5,11 +5,17 @@
   "private": true,
   "scripts": {
     "build": "node build.js",
+    "build:watch": "node build.js --watch",
+    "reload:server": "node tools/reloader.mjs",
+    "dev": "npm-run-all -p build:watch reload:server",
     "test-server": "node test-server.js",
     "verify": "node verify-auth-redirect.js"
   },
   "devDependencies": {
-    "esbuild": "^0.19.0"
+    "chokidar": "^3.6.0",
+    "esbuild": "^0.19.0",
+    "npm-run-all": "^4.1.5",
+    "ws": "^8.18.0"
   },
   "dependencies": {
     "@clerk/clerk-js": "^5.0.0"
