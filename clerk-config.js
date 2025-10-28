@@ -14,11 +14,12 @@
 // - Development keys have strict usage limits and should ONLY be used for testing
 
 const CLERK_CONFIG = {
-  // Your Clerk Publishable Key
-  // Replace 'YOUR_CLERK_PUBLISHABLE_KEY_HERE' with your actual key
-  // Development example: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
-  // Production example: 'pk_live_Y2xlcmsuZXhhbXBsZS5jb20k'
-  publishableKey: 'YOUR_CLERK_PUBLISHABLE_KEY_HERE',
+  // Clerk Publishable Key
+  // For local testing with mock backend: use test key below
+  // For production: Replace with your production key from https://dashboard.clerk.com
+  // Development keys start with: pk_test_
+  // Production keys start with: pk_live_
+  publishableKey: 'pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA',
 };
 
 // STEP 2: After updating clerk-config.js, rebuild the extension

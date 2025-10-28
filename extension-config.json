@@ -1,0 +1,22 @@
+{
+  "comment": "Q-SCI Browser Extension Configuration",
+  "environment": "local",
+  "environments": {
+    "local": {
+      "description": "Local development with mock backend",
+      "authUrl": "http://localhost:5000/extension-login",
+      "apiBaseUrl": "http://localhost:5000/api",
+      "clerkPublishableKey": "pk_test_b3B0aW1hbC1qZW5uZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA"
+    },
+    "production": {
+      "description": "Production deployment on q-sci.org",
+      "authUrl": "https://www.q-sci.org/extension-login",
+      "apiBaseUrl": "https://www.q-sci.org/api",
+      "clerkPublishableKey": "YOUR_PRODUCTION_CLERK_KEY_HERE"
+    }
+  },
+  "instructions": {
+    "local_testing": "1. Start mock backend: node mock-backend-server.js\n2. Set environment to 'local'\n3. Run: npm run build\n4. Load extension in Chrome",
+    "production": "1. Deploy website auth pages to q-sci.org\n2. Deploy backend API endpoints\n3. Set environment to 'production'\n4. Update clerkPublishableKey\n5. Run: npm run build\n6. Package and distribute extension"
+  }
+}
