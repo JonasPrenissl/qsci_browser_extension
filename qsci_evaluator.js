@@ -44,6 +44,10 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   // API endpoint for OpenAI chat completions
   const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
+  // Timeout for API requests (in milliseconds)
+  // Prevents the request from hanging indefinitely if the API doesn't respond
+  const API_TIMEOUT_MS = 60000; // 60 seconds
+
   /**
    * Build the prompt for the OpenAI model.  The system message
    * instructs the model to behave as a scientific paper quality
@@ -212,8 +216,8 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
-      console.error('Q‑SCI LLM Evaluator: Request timed out after 60 seconds');
-    }, 60000); // 60 second timeout
+      console.error(`Q‑SCI LLM Evaluator: Request timed out after ${API_TIMEOUT_MS / 1000} seconds`);
+    }, API_TIMEOUT_MS);
 
     try {
       const response = await fetch(OPENAI_API_ENDPOINT, {
@@ -247,11 +251,11 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       
       // Handle abort/timeout errors
       if (error.name === 'AbortError') {
-        throw new Error('Request to OpenAI API timed out after 60 seconds. The API may be experiencing issues. Please try again later.');
+        throw new Error(`Request to OpenAI API timed out after ${API_TIMEOUT_MS / 1000} seconds. The API may be experiencing issues. Please try again later.`);
       }
       
-      // Handle network errors
-      if (error.message && error.message.includes('Failed to fetch')) {
+      // Handle network errors with more robust checking
+      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
         throw new Error('Unable to connect to OpenAI API. Please check your internet connection and try again.');
       }
       
