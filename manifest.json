@@ -159,6 +159,9 @@
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.openai.com https://q-sci.org https://www.q-sci.org https://optimal-jennet-35.clerk.accounts.dev https://*.clerk.accounts.dev wss://localhost:35729 ws://localhost:35729;"
   }
 }
 
