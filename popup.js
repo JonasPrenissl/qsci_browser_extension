@@ -7,6 +7,22 @@ let currentTab = null;
 let currentAnalysis = null;
 let currentUser = null;
 
+// Global error handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', function(event) {
+  console.error('Q-SCI Debug Popup: Unhandled promise rejection:', event.reason);
+  console.error('Q-SCI Debug Popup: Promise:', event.promise);
+  
+  // Show error to user if it's not already handled
+  if (event.reason && event.reason.message) {
+    showError('Unexpected error: ' + event.reason.message);
+  } else {
+    showError('An unexpected error occurred. Please check the console for details.');
+  }
+  
+  // Prevent the default browser behavior (showing error in console only)
+  event.preventDefault();
+});
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('Q-SCI Debug Popup: DOM loaded, initializing...');
@@ -704,75 +720,51 @@ async function analyzePage() {
     console.log('Q-SCI Debug Popup: About to call window.qsciEvaluatePaper');
     console.log('Q-SCI Debug Popup: Function type:', typeof window.qsciEvaluatePaper);
     
-    try {
-      const textToEvaluate = requestData.text || '';
-      console.log('Q-SCI Debug Popup: Text length to evaluate:', textToEvaluate.length);
-      console.log('Q-SCI Debug Popup: Title:', requestData.title);
-      console.log('Q-SCI Debug Popup: Source URL:', requestData.source_url);
-      
-      // Call the evaluator function which returns a promise
-      console.log('Q-SCI Debug Popup: Calling qsciEvaluatePaper...');
-      let evaluation = window.qsciEvaluatePaper(
-        textToEvaluate,
-        requestData.title || 'Unknown Title',
-        requestData.source_url || currentTab.url || ''
-      );
-      console.log('Q-SCI Debug Popup: qsciEvaluatePaper returned:', typeof evaluation);
-      console.log('Q-SCI Debug Popup: Is promise?', evaluation && typeof evaluation.then === 'function');
-      
-      if (evaluation && typeof evaluation.then === 'function') {
-        console.log('Q-SCI Debug Popup: Awaiting promise from evaluator...');
-        evaluation = await evaluation;
-        console.log('Q-SCI Debug Popup: Promise resolved successfully');
-      }
-      
-      console.log('Q-SCI Debug Popup: Evaluation result received:', {
-        hasResult: !!evaluation,
-        quality: evaluation?.quality_percentage,
-        trafficLight: evaluation?.traffic_light,
-        positiveAspectsCount: evaluation?.positive_aspects?.length,
-        negativeAspectsCount: evaluation?.negative_aspects?.length
-      });
-      
-      if (!evaluation) {
-        throw new Error('Evaluation returned no results. This may indicate an issue with the evaluator or API.');
-      }
-      
-      currentAnalysis = evaluation;
-      console.log('Q-SCI Debug Popup: Displaying analysis results...');
-      displayAnalysisResults(evaluation);
-      
-      // Increment usage after successful analysis
-      try {
-        console.log('Q-SCI Debug Popup: Incrementing usage counter...');
-        await window.QSCIUsage.incrementUsage();
-        await updateUsageDisplay();
-        console.log('Q-SCI Debug Popup: Usage incremented successfully');
-      } catch (usageError) {
-        console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
-        // Don't throw here, as the analysis was successful
-      }
-      
-      console.log('Q-SCI Debug Popup: Analysis completed successfully!');
-      showSuccess('Analysis completed successfully!');
-    } catch (error) {
-      console.error('Q-SCI Debug Popup: Evaluation error:', error);
-      console.error('Q-SCI Debug Popup: Error type:', error.constructor.name);
-      console.error('Q-SCI Debug Popup: Error message:', error.message);
-      console.error('Q-SCI Debug Popup: Error stack:', error.stack);
-      
-      // Re-throw with additional context if needed
-      if (error.message) {
-        throw error;
-      } else {
-        throw new Error('Analysis failed with an unknown error. Please check the console for details.');
-      }
-    } finally {
-      console.log('Q-SCI Debug Popup: Hiding loading indicator...');
-      hideLoading();
+    const textToEvaluate = requestData.text || '';
+    console.log('Q-SCI Debug Popup: Text length to evaluate:', textToEvaluate.length);
+    console.log('Q-SCI Debug Popup: Title:', requestData.title);
+    console.log('Q-SCI Debug Popup: Source URL:', requestData.source_url);
+    
+    // Call the evaluator function which always returns a promise
+    console.log('Q-SCI Debug Popup: Calling qsciEvaluatePaper...');
+    const evaluation = await window.qsciEvaluatePaper(
+      textToEvaluate,
+      requestData.title || 'Unknown Title',
+      requestData.source_url || currentTab.url || ''
+    );
+    console.log('Q-SCI Debug Popup: Promise resolved successfully');
+    
+    console.log('Q-SCI Debug Popup: Evaluation result received:', {
+      hasResult: !!evaluation,
+      quality: evaluation?.quality_percentage,
+      trafficLight: evaluation?.traffic_light,
+      positiveAspectsCount: evaluation?.positive_aspects?.length,
+      negativeAspectsCount: evaluation?.negative_aspects?.length
+    });
+    
+    if (!evaluation) {
+      throw new Error('Evaluation returned no results. This may indicate an issue with the evaluator or API.');
     }
+    
+    currentAnalysis = evaluation;
+    console.log('Q-SCI Debug Popup: Displaying analysis results...');
+    displayAnalysisResults(evaluation);
+    
+    // Increment usage after successful analysis
+    try {
+      console.log('Q-SCI Debug Popup: Incrementing usage counter...');
+      await window.QSCIUsage.incrementUsage();
+      await updateUsageDisplay();
+      console.log('Q-SCI Debug Popup: Usage incremented successfully');
+    } catch (usageError) {
+      console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
+      // Don't throw here, as the analysis was successful
+    }
+    
+    console.log('Q-SCI Debug Popup: Analysis completed successfully!');
+    showSuccess('Analysis completed successfully!');
   } catch (error) {
-    console.error('Q-SCI Debug Popup: Outer analysis error:', error);
+    console.error('Q-SCI Debug Popup: Analysis error:', error);
     console.error('Q-SCI Debug Popup: Error type:', error.constructor.name);
     console.error('Q-SCI Debug Popup: Error message:', error.message);
     console.error('Q-SCI Debug Popup: Error stack:', error.stack);
@@ -786,6 +778,9 @@ async function analyzePage() {
     }
     
     showError(errorMessage);
+  } finally {
+    // Always hide loading, even if there was an error
+    console.log('Q-SCI Debug Popup: Hiding loading indicator in finally block...');
     hideLoading();
   }
   
@@ -914,22 +909,13 @@ async function analyzeText() {
   showLoading();
   
   try {
-    // Use the same evaluator for manual text
+    // Use the same evaluator for manual text (always returns a promise)
     console.log('Q-SCI Debug Popup: Calling window.qsciEvaluatePaper for manual text...');
-    let evaluation = window.qsciEvaluatePaper(
+    const evaluation = await window.qsciEvaluatePaper(
       text,
       'Manual Text Analysis',
       'manual-input'
     );
-    
-    console.log('Q-SCI Debug Popup: Evaluator returned:', typeof evaluation);
-    console.log('Q-SCI Debug Popup: Is promise?', evaluation && typeof evaluation.then === 'function');
-    
-    if (evaluation && typeof evaluation.then === 'function') {
-      console.log('Q-SCI Debug Popup: Awaiting promise from evaluator...');
-      evaluation = await evaluation;
-      console.log('Q-SCI Debug Popup: Promise resolved for manual text');
-    }
     
     console.log('Q-SCI Debug Popup: Manual evaluation result received:', {
       hasResult: !!evaluation,
@@ -1050,7 +1036,9 @@ function showLoading() {
   
   if (elements.analyzeBtn) {
     elements.analyzeBtn.disabled = true;
-    elements.analyzeBtn.textContent = 'Analyzing...';
+    // Use i18n for button text
+    const analyzingText = window.QSCIi18n ? window.QSCIi18n.t('message.analyzing') : 'Analyzing...';
+    elements.analyzeBtn.textContent = analyzingText;
   }
 }
 
@@ -1063,7 +1051,9 @@ function hideLoading() {
   
   if (elements.analyzeBtn) {
     elements.analyzeBtn.disabled = false;
-    elements.analyzeBtn.textContent = 'Analyze Paper';
+    // Use i18n for button text
+    const analyzeButtonText = window.QSCIi18n ? window.QSCIi18n.t('page.analyzeButton') : 'Analyze Paper';
+    elements.analyzeBtn.textContent = analyzeButtonText;
   }
 }
 
