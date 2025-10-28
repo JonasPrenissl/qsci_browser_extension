@@ -194,9 +194,8 @@ body {
 
 /* Stats Section */
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  display: flex;
+  justify-content: center;
   margin-bottom: 16px;
 }
 
@@ -206,6 +205,27 @@ body {
   background: #f8fafc;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+  min-width: 200px;
+}
+
+/* Quality score background color coding */
+#quality-stat-item {
+  transition: background-color 0.3s ease;
+}
+
+#quality-stat-item.quality-high {
+  background-color: #dcfce7 !important;
+  border-color: #86efac;
+}
+
+#quality-stat-item.quality-medium {
+  background-color: #fef3c7 !important;
+  border-color: #fde047;
+}
+
+#quality-stat-item.quality-low {
+  background-color: #fee2e2 !important;
+  border-color: #fca5a5;
 }
 
 .stat-value {
