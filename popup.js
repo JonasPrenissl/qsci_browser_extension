@@ -1332,7 +1332,7 @@ function showError(message) {
     if (errorText) {
       errorText.textContent = message;
     }
-    elements.errorMessage.style.display = 'flex';
+    elements.errorMessage.style.display = 'block';
     
     // For API key, authentication, or backend errors, keep the message visible longer (30 seconds)
     // This ensures users have enough time to read and understand the error
