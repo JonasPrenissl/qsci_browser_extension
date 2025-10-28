@@ -11,7 +11,9 @@
     "reload:server": "node tools/reloader.mjs",
     "dev": "npm-run-all -p build:watch reload:server",
     "test-server": "node test-server.js",
-    "verify": "node verify-auth-redirect.js"
+    "verify": "node verify-auth-redirect.js",
+    "mock-backend": "node mock-backend-server.js",
+    "smoke-test": "node smoke-test.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
