@@ -203,25 +203,60 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       'Authorization': `Bearer ${apiKey}`
     };
 
-    // Perform the API request using fetch.  The fetch API is available
-    // in the Chrome extension context.  Host permissions for
-    // https://api.openai.com/* must be declared in manifest.json.
-    const response = await fetch(OPENAI_API_ENDPOINT, {
-      method: 'POST',
-      headers: headers,
-      body: body
-    });
+    // Perform the API request using fetch with a timeout to prevent hanging
+    // The fetch API is available in the Chrome extension context.
+    // Host permissions for https://api.openai.com/* must be declared in manifest.json.
+    console.log('Q‑SCI LLM Evaluator: Sending request to OpenAI API...');
+    
+    // Create an AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.error('Q‑SCI LLM Evaluator: Request timed out after 60 seconds');
+    }, 60000); // 60 second timeout
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+    try {
+      const response = await fetch(OPENAI_API_ENDPOINT, {
+        method: 'POST',
+        headers: headers,
+        body: body,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      console.log('Q‑SCI LLM Evaluator: OpenAI API response received, status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Q‑SCI LLM Evaluator: OpenAI API error:', response.status, errorText);
+        throw new Error(`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+      }
+      
+      const json = await response.json();
+      console.log('Q‑SCI LLM Evaluator: Response parsed successfully');
+      
+      const parsed = parseOpenAIResponse(json);
+      if (!parsed) {
+        throw new Error('Failed to parse evaluation from OpenAI response');
+      }
+      
+      console.log('Q‑SCI LLM Evaluator: Evaluation completed successfully');
+      return parsed;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      
+      // Handle abort/timeout errors
+      if (error.name === 'AbortError') {
+        throw new Error('Request to OpenAI API timed out after 60 seconds. The API may be experiencing issues. Please try again later.');
+      }
+      
+      // Handle network errors
+      if (error.message && error.message.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to OpenAI API. Please check your internet connection and try again.');
+      }
+      
+      throw error;
     }
-    const json = await response.json();
-    const parsed = parseOpenAIResponse(json);
-    if (!parsed) {
-      throw new Error('Failed to parse evaluation from OpenAI response');
-    }
-    return parsed;
   }
 
   // Expose the evaluator on the window object.  The popup script will
