@@ -112,8 +112,12 @@
                 console.log('Q-SCI Auth: Auth data stored via postMessage');
 
                 // Close the auth window if still open
-                if (authWindow && !authWindow.closed) {
-                  authWindow.close();
+                try {
+                  if (authWindow && !authWindow.closed) {
+                    authWindow.close();
+                  }
+                } catch (e) {
+                  // COOP may prevent checking closed state - ignore
                 }
 
                 resolve({
@@ -132,8 +136,12 @@
               clearInterval(checkClosed);
               clearTimeout(timeoutId);
               
-              if (authWindow && !authWindow.closed) {
-                authWindow.close();
+              try {
+                if (authWindow && !authWindow.closed) {
+                  authWindow.close();
+                }
+              } catch (e) {
+                // COOP may prevent checking closed state - ignore
               }
               
               reject(new Error(event.data.message || 'Authentication failed'));
@@ -144,37 +152,44 @@
 
           // Check if window was closed without completing auth
           const checkClosed = setInterval(async () => {
-            if (authWindow.closed) {
-              clearInterval(checkClosed);
-              clearTimeout(timeoutId);
-              window.removeEventListener('message', messageHandler);
-              
-              // Window closed - check if auth data was stored in chrome.storage
-              // This handles the case where postMessage was missed or failed
-              console.log('Q-SCI Auth: Auth window closed, checking for stored credentials...');
-              
-              // Wait longer for any pending storage writes to complete
-              // Increased from 500ms to 1000ms to ensure storage persistence
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              
-              try {
-                const user = await this.getCurrentUser();
-                if (user && user.token && !messageReceived) {
-                  console.log('Q-SCI Auth: Found stored credentials after window close');
-                  resolve({
-                    email: user.email,
-                    subscriptionStatus: user.subscriptionStatus || 'free',
-                    userId: user.userId
-                  });
-                } else if (!messageReceived) {
-                  reject(new Error('Authentication window was closed before completing authentication'));
-                }
-              } catch (error) {
-                console.error('Q-SCI Auth: Error checking stored credentials:', error);
-                if (!messageReceived) {
-                  reject(new Error('Authentication window was closed'));
+            try {
+              // Try to check if window is closed - may fail due to COOP policy
+              if (authWindow.closed) {
+                clearInterval(checkClosed);
+                clearTimeout(timeoutId);
+                window.removeEventListener('message', messageHandler);
+                
+                // Window closed - check if auth data was stored in chrome.storage
+                // This handles the case where postMessage was missed or failed
+                console.log('Q-SCI Auth: Auth window closed, checking for stored credentials...');
+                
+                // Wait longer for any pending storage writes to complete
+                // Increased from 500ms to 1000ms to ensure storage persistence
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                try {
+                  const user = await this.getCurrentUser();
+                  if (user && user.token && !messageReceived) {
+                    console.log('Q-SCI Auth: Found stored credentials after window close');
+                    resolve({
+                      email: user.email,
+                      subscriptionStatus: user.subscriptionStatus || 'free',
+                      userId: user.userId
+                    });
+                  } else if (!messageReceived) {
+                    reject(new Error('Authentication window was closed before completing authentication'));
+                  }
+                } catch (error) {
+                  console.error('Q-SCI Auth: Error checking stored credentials:', error);
+                  if (!messageReceived) {
+                    reject(new Error('Authentication window was closed'));
+                  }
                 }
               }
+            } catch (coopError) {
+              // COOP policy prevents checking window.closed - this is expected for cross-origin windows
+              // We rely on the postMessage handler to detect successful auth
+              // Just log silently and continue checking
             }
           }, 500);
 
@@ -182,8 +197,12 @@
           const timeoutId = setTimeout(() => {
             clearInterval(checkClosed);
             window.removeEventListener('message', messageHandler);
-            if (authWindow && !authWindow.closed) {
-              authWindow.close();
+            try {
+              if (authWindow && !authWindow.closed) {
+                authWindow.close();
+              }
+            } catch (e) {
+              // COOP may prevent checking closed state - ignore
             }
             if (!messageReceived) {
               reject(new Error('Authentication timeout'));
@@ -515,6 +534,14 @@
           }
           
           throw new Error(userMessage);
+        }
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('Q-SCI Auth: Backend returned non-JSON response for API key request');
+          console.error('Q-SCI Auth: Content-Type:', contentType);
+          throw new Error('Backend returned invalid response format. Expected JSON but received HTML. The backend endpoint may not be properly configured.');
         }
 
         const data = await response.json();
