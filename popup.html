@@ -101,29 +101,12 @@
       <div class="section stats-section" id="stats-section" style="display: none;">
         <h3 data-i18n="results.title">Analyseergebnisse</h3>
         <div class="stats-grid">
-          <div class="stat-item">
+          <div class="stat-item" id="quality-stat-item">
             <div class="stat-value" id="quality-score">--</div>
             <div class="stat-label" data-i18n="results.quality">Qualität</div>
           </div>
-          <div class="stat-item">
-            <div class="stat-value" id="impact-factor">--</div>
-            <div class="stat-label" data-i18n="results.journalTier">Journal-Tier</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" id="quartile">--</div>
-            <div class="stat-label" data-i18n="results.quartile">Quartil</div>
-          </div>
         </div>
         <button class="btn btn-outline" id="view-details-btn" style="display: none;" data-i18n="results.viewDetails">Details anzeigen</button>
-      </div>
-
-      <!-- Manual analysis section -->
-      <div class="section manual-analysis-section">
-        <h3 data-i18n="manual.title">Manuelle Analyse</h3>
-        <textarea id="manual-text" rows="4" data-i18n="manual.placeholder" placeholder="Paper-Text zum Analysieren einfügen..." style="width: 100%; border: 1px solid #d1d5db; border-radius: 4px; padding: 8px;"></textarea>
-        <div style="margin-top: 8px;">
-          <button class="btn btn-primary" id="manual-analyze-btn" data-i18n="manual.analyzeButton">Text analysieren</button>
-        </div>
       </div>
 
       <!-- Detailed analysis section (hidden until requested) -->
@@ -132,8 +115,6 @@
         <button class="btn btn-secondary" id="close-details-btn" style="margin-bottom: 12px;" data-i18n="detailed.close">Schließen</button>
         <div id="journal-info" style="margin-bottom: 8px;">
           <div><strong data-i18n="detailed.journal">Journal:</strong> <span id="journal-name"></span></div>
-          <div><strong data-i18n="detailed.journalTier">Journal-Tier:</strong> <span id="detailed-impact-factor"></span></div>
-          <div><strong data-i18n="detailed.quartile">Quartil:</strong> <span id="detailed-quartile"></span></div>
           <div id="journal-category"></div>
           <div><strong data-i18n="detailed.quality">Qualität:</strong> <span id="detailed-quality-percentage"></span></div>
           <div id="detailed-quality-circle"></div>

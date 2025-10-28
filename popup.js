@@ -48,11 +48,8 @@ function initializeElements() {
     refreshBtn: document.getElementById('refresh-btn'),
     statsSection: document.getElementById('stats-section'),
     qualityScore: document.getElementById('quality-score'),
-    impactFactor: document.getElementById('impact-factor'),
-    quartile: document.getElementById('quartile'),
+    qualityStatItem: document.getElementById('quality-stat-item'),
     viewDetailsBtn: document.getElementById('view-details-btn'),
-    manualText: document.getElementById('manual-text'),
-    manualAnalyzeBtn: document.getElementById('manual-analyze-btn'),
     loadingMessage: document.getElementById('loading-overlay'),
     errorMessage: document.getElementById('error-message'),
     successMessage: document.getElementById('success-message'),
@@ -61,8 +58,6 @@ function initializeElements() {
     closeDetailsBtn: document.getElementById('close-details-btn'),
     journalInfo: document.getElementById('journal-info'),
     journalName: document.getElementById('journal-name'),
-    detailedImpactFactor: document.getElementById('detailed-impact-factor'),
-    detailedQuartile: document.getElementById('detailed-quartile'),
     journalCategory: document.getElementById('journal-category'),
     detailedQualityCircle: document.getElementById('detailed-quality-circle'),
     detailedQualityPercentage: document.getElementById('detailed-quality-percentage'),
@@ -117,13 +112,6 @@ function setupEventListeners() {
     elements.refreshBtn.addEventListener('click', function() {
       console.log('Q-SCI Debug Popup: Refresh button clicked');
       updatePageStatus();
-    });
-  }
-  
-  if (elements.manualAnalyzeBtn) {
-    elements.manualAnalyzeBtn.addEventListener('click', function() {
-      console.log('Q-SCI Debug Popup: Manual analyze button clicked');
-      analyzeText();
     });
   }
   
@@ -403,10 +391,6 @@ function showLoginForm() {
     elements.analyzeBtn.disabled = true;
     elements.analyzeBtn.style.opacity = '0.5';
   }
-  if (elements.manualAnalyzeBtn) {
-    elements.manualAnalyzeBtn.disabled = true;
-    elements.manualAnalyzeBtn.style.opacity = '0.5';
-  }
 }
 
 // Update subscription badge with i18n support
@@ -457,10 +441,6 @@ function showUserStatus(user) {
   if (elements.analyzeBtn) {
     elements.analyzeBtn.disabled = false;
     elements.analyzeBtn.style.opacity = '1';
-  }
-  if (elements.manualAnalyzeBtn) {
-    elements.manualAnalyzeBtn.disabled = false;
-    elements.manualAnalyzeBtn.style.opacity = '1';
   }
 }
 
@@ -859,107 +839,6 @@ function extractPageContent() {
   };
 }
 
-// Analyze manual text
-async function analyzeText() {
-  console.log('Q-SCI Debug Popup: ==================== STARTING MANUAL TEXT ANALYSIS ====================');
-  
-  // Check if user is logged in
-  if (!currentUser) {
-    console.error('Q-SCI Debug Popup: No current user for manual text analysis');
-    showError('Please login to use analysis features.');
-    return;
-  }
-  
-  const text = elements.manualText?.value?.trim();
-  
-  console.log('Q-SCI Debug Popup: Manual text length:', text ? text.length : 0);
-  
-  if (!text || text.length < 50) {
-    console.warn('Q-SCI Debug Popup: Insufficient text provided (less than 50 characters)');
-    showError('Please enter at least 50 characters of text to analyze.');
-    return;
-  }
-  
-  // Check usage limits
-  try {
-    console.log('Q-SCI Debug Popup: Checking usage limits for manual analysis...');
-    const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
-    console.log('Q-SCI Debug Popup: Usage info:', usageInfo);
-    
-    if (!usageInfo.canAnalyze) {
-      const limit = usageInfo.limit;
-      const subscriptionType = currentUser.subscriptionStatus === 'subscribed' ? 'subscribed' : 'free';
-      
-      console.warn('Q-SCI Debug Popup: Usage limit reached for manual analysis');
-      if (subscriptionType === 'free') {
-        showError(`You have reached your daily limit of ${limit} analyses. Please subscribe at q-sci.org for more analyses (up to 100 per day).`);
-      } else {
-        showError(`You have reached your daily limit of ${limit} analyses. Please try again tomorrow.`);
-      }
-      return;
-    }
-  } catch (error) {
-    console.error('Q-SCI Debug Popup: Error checking usage for manual analysis:', error);
-    showError('Failed to check usage limits. Please try again.');
-    return;
-  }
-  
-  console.log('Q-SCI Debug Popup: Starting manual text analysis...');
-  console.log('Q-SCI Debug Popup: Text preview (first 100 chars):', text.substring(0, 100) + '...');
-  showLoading();
-  
-  try {
-    // Use the same evaluator for manual text (always returns a promise)
-    console.log('Q-SCI Debug Popup: Calling window.qsciEvaluatePaper for manual text...');
-    const evaluation = await window.qsciEvaluatePaper(
-      text,
-      'Manual Text Analysis',
-      'manual-input'
-    );
-    
-    console.log('Q-SCI Debug Popup: Manual evaluation result received:', {
-      hasResult: !!evaluation,
-      quality: evaluation?.quality_percentage,
-      trafficLight: evaluation?.traffic_light,
-      positiveAspectsCount: evaluation?.positive_aspects?.length,
-      negativeAspectsCount: evaluation?.negative_aspects?.length
-    });
-    
-    if (!evaluation) {
-      throw new Error('Evaluation returned no results for manual text. This may indicate an issue with the evaluator or API.');
-    }
-    
-    currentAnalysis = evaluation;
-    console.log('Q-SCI Debug Popup: Displaying manual text analysis results...');
-    displayAnalysisResults(evaluation);
-    
-    // Increment usage after successful analysis
-    try {
-      console.log('Q-SCI Debug Popup: Incrementing usage counter for manual analysis...');
-      await window.QSCIUsage.incrementUsage();
-      await updateUsageDisplay();
-      console.log('Q-SCI Debug Popup: Usage incremented successfully for manual analysis');
-    } catch (usageError) {
-      console.error('Q-SCI Debug Popup: Failed to increment usage for manual analysis:', usageError);
-      // Don't throw here, as the analysis was successful
-    }
-    
-    console.log('Q-SCI Debug Popup: Manual text analysis completed successfully!');
-    showSuccess('Text analysis completed successfully!');
-  } catch (error) {
-    console.error('Q-SCI Debug Popup: Manual text analysis error:', error);
-    console.error('Q-SCI Debug Popup: Error type:', error.constructor.name);
-    console.error('Q-SCI Debug Popup: Error message:', error.message);
-    console.error('Q-SCI Debug Popup: Error stack:', error.stack);
-    showError(error.message || 'Text analysis failed. Please try again.');
-  } finally {
-    console.log('Q-SCI Debug Popup: Hiding loading indicator for manual analysis...');
-    hideLoading();
-  }
-  
-  console.log('Q-SCI Debug Popup: ==================== MANUAL TEXT ANALYSIS COMPLETE ====================');
-}
-
 // Display analysis results
 function displayAnalysisResults(analysis) {
   console.log('Q-SCI Debug Popup: Displaying results:', analysis);
@@ -969,38 +848,21 @@ function displayAnalysisResults(analysis) {
     return;
   }
   
-  // Update quality score
-  if (elements.qualityScore) {
+  // Update quality score and background color
+  if (elements.qualityScore && elements.qualityStatItem) {
     const score = analysis.quality_percentage || analysis.score || 0;
     elements.qualityScore.textContent = `${Math.round(score)}%`;
     
-    // Color coding
-    let colorClass = 'red';
-    if (score >= 80) colorClass = 'green';
-    else if (score >= 50) colorClass = 'yellow';
+    // Remove all quality classes first
+    elements.qualityStatItem.classList.remove('quality-high', 'quality-medium', 'quality-low');
     
-    elements.qualityScore.className = `stat-value ${colorClass}`;
-  }
-  
-  // Update impact factor
-  if (elements.impactFactor) {
-    const impactFactor = analysis.journal_info?.impact_factor;
-    elements.impactFactor.textContent = impactFactor || 'N/A';
-  }
-  
-  // Update quartile
-  if (elements.quartile) {
-    const quartile = analysis.journal_info?.quartile;
-    elements.quartile.textContent = quartile || 'N/A';
-    
-    if (quartile) {
-      let quartileClass = '';
-      if (quartile === 'Q1') quartileClass = 'green';
-      else if (quartile === 'Q2') quartileClass = 'yellow';
-      else if (quartile === 'Q3') quartileClass = 'orange';
-      else if (quartile === 'Q4') quartileClass = 'red';
-      
-      elements.quartile.className = `stat-value ${quartileClass}`;
+    // Add background color based on quality score
+    if (score >= 80) {
+      elements.qualityStatItem.classList.add('quality-high');
+    } else if (score >= 50) {
+      elements.qualityStatItem.classList.add('quality-medium');
+    } else {
+      elements.qualityStatItem.classList.add('quality-low');
     }
   }
   
@@ -1104,27 +966,6 @@ function populateDetailedAnalysis(analysis) {
     
     if (elements.journalName) {
       elements.journalName.textContent = analysis.journal_info.journal_name || analysis.journal_info.name;
-    }
-    
-    if (elements.detailedImpactFactor) {
-      // Display the prestige tier as the journal tier (stored in impact_factor field)
-      elements.detailedImpactFactor.textContent = analysis.journal_info.impact_factor || 'N/A';
-    }
-    
-    if (elements.detailedQuartile) {
-      elements.detailedQuartile.textContent = analysis.journal_info.quartile || 'N/A';
-      
-      // Apply quartile color
-      const quartile = analysis.journal_info.quartile;
-      if (quartile) {
-        let quartileClass = '';
-        if (quartile === 'Q1') quartileClass = 'green';
-        else if (quartile === 'Q2') quartileClass = 'yellow';
-        else if (quartile === 'Q3') quartileClass = 'orange';
-        else if (quartile === 'Q4') quartileClass = 'red';
-        
-        elements.detailedQuartile.className = `metric-value ${quartileClass}`;
-      }
     }
     
     if (elements.journalCategory) {
