@@ -525,7 +525,22 @@
           if (response.status === 404) {
             userMessage = `Backend endpoint not found (404). The /api/extension-auth endpoint needs to be deployed to Vercel. Please ensure the backend is properly configured.`;
           } else if (response.status === 401) {
-            userMessage = `Authentication failed (401). Your session may have expired. Please try logging out and logging in again.`;
+            // Check if token expired by parsing error response
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch (e) {
+              errorData = {};
+            }
+            
+            // If token expired, logout and show clear message
+            if (errorData.message && errorData.message.toLowerCase().includes('expired')) {
+              console.log('Q-SCI Auth: Token expired, logging out user');
+              await this.logout();
+              userMessage = `Your session has expired. Please click "Login with Clerk" to sign in again.`;
+            } else {
+              userMessage = `Authentication failed (401). Your session may have expired. Please try logging out and logging in again.`;
+            }
           } else if (response.status === 500) {
             userMessage = `Backend server error (500). The OPENAI_API_KEY environment variable may not be set on Vercel. Please contact support.`;
           } else {
