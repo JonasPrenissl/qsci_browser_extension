@@ -298,10 +298,16 @@ async function testConfiguration() {
 
     // Check auth.js URLs
     const authJs = fs.readFileSync(path.join(__dirname, 'src', 'auth.js'), 'utf8');
-    if (authJs.includes('http://localhost:5000')) {
+    
+    // Parse URL configuration more safely
+    // Look for the full URL pattern, not just a substring
+    const localhostPattern = /CLERK_AUTH_URL\s*=\s*['"]http:\/\/localhost:5000/;
+    const productionPattern = /CLERK_AUTH_URL\s*=\s*['"]https:\/\/www\.q-sci\.org/;
+    
+    if (localhostPattern.test(authJs)) {
       success('  auth.js configured for local testing');
       results.passed++;
-    } else if (authJs.includes('https://www.q-sci.org')) {
+    } else if (productionPattern.test(authJs)) {
       warning('  auth.js configured for production');
       results.warnings++;
     } else {
