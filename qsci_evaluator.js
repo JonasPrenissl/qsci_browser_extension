@@ -68,7 +68,8 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Consider whether the study is blinded, placebo controlled or non‑inferiority, whether it follows reporting guidelines (e.g. CONSORT for trials, PRISMA for reviews, STROBE for observational studies), and whether sample sizes are adequate. ` +
       `Assign a quality score between 0 and 100. 90–100 = 🟢 Green, 70–89 = 🟡 Amber, below 70 = 🔴 Red. ` +
       `Then provide at least three positive aspects and three negative aspects. Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
-      `For each aspect, set the 'aspect' field to a short summary of the point and set 'source_text' to the exact sentence or sentences from the paper that support it. ` +
+      `For each aspect, set the 'aspect' field to a complete sentence describing the observation (e.g., "The study objective is stated clearly" or "The sample size is small"). ` +
+      `Set 'source_text' to the exact sentence or sentences from the paper that support it. ` +
       `Do not invent content: every aspect and snippet must be present in the provided paper text. ` +
       `Ignore the reference list entirely when choosing aspects and source text. ` +
       `Return your answer strictly as a JSON object with the following keys:\n\n` +
