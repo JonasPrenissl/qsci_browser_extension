@@ -2,8 +2,8 @@
   // src/auth.js
   (function() {
     "use strict";
-    const CLERK_AUTH_URL = "https://www.q-sci.org/extension-login";
-    const API_BASE_URL = "https://www.q-sci.org/api";
+    const CLERK_AUTH_URL = "http://localhost:5000/extension-login";
+    const API_BASE_URL = "http://localhost:5000/api";
     const STORAGE_KEYS = {
       AUTH_TOKEN: "qsci_auth_token",
       USER_EMAIL: "qsci_user_email",

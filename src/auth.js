@@ -20,10 +20,15 @@
   // `window.opener.postMessage`.  The extension listens for this message
   // and stores the authentication data.  See EXTENSION_AUTH_FLOW.md for
   // more details.
-  const CLERK_AUTH_URL = 'https://www.q-sci.org/extension-login';
+  //
+  // For local testing: Use http://localhost:5000 with mock-backend-server.js
+  // For production: Use https://www.q-sci.org
+  const CLERK_AUTH_URL = 'http://localhost:5000/extension-login';
   
-  // Backend API base URL - points to q-sci.org backend (if needed for additional verification)
-  const API_BASE_URL = 'https://www.q-sci.org/api';
+  // Backend API base URL - points to backend API endpoints
+  // For local testing: Use http://localhost:5000/api with mock-backend-server.js
+  // For production: Use https://www.q-sci.org/api
+  const API_BASE_URL = 'http://localhost:5000/api';
   
   // Storage keys
   const STORAGE_KEYS = {
