@@ -151,7 +151,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       
       // Check if QSCIAuth is available (it should be loaded before this script)
       if (typeof window.QSCIAuth === 'undefined' || typeof window.QSCIAuth.getOpenAIApiKey !== 'function') {
-        const errorMsg = 'Authentication module not available. Please ensure you are logged in and the extension is properly loaded.';
+        const errorMsg = 'Authentication module not available. Please ensure you are logged in and the extension is properly loaded. Try reloading the extension at chrome://extensions/';
         console.error('Q‑SCI LLM Evaluator:', errorMsg);
         throw new Error(errorMsg);
       }
@@ -160,7 +160,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       apiKey = await window.QSCIAuth.getOpenAIApiKey();
       
       if (!apiKey) {
-        const errorMsg = 'Failed to retrieve API key from backend. Please try logging in again.';
+        const errorMsg = 'Failed to retrieve API key from backend. The backend may not be properly configured. Please ensure the /api/auth/openai-key endpoint is deployed and the OPENAI_API_KEY environment variable is set.';
         console.error('Q‑SCI LLM Evaluator:', errorMsg);
         throw new Error(errorMsg);
       }
@@ -169,7 +169,23 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
     } catch (error) {
       console.error('Q‑SCI LLM Evaluator: Error fetching API key:', error);
       console.error('Q‑SCI LLM Evaluator: Error stack:', error.stack);
-      throw new Error(`Unable to retrieve API key from backend: ${error.message}`);
+      console.error('Q‑SCI LLM Evaluator: Error type:', error.constructor.name);
+      
+      // Provide more specific error messages based on the error type
+      let userFriendlyMessage = error.message;
+      
+      // If the error already contains helpful information, use it
+      if (error.message.includes('404') || error.message.includes('endpoint not found')) {
+        userFriendlyMessage = 'Backend endpoint not found. The /api/auth/openai-key endpoint needs to be deployed. Please see the BACKEND_QUICK_SETUP.md file for setup instructions.';
+      } else if (error.message.includes('500') || error.message.includes('server error')) {
+        userFriendlyMessage = 'Backend server error. The OPENAI_API_KEY environment variable may not be set. Please check your backend configuration.';
+      } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        userFriendlyMessage = 'Authentication failed. Your session may have expired. Please logout and login again.';
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('Unable to connect')) {
+        userFriendlyMessage = 'Unable to connect to backend server. Please check your internet connection and ensure the backend at https://www.q-sci.org is accessible.';
+      }
+      
+      throw new Error(userFriendlyMessage);
     }
 
     const messages = buildMessages(title, sourceUrl, text);

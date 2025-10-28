@@ -576,6 +576,7 @@ function showPageStatus(message, canAnalyze) {
 
 // Analyze current page - SIMPLIFIED VERSION
 async function analyzePage() {
+  console.log('Q-SCI Debug Popup: ==================== STARTING ANALYSIS ====================');
   console.log('Q-SCI Debug Popup: Starting simplified page analysis...');
   console.log('Q-SCI Debug Popup: window.qsciEvaluatePaper available:', typeof window.qsciEvaluatePaper !== 'undefined');
   console.log('Q-SCI Debug Popup: window.QSCIAuth available:', typeof window.QSCIAuth !== 'undefined');
@@ -589,15 +590,19 @@ async function analyzePage() {
   }
   
   console.log('Q-SCI Debug Popup: Current user:', currentUser.email);
+  console.log('Q-SCI Debug Popup: Subscription status:', currentUser.subscriptionStatus);
   
   // Check usage limits
   try {
+    console.log('Q-SCI Debug Popup: Checking usage limits...');
     const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
+    console.log('Q-SCI Debug Popup: Usage info:', usageInfo);
     
     if (!usageInfo.canAnalyze) {
       const limit = usageInfo.limit;
       const subscriptionType = currentUser.subscriptionStatus === 'subscribed' ? 'subscribed' : 'free';
       
+      console.warn('Q-SCI Debug Popup: Usage limit reached:', usageInfo);
       if (subscriptionType === 'free') {
         showError(`You have reached your daily limit of ${limit} analyses. Please subscribe at q-sci.org for more analyses (up to 100 per day).`);
       } else {
@@ -614,6 +619,7 @@ async function analyzePage() {
   }
   
   // Show loading immediately
+  console.log('Q-SCI Debug Popup: Showing loading indicator...');
   showLoading();
   
   try {
@@ -631,32 +637,40 @@ async function analyzePage() {
     }
     
     console.log('Q-SCI Debug Popup: Using tab:', currentTab.url);
+    console.log('Q-SCI Debug Popup: Tab ID:', currentTab.id);
     
     // Extract page content using content script
-    console.log('Q-SCI Debug Popup: Injecting content script...');
+    console.log('Q-SCI Debug Popup: Injecting content script to extract page content...');
     
     const results = await chrome.scripting.executeScript({
       target: { tabId: currentTab.id },
       function: extractPageContent
     });
     
+    console.log('Q-SCI Debug Popup: Script execution results:', results);
+    
     if (!results || !results[0] || !results[0].result) {
-      throw new Error('Failed to extract page content');
+      throw new Error('Failed to extract page content. The page may not be accessible or the content script failed to execute.');
     }
     
     const pageData = results[0].result;
     console.log('Q-SCI Debug Popup: Extracted page data:', {
       hasTitle: !!pageData.title,
-      textLength: pageData.text ? pageData.text.length : 0
+      title: pageData.title ? pageData.title.substring(0, 50) + '...' : 'N/A',
+      textLength: pageData.text ? pageData.text.length : 0,
+      hasPdfUrls: !!pageData.pdfUrls,
+      pdfUrlsCount: pageData.pdfUrls ? pageData.pdfUrls.length : 0
     });
     
     if (!pageData.text || pageData.text.length < 50) {
-      throw new Error('Insufficient content found. Please ensure you are on a paper details page.');
+      throw new Error('Insufficient content found on the page (less than 50 characters). Please ensure you are on a paper details page with visible content, or use the Manual Analysis feature below.');
     }
     
     // Check if PDF analysis is enabled
     const usePdfAnalysis = elements.analyzePdfCheckbox && elements.analyzePdfCheckbox.checked;
     console.log('Q-SCI Debug Popup: PDF analysis enabled:', usePdfAnalysis);
+    console.log('Q-SCI Debug Popup: PDF checkbox element:', elements.analyzePdfCheckbox);
+    console.log('Q-SCI Debug Popup: PDF checkbox checked:', elements.analyzePdfCheckbox ? elements.analyzePdfCheckbox.checked : 'N/A');
     
     let requestData;
     if (usePdfAnalysis && pageData.pdfUrls && pageData.pdfUrls.length > 0) {
@@ -677,7 +691,7 @@ async function analyzePage() {
       };
     }
     
-    console.log('Q-SCI Debug Popup: Request data:', {
+    console.log('Q-SCI Debug Popup: Request data prepared:', {
       type: usePdfAnalysis && pageData.pdfUrls && pageData.pdfUrls.length > 0 ? 'PDF' : 'HTML',
       textLength: requestData.text ? requestData.text.length : 'N/A',
       pdfUrl: requestData.pdf_url || 'N/A',
@@ -685,59 +699,97 @@ async function analyzePage() {
       url: requestData.source_url
     });
     
-    // Perform evaluation locally using the in-browser evaluator.  The
-    // evaluator is exposed on the global window (qsciEvaluatePaper) and
-    // returns an object with quality metrics.  This avoids any
-    // network requests and runs entirely within the extension.
+    // Perform evaluation using the LLM evaluator which fetches the API key
+    // from the backend and calls OpenAI API
     console.log('Q-SCI Debug Popup: About to call window.qsciEvaluatePaper');
+    console.log('Q-SCI Debug Popup: Function type:', typeof window.qsciEvaluatePaper);
     
     try {
       const textToEvaluate = requestData.text || '';
-      console.log('Q-SCI Debug Popup: Text length:', textToEvaluate.length);
+      console.log('Q-SCI Debug Popup: Text length to evaluate:', textToEvaluate.length);
       console.log('Q-SCI Debug Popup: Title:', requestData.title);
+      console.log('Q-SCI Debug Popup: Source URL:', requestData.source_url);
       
-      // Support both synchronous and asynchronous evaluators.  If
-      // qsciEvaluatePaper returns a promise, await it; otherwise use the
-      // returned value directly.
+      // Call the evaluator function which returns a promise
       console.log('Q-SCI Debug Popup: Calling qsciEvaluatePaper...');
       let evaluation = window.qsciEvaluatePaper(
         textToEvaluate,
         requestData.title || 'Unknown Title',
         requestData.source_url || currentTab.url || ''
       );
-      console.log('Q-SCI Debug Popup: qsciEvaluatePaper returned:', evaluation);
+      console.log('Q-SCI Debug Popup: qsciEvaluatePaper returned:', typeof evaluation);
       console.log('Q-SCI Debug Popup: Is promise?', evaluation && typeof evaluation.then === 'function');
       
       if (evaluation && typeof evaluation.then === 'function') {
-        console.log('Q-SCI Debug Popup: Awaiting promise...');
+        console.log('Q-SCI Debug Popup: Awaiting promise from evaluator...');
         evaluation = await evaluation;
-        console.log('Q-SCI Debug Popup: Promise resolved');
+        console.log('Q-SCI Debug Popup: Promise resolved successfully');
       }
-      console.log('Q-SCI Debug Popup: Evaluation result:', evaluation);
+      
+      console.log('Q-SCI Debug Popup: Evaluation result received:', {
+        hasResult: !!evaluation,
+        quality: evaluation?.quality_percentage,
+        trafficLight: evaluation?.traffic_light,
+        positiveAspectsCount: evaluation?.positive_aspects?.length,
+        negativeAspectsCount: evaluation?.negative_aspects?.length
+      });
+      
+      if (!evaluation) {
+        throw new Error('Evaluation returned no results. This may indicate an issue with the evaluator or API.');
+      }
+      
       currentAnalysis = evaluation;
+      console.log('Q-SCI Debug Popup: Displaying analysis results...');
       displayAnalysisResults(evaluation);
       
       // Increment usage after successful analysis
       try {
+        console.log('Q-SCI Debug Popup: Incrementing usage counter...');
         await window.QSCIUsage.incrementUsage();
         await updateUsageDisplay();
-        console.log('Q-SCI Debug Popup: Usage incremented');
+        console.log('Q-SCI Debug Popup: Usage incremented successfully');
       } catch (usageError) {
         console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
+        // Don't throw here, as the analysis was successful
       }
       
+      console.log('Q-SCI Debug Popup: Analysis completed successfully!');
       showSuccess('Analysis completed successfully!');
     } catch (error) {
       console.error('Q-SCI Debug Popup: Evaluation error:', error);
-      showError(error.message || 'Analysis failed. Please try again.');
+      console.error('Q-SCI Debug Popup: Error type:', error.constructor.name);
+      console.error('Q-SCI Debug Popup: Error message:', error.message);
+      console.error('Q-SCI Debug Popup: Error stack:', error.stack);
+      
+      // Re-throw with additional context if needed
+      if (error.message) {
+        throw error;
+      } else {
+        throw new Error('Analysis failed with an unknown error. Please check the console for details.');
+      }
     } finally {
+      console.log('Q-SCI Debug Popup: Hiding loading indicator...');
       hideLoading();
     }
   } catch (error) {
     console.error('Q-SCI Debug Popup: Outer analysis error:', error);
-    showError(error.message || 'Analysis failed. Please try again.');
+    console.error('Q-SCI Debug Popup: Error type:', error.constructor.name);
+    console.error('Q-SCI Debug Popup: Error message:', error.message);
+    console.error('Q-SCI Debug Popup: Error stack:', error.stack);
+    
+    // Ensure the error message is user-friendly
+    let errorMessage = error.message || 'Analysis failed. Please try again.';
+    
+    // Add helpful context for common errors
+    if (errorMessage.includes('Insufficient content')) {
+      errorMessage += ' You can also try the Manual Analysis feature by pasting text in the text area below.';
+    }
+    
+    showError(errorMessage);
     hideLoading();
   }
+  
+  console.log('Q-SCI Debug Popup: ==================== ANALYSIS COMPLETE ====================');
 }
 
 // Content extraction function (injected into page)
@@ -814,27 +866,36 @@ function extractPageContent() {
 
 // Analyze manual text
 async function analyzeText() {
+  console.log('Q-SCI Debug Popup: ==================== STARTING MANUAL TEXT ANALYSIS ====================');
+  
   // Check if user is logged in
   if (!currentUser) {
+    console.error('Q-SCI Debug Popup: No current user for manual text analysis');
     showError('Please login to use analysis features.');
     return;
   }
   
   const text = elements.manualText?.value?.trim();
   
+  console.log('Q-SCI Debug Popup: Manual text length:', text ? text.length : 0);
+  
   if (!text || text.length < 50) {
+    console.warn('Q-SCI Debug Popup: Insufficient text provided (less than 50 characters)');
     showError('Please enter at least 50 characters of text to analyze.');
     return;
   }
   
   // Check usage limits
   try {
+    console.log('Q-SCI Debug Popup: Checking usage limits for manual analysis...');
     const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
+    console.log('Q-SCI Debug Popup: Usage info:', usageInfo);
     
     if (!usageInfo.canAnalyze) {
       const limit = usageInfo.limit;
       const subscriptionType = currentUser.subscriptionStatus === 'subscribed' ? 'subscribed' : 'free';
       
+      console.warn('Q-SCI Debug Popup: Usage limit reached for manual analysis');
       if (subscriptionType === 'free') {
         showError(`You have reached your daily limit of ${limit} analyses. Please subscribe at q-sci.org for more analyses (up to 100 per day).`);
       } else {
@@ -843,47 +904,74 @@ async function analyzeText() {
       return;
     }
   } catch (error) {
-    console.error('Q-SCI Debug Popup: Error checking usage:', error);
+    console.error('Q-SCI Debug Popup: Error checking usage for manual analysis:', error);
     showError('Failed to check usage limits. Please try again.');
     return;
   }
   
   console.log('Q-SCI Debug Popup: Starting manual text analysis...');
+  console.log('Q-SCI Debug Popup: Text preview (first 100 chars):', text.substring(0, 100) + '...');
   showLoading();
   
   try {
-    // Use the same evaluator for manual text.  Title is arbitrary
-    // and the source is set to 'manual-input'.  The evaluator may
-    // return a promise when using the LLM backend, so handle both
-    // synchronous and asynchronous responses.
+    // Use the same evaluator for manual text
+    console.log('Q-SCI Debug Popup: Calling window.qsciEvaluatePaper for manual text...');
     let evaluation = window.qsciEvaluatePaper(
       text,
       'Manual Text Analysis',
       'manual-input'
     );
+    
+    console.log('Q-SCI Debug Popup: Evaluator returned:', typeof evaluation);
+    console.log('Q-SCI Debug Popup: Is promise?', evaluation && typeof evaluation.then === 'function');
+    
     if (evaluation && typeof evaluation.then === 'function') {
+      console.log('Q-SCI Debug Popup: Awaiting promise from evaluator...');
       evaluation = await evaluation;
+      console.log('Q-SCI Debug Popup: Promise resolved for manual text');
     }
-    console.log('Q-SCI Debug Popup: Manual evaluation result:', evaluation);
+    
+    console.log('Q-SCI Debug Popup: Manual evaluation result received:', {
+      hasResult: !!evaluation,
+      quality: evaluation?.quality_percentage,
+      trafficLight: evaluation?.traffic_light,
+      positiveAspectsCount: evaluation?.positive_aspects?.length,
+      negativeAspectsCount: evaluation?.negative_aspects?.length
+    });
+    
+    if (!evaluation) {
+      throw new Error('Evaluation returned no results for manual text. This may indicate an issue with the evaluator or API.');
+    }
+    
     currentAnalysis = evaluation;
+    console.log('Q-SCI Debug Popup: Displaying manual text analysis results...');
     displayAnalysisResults(evaluation);
     
     // Increment usage after successful analysis
     try {
+      console.log('Q-SCI Debug Popup: Incrementing usage counter for manual analysis...');
       await window.QSCIUsage.incrementUsage();
       await updateUsageDisplay();
-      console.log('Q-SCI Debug Popup: Usage incremented');
+      console.log('Q-SCI Debug Popup: Usage incremented successfully for manual analysis');
     } catch (usageError) {
-      console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
+      console.error('Q-SCI Debug Popup: Failed to increment usage for manual analysis:', usageError);
+      // Don't throw here, as the analysis was successful
     }
     
+    console.log('Q-SCI Debug Popup: Manual text analysis completed successfully!');
     showSuccess('Text analysis completed successfully!');
   } catch (error) {
-    console.error('Q-SCI Debug Popup: Text analysis error:', error);
+    console.error('Q-SCI Debug Popup: Manual text analysis error:', error);
+    console.error('Q-SCI Debug Popup: Error type:', error.constructor.name);
+    console.error('Q-SCI Debug Popup: Error message:', error.message);
+    console.error('Q-SCI Debug Popup: Error stack:', error.stack);
     showError(error.message || 'Text analysis failed. Please try again.');
   } finally {
+    console.log('Q-SCI Debug Popup: Hiding loading indicator for manual analysis...');
     hideLoading();
   }
+  
+  console.log('Q-SCI Debug Popup: ==================== MANUAL TEXT ANALYSIS COMPLETE ====================');
 }
 
 // Display analysis results
@@ -1247,6 +1335,7 @@ function exportAnalysis() {
 
 function showError(message) {
   console.error('Q-SCI Debug Popup: Showing error:', message);
+  console.error('Q-SCI Debug Popup: Error stack trace:', new Error().stack);
   
   if (elements.errorMessage) {
     const errorText = elements.errorMessage.querySelector('.error-text');
@@ -1255,9 +1344,13 @@ function showError(message) {
     }
     elements.errorMessage.style.display = 'flex';
     
-    // For API key or authentication errors, keep the message visible longer (15 seconds)
+    // For API key, authentication, or backend errors, keep the message visible longer (30 seconds)
+    // This ensures users have enough time to read and understand the error
     const timeout = message.includes('API key') || message.includes('authentication') || 
-                    message.includes('backend') || message.includes('login') ? 15000 : 8000;
+                    message.includes('backend') || message.includes('login') || 
+                    message.includes('endpoint') || message.includes('Unable to retrieve') ? 30000 : 12000;
+    
+    console.log('Q-SCI Debug Popup: Error message will be visible for', timeout, 'ms');
     
     setTimeout(() => {
       if (elements.errorMessage) {
