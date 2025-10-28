@@ -54,6 +54,19 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // SECURITY WARNING: This is a MOCK server for LOCAL TESTING ONLY
+    // In production, verify the token with Clerk or your auth provider
+    // DO NOT deploy this mock server to production!
+    if (process.env.NODE_ENV === 'production') {
+      console.error('⚠️  CRITICAL: Mock server should not be used in production!');
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Configuration Error',
+        message: 'Mock server cannot be used in production'
+      }));
+      return;
+    }
+
     // In mock mode, accept any bearer token
     // In production, verify with Clerk
     console.log('✅ OpenAI API key requested - returning mock key');
@@ -75,6 +88,18 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({
         error: 'Unauthorized',
         message: 'Missing or invalid authorization header'
+      }));
+      return;
+    }
+
+    // SECURITY WARNING: This is a MOCK server for LOCAL TESTING ONLY
+    // In production, verify the token with Clerk or your auth provider
+    if (process.env.NODE_ENV === 'production') {
+      console.error('⚠️  CRITICAL: Mock server should not be used in production!');
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Configuration Error',
+        message: 'Mock server cannot be used in production'
       }));
       return;
     }

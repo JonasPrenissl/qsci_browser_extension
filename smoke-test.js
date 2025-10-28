@@ -25,6 +25,11 @@ const colors = {
   cyan: '\x1b[36m'
 };
 
+// Constants
+const SERVER_START_TIMEOUT_MS = 5000;
+const SERVER_READY_DELAY_MS = 1000;
+const CLEANUP_DELAY_MS = 500;
+
 function log(message, color = 'reset') {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
@@ -128,8 +133,8 @@ async function startMockServer() {
         success('  Mock backend server started');
         results.passed++;
         
-        // Wait a bit for server to be fully ready
-        setTimeout(() => resolve(server), 1000);
+        // Wait for server to be fully ready
+        setTimeout(() => resolve(server), SERVER_READY_DELAY_MS);
       }
     });
 
@@ -143,15 +148,15 @@ async function startMockServer() {
       reject(err);
     });
 
-    // Timeout after 5 seconds
+    // Timeout if server doesn't start
     setTimeout(() => {
       if (!started) {
-        error('  Server did not start within 5 seconds');
+        error('  Server did not start within timeout');
         results.failed++;
         server.kill();
         reject(new Error('Server start timeout'));
       }
-    }, 5000);
+    }, SERVER_START_TIMEOUT_MS);
   });
 }
 
@@ -270,8 +275,16 @@ async function testConfiguration() {
   info('Test 5: Checking configuration...');
   
   try {
-    // Check clerk-config.js
-    const clerkConfig = require('./clerk-config.js');
+    // Check clerk-config.js with error handling
+    let clerkConfig;
+    try {
+      clerkConfig = require('./clerk-config.js');
+    } catch (err) {
+      error('  Failed to load clerk-config.js: ' + err.message);
+      results.failed++;
+      return;
+    }
+    
     if (clerkConfig.publishableKey && clerkConfig.publishableKey.startsWith('pk_test_')) {
       success('  Clerk config has test key');
       results.passed++;
@@ -310,6 +323,30 @@ async function runTests() {
   console.log('');
 
   let server = null;
+  
+  // Ensure cleanup happens even if tests fail
+  const cleanup = async () => {
+    if (server) {
+      info('Stopping mock backend server...');
+      try {
+        server.kill();
+        await new Promise(resolve => setTimeout(resolve, CLEANUP_DELAY_MS));
+      } catch (err) {
+        // Ignore cleanup errors
+      }
+    }
+  };
+
+  // Handle process termination
+  process.on('SIGINT', async () => {
+    await cleanup();
+    process.exit(130);
+  });
+  
+  process.on('SIGTERM', async () => {
+    await cleanup();
+    process.exit(143);
+  });
 
   try {
     // Run all tests in sequence
@@ -331,11 +368,7 @@ async function runTests() {
     error(`Test suite error: ${err.message}`);
   } finally {
     // Clean up: kill server
-    if (server) {
-      info('Stopping mock backend server...');
-      server.kill();
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    await cleanup();
   }
 
   // Print summary
