@@ -39473,6 +39473,11 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
         redirectUrl: AUTH_CALLBACK_URL,
         afterSignInUrl: AUTH_CALLBACK_URL,
         afterSignUpUrl: AUTH_CALLBACK_URL,
+        // Explicitly set ALL redirect-related parameters to prevent undefined values
+        signInForceRedirectUrl: AUTH_CALLBACK_URL,
+        signUpForceRedirectUrl: AUTH_CALLBACK_URL,
+        signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
+        signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
         // Additional routing configuration to prevent chrome-extension:// URL usage
         routing: "hash",
         // Explicitly tell Clerk this is embedded/popup context
