@@ -308,9 +308,9 @@
         }
         
         // Fetch the latest subscription status from backend
-        // The backend checks privateMetadata.stripe_customer_id to determine subscription status
-        try {
-          const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
+        // The backend checks privateMetadata.stripe_custom        // Call backend API to get subscription status
+        // Using consolidated extension-auth endpoint with operation parameter
+        const response = await fetch(`${API_BASE_URL}/extension-auth?operation=subscription-status`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${user.token}`,
@@ -500,11 +500,12 @@
         }
         
         console.log('Q-SCI Auth: Fetching OpenAI API key from backend...');
-        console.log('Q-SCI Auth: API endpoint:', `${API_BASE_URL}/auth/openai-key`);
+        console.log('Q-SCI Auth: API endpoint:', `${API_BASE_URL}/extension-auth?operation=openai-key`);
         console.log('Q-SCI Auth: Using token (first 20 chars):', user.token.substring(0, 20) + '...');
         
         // Call backend API to get OpenAI API key
-        const response = await fetch(`${API_BASE_URL}/auth/openai-key`, {
+        // Using consolidated extension-auth endpoint with operation parameter
+        const response = await fetch(`${API_BASE_URL}/extension-auth?operation=openai-key`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${user.token}`,
@@ -520,7 +521,7 @@
           
           let userMessage;
           if (response.status === 404) {
-            userMessage = `Backend endpoint not found (404). The /api/auth/openai-key endpoint needs to be deployed to Vercel. Please ensure the backend is properly configured.`;
+            userMessage = `Backend endpoint not found (404). The /api/extension-auth endpoint needs to be deployed to Vercel. Please ensure the backend is properly configured.`;
           } else if (response.status === 401) {
             userMessage = `Authentication failed (401). Your session may have expired. Please try logging out and logging in again.`;
           } else if (response.status === 500) {
@@ -537,7 +538,7 @@
         
         if (!data.api_key) {
           console.error('Q-SCI Auth: No API key in response:', data);
-          throw new Error('Backend did not return an API key. Please ensure the OPENAI_API_KEY environment variable is set on Vercel.');
+          throw new Error('Backend did not return an API key. Please ensure the OPENAI_API_KEY environment variable is set in Vercel.');
         }
         
         console.log('Q-SCI Auth: OpenAI API key fetched successfully (length:', data.api_key.length, ')');
