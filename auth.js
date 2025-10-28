@@ -5,13 +5,29 @@
   'use strict';
 
   // Clerk authentication configuration
-  // The extension uses Clerk for authentication via a local auth page
-  // This avoids the "Invalid URL scheme" error that occurs when using chrome-extension:// URLs
-  // Users authenticate through the local clerk-auth.html page, and the extension receives
-  // the session token and user information via postMessage
-  const CLERK_AUTH_URL = chrome.runtime.getURL('clerk-auth.html');
+  // Use a web-hosted authentication page for Clerk instead of a local file.
+  //
+  // Originally, the extension opened the local `clerk-auth.html` page for
+  // login.  Clerk does not allow redirects back to `chrome-extension://`
+  // URLs, which resulted in an "Invalid URL scheme" error after the user
+  // completed authentication.  To resolve this, a new authentication flow
+  // has been implemented on the Q‑SCI website.  The extension now opens
+  // `https://www.q-sci.org/extension-login`, which hosts the Clerk sign‑in
+  // interface.  After sign‑in, Clerk redirects to
+  // `https://www.q-sci.org/extension-auth-success`.  That page retrieves
+  // the user's session token and subscription status and posts a
+  // `CLERK_AUTH_SUCCESS` message back to the extension via
+  // `window.opener.postMessage`.  The extension listens for this message
+  // and stores the authentication data.  See EXTENSION_AUTH_FLOW.md for
+  // more details.
+  //
+  // For local testing: Use http://localhost:5000 with mock-backend-server.js
+  // For production: Use https://www.q-sci.org
+  const CLERK_AUTH_URL = 'https://www.q-sci.org/extension-login';
   
-  // Backend API base URL - points to q-sci.org backend (if needed for additional verification)
+  // Backend API base URL - points to backend API endpoints
+  // For local testing: Use http://localhost:5000/api with mock-backend-server.js
+  // For production: Use https://www.q-sci.org/api
   const API_BASE_URL = 'https://www.q-sci.org/api';
   
   // Storage keys
@@ -189,14 +205,13 @@
               reject(new Error('Authentication timeout'));
             }
           }, 5 * 60 * 1000);
-
         } catch (error) {
           console.error('Q-SCI Auth: Login error:', error);
           reject(error);
         }
       });
     },
-
+    
     /**
      * Logout user
      */
@@ -217,7 +232,7 @@
         throw error;
       }
     },
-
+    
     /**
      * Check if user is logged in
      * @returns {Promise<boolean>} True if user is logged in
@@ -234,7 +249,7 @@
         return false;
       }
     },
-
+    
     /**
      * Get current user data
      * @returns {Promise<Object|null>} User data or null if not logged in
@@ -249,19 +264,19 @@
           STORAGE_KEYS.CLERK_SESSION_ID,
           STORAGE_KEYS.SUBSCRIPTION_STATUS
         ]);
-
+        
         console.log('Q-SCI Auth: Storage keys retrieved:', {
           hasToken: !!result[STORAGE_KEYS.AUTH_TOKEN],
           hasEmail: !!result[STORAGE_KEYS.USER_EMAIL],
           hasUserId: !!result[STORAGE_KEYS.USER_ID],
           subscriptionStatus: result[STORAGE_KEYS.SUBSCRIPTION_STATUS]
         });
-
+        
         if (!result || !result[STORAGE_KEYS.AUTH_TOKEN]) {
           console.log('Q-SCI Auth: No auth token found in storage');
           return null;
         }
-
+        
         const user = {
           token: result[STORAGE_KEYS.AUTH_TOKEN],
           email: result[STORAGE_KEYS.USER_EMAIL],
@@ -277,7 +292,7 @@
         return null;
       }
     },
-
+    
     /**
      * Verify authentication token with Clerk and refresh subscription status
      * This fetches the current subscription status from the backend which checks
@@ -291,11 +306,11 @@
         if (!user || !user.token) {
           throw new Error('No authentication token found');
         }
-
+        
         // Fetch the latest subscription status from backend
-        // The backend checks privateMetadata.stripe_customer_id to determine subscription status
-        try {
-          const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
+        // The backend checks privateMetadata.stripe_custom        // Call backend API to get subscription status
+        // Using consolidated extension-auth endpoint with operation parameter
+        const response = await fetch(`${API_BASE_URL}/extension-auth?operation=subscription-status`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${user.token}`,
@@ -351,7 +366,7 @@
         throw error;
       }
     },
-
+    
     /**
      * Refresh subscription status from backend
      * This should be called after a user completes payment to update their subscription status
@@ -365,9 +380,9 @@
         if (!user || !user.userId) {
           throw new Error('No user found. Please login first.');
         }
-
+        
         console.log('Q-SCI Auth: Refreshing subscription status from backend...');
-
+        
         // Call backend API to get updated subscription status
         // The backend will check Clerk's privateMetadata.stripe_customer_id to determine subscription status
         // If stripe_customer_id exists, user is subscribed; otherwise, user is on free tier
@@ -378,12 +393,12 @@
             'Content-Type': 'application/json'
           }
         });
-
+        
         if (!response.ok) {
           console.warn('Q-SCI Auth: Failed to refresh subscription status from backend (status:', response.status, '), using cached data');
           return user;
         }
-
+        
         // Check if response is JSON before parsing
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
@@ -391,17 +406,17 @@
           console.warn('Q-SCI Auth: Content-Type:', contentType);
           return user;
         }
-
+        
         const data = await response.json();
         const newSubscriptionStatus = data.subscription_status || 'free';
-
+        
         // Update stored subscription status
         await chrome.storage.local.set({
           [STORAGE_KEYS.SUBSCRIPTION_STATUS]: newSubscriptionStatus
         });
-
+        
         console.log('Q-SCI Auth: Subscription status refreshed:', newSubscriptionStatus);
-
+        
         // Return updated user data
         return {
           ...user,
@@ -424,7 +439,7 @@
         return await this.getCurrentUser();
       }
     },
-
+    
     /**
      * Store authentication data
      * @private
@@ -464,7 +479,7 @@
         throw error;
       }
     },
-
+    
     /**
      * Fetch OpenAI API key from backend
      * This method retrieves the API key from the backend server
@@ -483,29 +498,30 @@
           console.error('Q-SCI Auth:', errorMsg);
           throw new Error(errorMsg);
         }
-
+        
         console.log('Q-SCI Auth: Fetching OpenAI API key from backend...');
-        console.log('Q-SCI Auth: API endpoint:', `${API_BASE_URL}/auth/openai-key`);
+        console.log('Q-SCI Auth: API endpoint:', `${API_BASE_URL}/extension-auth?operation=openai-key`);
         console.log('Q-SCI Auth: Using token (first 20 chars):', user.token.substring(0, 20) + '...');
-
+        
         // Call backend API to get OpenAI API key
-        const response = await fetch(`${API_BASE_URL}/auth/openai-key`, {
+        // Using consolidated extension-auth endpoint with operation parameter
+        const response = await fetch(`${API_BASE_URL}/extension-auth?operation=openai-key`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${user.token}`,
             'Content-Type': 'application/json'
           }
         });
-
+        
         console.log('Q-SCI Auth: Backend response status:', response.status);
-
+        
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Q-SCI Auth: Failed to fetch API key from backend:', response.status, errorText);
           
           let userMessage;
           if (response.status === 404) {
-            userMessage = `Backend endpoint not found (404). The /api/auth/openai-key endpoint needs to be deployed to Vercel. Please ensure the backend is properly configured.`;
+            userMessage = `Backend endpoint not found (404). The /api/extension-auth endpoint needs to be deployed to Vercel. Please ensure the backend is properly configured.`;
           } else if (response.status === 401) {
             userMessage = `Authentication failed (401). Your session may have expired. Please try logging out and logging in again.`;
           } else if (response.status === 500) {
@@ -516,15 +532,15 @@
           
           throw new Error(userMessage);
         }
-
+        
         const data = await response.json();
         console.log('Q-SCI Auth: Response data received:', data ? 'yes' : 'no');
         
         if (!data.api_key) {
           console.error('Q-SCI Auth: No API key in response:', data);
-          throw new Error('Backend did not return an API key. Please ensure the OPENAI_API_KEY environment variable is set on Vercel.');
+          throw new Error('Backend did not return an API key. Please ensure the OPENAI_API_KEY environment variable is set in Vercel.');
         }
-
+        
         console.log('Q-SCI Auth: OpenAI API key fetched successfully (length:', data.api_key.length, ')');
         return data.api_key;
         
@@ -562,23 +578,23 @@
           STORAGE_KEYS.DAILY_USAGE,
           STORAGE_KEYS.LAST_USAGE_DATE
         ]);
-
+        
         const lastDate = result[STORAGE_KEYS.LAST_USAGE_DATE];
         const usage = result[STORAGE_KEYS.DAILY_USAGE] || 0;
-
+        
         // Reset usage if it's a new day
         if (lastDate !== today) {
           await this._resetDailyUsage();
           return 0;
         }
-
+        
         return usage;
       } catch (error) {
         console.error('Q-SCI Usage: Error getting daily usage:', error);
         return 0;
       }
     },
-
+    
     /**
      * Increment daily usage count
      * @returns {Promise<number>} New usage count
@@ -588,12 +604,12 @@
         const today = this._getTodayDate();
         const currentUsage = await this.getDailyUsage();
         const newUsage = currentUsage + 1;
-
+        
         await chrome.storage.local.set({
           [STORAGE_KEYS.DAILY_USAGE]: newUsage,
           [STORAGE_KEYS.LAST_USAGE_DATE]: today
         });
-
+        
         console.log('Q-SCI Usage: Incremented to', newUsage);
         return newUsage;
       } catch (error) {
@@ -601,7 +617,7 @@
         throw error;
       }
     },
-
+    
     /**
      * Check if user can perform an analysis
      * @param {string} subscriptionStatus - User's subscription status ('free', 'subscribed', or 'past_due')
@@ -622,7 +638,7 @@
         }
         
         const remaining = Math.max(0, limit - usage);
-
+        
         return {
           canAnalyze: usage < limit,
           remaining: remaining,
@@ -634,7 +650,7 @@
         return { canAnalyze: false, remaining: 0, limit: 0, used: 0 };
       }
     },
-
+    
     /**
      * Reset daily usage (called when a new day starts)
      * @private
@@ -647,7 +663,7 @@
       });
       console.log('Q-SCI Usage: Reset daily usage for new day');
     },
-
+    
     /**
      * Get today's date as YYYY-MM-DD string
      * @private
@@ -657,11 +673,11 @@
       return now.toISOString().split('T')[0];
     }
   };
-
+  
   // Expose services globally
   window.QSCIAuth = AuthService;
   window.QSCIUsage = UsageService;
-
+  
   console.log('Q-SCI Auth: Module loaded');
 
 })();
