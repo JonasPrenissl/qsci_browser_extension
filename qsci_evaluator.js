@@ -164,7 +164,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       apiKey = await window.QSCIAuth.getOpenAIApiKey();
       
       if (!apiKey) {
-        const errorMsg = 'Failed to retrieve API key from backend. The backend may not be properly configured. Please ensure the /api/auth/openai-key endpoint is deployed and the OPENAI_API_KEY environment variable is set.';
+        const errorMsg = 'Failed to retrieve API key from backend. The backend may not be properly configured. Please ensure the /api/extension-auth endpoint is deployed and the OPENAI_API_KEY environment variable is set.';
         console.error('Q‑SCI LLM Evaluator:', errorMsg);
         throw new Error(errorMsg);
       }
@@ -180,7 +180,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       
       // If the error already contains helpful information, use it
       if (error.message.includes('404') || error.message.includes('endpoint not found')) {
-        userFriendlyMessage = 'Backend endpoint not found. The /api/auth/openai-key endpoint needs to be deployed. Please see the BACKEND_QUICK_SETUP.md file for setup instructions.';
+        userFriendlyMessage = 'Backend endpoint not found. The /api/extension-auth endpoint needs to be deployed. Please check your backend configuration.';
       } else if (error.message.includes('500') || error.message.includes('server error')) {
         userFriendlyMessage = 'Backend server error. The OPENAI_API_KEY environment variable may not be set. Please check your backend configuration.';
       } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
