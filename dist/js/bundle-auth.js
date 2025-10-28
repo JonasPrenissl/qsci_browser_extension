@@ -39414,7 +39414,6 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   } else {
     console.warn("Q-SCI Clerk Auth: clerk-config.js not found, using default test key. For production, create clerk-config.js from clerk-config.example.js");
   }
-  var AUTH_CALLBACK_URL = "https://www.q-sci.org/auth-callback";
   var currentLanguage = "de";
   document.addEventListener("DOMContentLoaded", async function() {
     if (window.QSCIi18n) {
@@ -39458,16 +39457,21 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       const clerk = new o(CLERK_PUBLISHABLE_KEY);
       await clerk.load();
       console.log("Q-SCI Clerk Auth: Clerk initialized successfully");
+      if (clerk.session && clerk.user) {
+        console.log("Q-SCI Clerk Auth: Existing active session found, processing immediately...");
+        await handleSignInSuccess(clerk);
+        return;
+      }
       const clerkContainer = document.getElementById("clerk-container");
       clerkContainer.innerHTML = "";
       console.log("Q-SCI Clerk Auth: Mounting sign-in component...");
       clerk.mountSignIn(clerkContainer, {
-        // OAuth redirect URLs will be set by Clerk AFTER user chooses OAuth provider
-        // Not setting them here prevents immediate redirects and allows Clerk UI to show
-        // When user clicks "Sign in with Google", Clerk will handle the OAuth flow
-        // and redirect appropriately, then return to complete authentication
-        afterSignInUrl: AUTH_CALLBACK_URL,
-        afterSignUpUrl: AUTH_CALLBACK_URL,
+        // Do NOT set afterSignInUrl or afterSignUpUrl - this prevents Clerk from attempting redirects
+        // which would cause "Invalid URL scheme" errors since we're in a browser extension context
+        // We use postMessage and chrome.storage for communication instead
+        redirectUrl: void 0,
+        afterSignInUrl: void 0,
+        afterSignUpUrl: void 0,
         // Additional routing configuration to prevent chrome-extension:// URL usage
         routing: "hash",
         // Explicitly tell Clerk this is embedded/popup context
