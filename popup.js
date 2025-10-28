@@ -1327,6 +1327,9 @@ function showError(message) {
   console.error('Q-SCI Debug Popup: Showing error:', message);
   console.error('Q-SCI Debug Popup: Error stack trace:', new Error().stack);
   
+  // TEMPORARY: Show alert for debugging
+  alert('Q-SCI Error: ' + message);
+  
   if (elements.errorMessage) {
     const errorText = elements.errorMessage.querySelector('.error-text');
     if (errorText) {
