@@ -5,7 +5,7 @@
 ### 1. Fixed "Invalid URL scheme" Error
 - **Issue**: After login, Clerk showed error: `{"errors":[{"message":"Invalid URL scheme",...}]}`
 - **Root Cause**: Clerk was configured with `afterSignInUrl` and `afterSignUpUrl` pointing to HTTPS URLs, causing unwanted redirect attempts
-- **Fix**: Explicitly set `redirectUrl`, `afterSignInUrl`, and `afterSignUpUrl` to `undefined` in Clerk mount configuration
+- **Fix**: Explicitly set `afterSignInUrl` and `afterSignUpUrl` to `undefined` in Clerk mount configuration (redirectUrl is also set to undefined for completeness)
 - **File Changed**: `src/clerk-auth-main.js`
 
 ### 2. Fixed Auth State Transmission Issue
@@ -145,7 +145,7 @@ Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully
 **Symptoms**: Window closes but popup doesn't show logged-in state
 **Debug Steps**:
 1. Check browser console for errors
-2. Verify chrome.storage has auth data: Open DevTools > Application > Local Storage > check for `qsci_auth_token`
+2. Verify chrome.storage has auth data using console: `chrome.storage.local.get(['qsci_auth_token'], (r) => console.log('Has token:', !!r.qsci_auth_token))`
 3. Check if postMessage is blocked (check for Content Security Policy errors)
 
 **Solution**: The code now has multiple fallback mechanisms:
