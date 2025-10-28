@@ -308,9 +308,11 @@
         }
         
         // Fetch the latest subscription status from backend
-        // The backend checks privateMetadata.stripe_custom        // Call backend API to get subscription status
+        // The backend checks privateMetadata.stripe_customer_id
+        // Call backend API to get subscription status
         // Using consolidated extension-auth endpoint with operation parameter
-        const response = await fetch(`${API_BASE_URL}/extension-auth?operation=subscription-status`, {
+        try {
+          const response = await fetch(`${API_BASE_URL}/extension-auth?operation=subscription-status`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${user.token}`,
