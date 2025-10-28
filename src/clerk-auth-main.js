@@ -1,3 +1,6 @@
+// Import Clerk SDK
+import { Clerk } from '@clerk/clerk-js';
+
 console.log('Q-SCI Clerk Auth: Page loaded');
 
 // Import Clerk configuration

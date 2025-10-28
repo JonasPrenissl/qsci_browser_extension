@@ -52,7 +52,7 @@ const isWatchMode = process.argv.includes('--watch');
 
 // Build configuration
 const buildConfig = {
-  entryPoints: ['src/auth.js'],
+  entryPoints: ['src/clerk-auth-main.js'],
   bundle: true,
   outfile: 'dist/js/bundle-auth.js',
   format: 'iife',
