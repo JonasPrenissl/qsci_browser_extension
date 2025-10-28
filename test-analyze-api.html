@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q-SCI API Analysis Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #1a73e8;
+      margin-top: 0;
+    }
+    h2 {
+      color: #333;
+      border-bottom: 2px solid #1a73e8;
+      padding-bottom: 8px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #1a73e8;
+    }
+    .test-result {
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #059669;
+    }
+    .error {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #dc2626;
+    }
+    .info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #2563eb;
+    }
+    button {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 8px 8px 8px 0;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #1557b0;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 12px;
+      border: 2px solid #d1d5db;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+    .analysis-results {
+      margin-top: 20px;
+    }
+    .stat-card {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      border: 2px solid #e5e7eb;
+      margin: 12px 0;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      margin: 8px 0;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .aspect-list {
+      list-style: none;
+      padding: 0;
+    }
+    .aspect-item {
+      background: white;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border-left: 4px solid #10b981;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .aspect-item:hover {
+      transform: translateX(4px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .aspect-item.negative {
+      border-left-color: #ef4444;
+    }
+    .source-text {
+      background: #f9fafb;
+      padding: 12px;
+      margin-top: 8px;
+      border-radius: 4px;
+      font-style: italic;
+      font-size: 13px;
+      color: #4b5563;
+      display: none;
+    }
+    .aspect-item.expanded .source-text {
+      display: block;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(26, 115, 232, 0.3);
+      border-radius: 50%;
+      border-top-color: #1a73e8;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .green { color: #059669; }
+    .yellow { color: #d97706; }
+    .red { color: #dc2626; }
+    pre {
+      background: #1f2937;
+      color: #f3f4f6;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .step {
+      margin: 16px 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border-left: 4px solid #1a73e8;
+      border-radius: 4px;
+    }
+    .step-title {
+      font-weight: bold;
+      color: #1a73e8;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Q-SCI OpenAI API Analysis Test</h1>
+    <p>This page tests the OpenAI API integration for the Q-SCI browser extension. It simulates the analysis flow and demonstrates that results are properly displayed.</p>
+  </div>
+
+  <div class="container">
+    <h2>Test Overview</h2>
+    <div class="step">
+      <div class="step-title">Step 1: Mock Authentication</div>
+      <p>Sets up mock authentication credentials to simulate a logged-in user.</p>
+    </div>
+    <div class="step">
+      <div class="step-title">Step 2: Mock OpenAI API Response</div>
+      <p>Simulates the OpenAI API response with realistic analysis data including quality scores, traffic lights, and aspects.</p>
+    </div>
+    <div class="step">
+      <div class="step-title">Step 3: Trigger Analysis</div>
+      <p>Simulates clicking the "Analyze" button and processing the text.</p>
+    </div>
+    <div class="step">
+      <div class="step-title">Step 4: Display Results</div>
+      <p>Shows the analysis results including quality percentage, positive/negative aspects, and source citations.</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>Sample Scientific Text</h2>
+    <textarea id="sampleText" readonly>This is a comprehensive double-blind randomized controlled trial studying the effects of a novel intervention on patient outcomes. 
+
+This study employed a double-blind, placebo-controlled, randomized trial design to minimize bias and ensure robust results. A total of 1,247 participants were enrolled across 15 clinical centers, providing 90% power to detect the primary outcome. The study protocol and reporting adhered to CONSORT 2010 statement guidelines for transparent reporting of randomized trials.
+
+The study followed participants for 6 months post-intervention, which may not capture long-term effects. Approximately 23% of participants in the intervention arm were lost to follow-up, potentially introducing bias. The study population was predominantly white (87%) and from high-income countries, limiting generalizability.
+
+Results demonstrated a statistically significant improvement in the primary outcome measure (p < 0.001). Secondary outcomes also showed favorable trends. The intervention was well-tolerated with minimal adverse events reported.</textarea>
+  </div>
+
+  <div class="container test-section">
+    <h2>Run Test</h2>
+    <button id="runTestBtn" onclick="runTest()">▶️ Run Complete Test</button>
+    <button onclick="clearResults()">🗑️ Clear Results</button>
+    <div id="testStatus"></div>
+  </div>
+
+  <div class="container" id="resultsContainer" style="display: none;">
+    <h2>📊 Test Results</h2>
+    
+    <div class="test-section">
+      <h3>1. Mock API Call</h3>
+      <div id="apiCallResult"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>2. Analysis Results Display</h3>
+      <div id="analysisDisplay">
+        <div class="analysis-results">
+          <div class="stat-card">
+            <div class="stat-label">Quality Score</div>
+            <div class="stat-value" id="qualityScore"></div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-label">Traffic Light Assessment</div>
+            <div class="stat-value" id="trafficLight"></div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-label">✅ Positive Aspects</div>
+            <ul class="aspect-list" id="positiveAspects"></ul>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-label">⚠️ Areas for Improvement</div>
+            <ul class="aspect-list" id="negativeAspects"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h3>3. API Request Details</h3>
+      <div id="apiDetails"></div>
+    </div>
+  </div>
+
+  <script>
+    // Mock OpenAI response data
+    const mockAnalysisResponse = {
+      quality_percentage: 85,
+      traffic_light: '🟢 Green',
+      positive_aspects: [
+        {
+          aspect: 'Rigorous methodology with double-blind randomized controlled trial design',
+          source_text: 'This study employed a double-blind, placebo-controlled, randomized trial design to minimize bias and ensure robust results.'
+        },
+        {
+          aspect: 'Large sample size with adequate statistical power',
+          source_text: 'A total of 1,247 participants were enrolled across 15 clinical centers, providing 90% power to detect the primary outcome.'
+        },
+        {
+          aspect: 'Clear reporting following CONSORT guidelines',
+          source_text: 'The study protocol and reporting adhered to CONSORT 2010 statement guidelines for transparent reporting of randomized trials.'
+        },
+        {
+          aspect: 'Statistically significant primary outcome',
+          source_text: 'Results demonstrated a statistically significant improvement in the primary outcome measure (p < 0.001).'
+        }
+      ],
+      negative_aspects: [
+        {
+          aspect: 'Limited follow-up duration of only 6 months',
+          source_text: 'The study followed participants for 6 months post-intervention, which may not capture long-term effects.'
+        },
+        {
+          aspect: 'High attrition rate in the intervention group',
+          source_text: 'Approximately 23% of participants in the intervention arm were lost to follow-up, potentially introducing bias.'
+        },
+        {
+          aspect: 'Lack of diversity in participant demographics',
+          source_text: 'The study population was predominantly white (87%) and from high-income countries, limiting generalizability.'
+        }
+      ]
+    };
+
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('testStatus');
+      statusDiv.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+    }
+
+    function showLoading(message) {
+      const statusDiv = document.getElementById('testStatus');
+      statusDiv.innerHTML = `<div class="test-result info"><span class="loading"></span> ${message}</div>`;
+    }
+
+    async function simulateApiCall() {
+      showLoading('Simulating OpenAI API call...');
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const apiCallDiv = document.getElementById('apiCallResult');
+      apiCallDiv.innerHTML = `
+        <div class="test-result success">✅ API call successful</div>
+        <div class="test-result info">
+          <strong>Endpoint:</strong> https://api.openai.com/v1/chat/completions<br>
+          <strong>Method:</strong> POST<br>
+          <strong>Model:</strong> gpt-3.5-turbo-0125<br>
+          <strong>Status:</strong> 200 OK<br>
+          <strong>Response time:</strong> ~1.5s
+        </div>
+      `;
+
+      const apiDetailsDiv = document.getElementById('apiDetails');
+      apiDetailsDiv.innerHTML = `
+        <pre>${JSON.stringify({
+          request: {
+            model: 'gpt-3.5-turbo-0125',
+            messages: [
+              { role: 'system', content: 'You are Q-SCI, an expert scientific publication quality evaluator...' },
+              { role: 'user', content: 'Paper Title: Sample Scientific Paper...' }
+            ],
+            temperature: 0.0,
+            max_tokens: 700
+          },
+          response: mockAnalysisResponse
+        }, null, 2)}</pre>
+      `;
+
+      return mockAnalysisResponse;
+    }
+
+    function displayAnalysisResults(results) {
+      showLoading('Displaying analysis results...');
+      
+      setTimeout(() => {
+        // Show results container
+        document.getElementById('resultsContainer').style.display = 'block';
+        
+        // Display quality score
+        const qualityScore = document.getElementById('qualityScore');
+        qualityScore.textContent = `${results.quality_percentage}%`;
+        qualityScore.className = 'stat-value ' + getColorClass(results.quality_percentage);
+        
+        // Display traffic light
+        const trafficLight = document.getElementById('trafficLight');
+        trafficLight.textContent = results.traffic_light;
+        trafficLight.className = 'stat-value ' + getTrafficLightClass(results.traffic_light);
+        
+        // Display positive aspects
+        const positiveList = document.getElementById('positiveAspects');
+        positiveList.innerHTML = '';
+        results.positive_aspects.forEach((aspect, index) => {
+          const li = document.createElement('li');
+          li.className = 'aspect-item';
+          li.innerHTML = `
+            <div><strong>✓</strong> ${aspect.aspect}</div>
+            <div class="source-text"><strong>Source:</strong> "${aspect.source_text}"</div>
+          `;
+          li.onclick = () => li.classList.toggle('expanded');
+          positiveList.appendChild(li);
+        });
+        
+        // Display negative aspects
+        const negativeList = document.getElementById('negativeAspects');
+        negativeList.innerHTML = '';
+        results.negative_aspects.forEach((aspect, index) => {
+          const li = document.createElement('li');
+          li.className = 'aspect-item negative';
+          li.innerHTML = `
+            <div><strong>⚠</strong> ${aspect.aspect}</div>
+            <div class="source-text"><strong>Source:</strong> "${aspect.source_text}"</div>
+          `;
+          li.onclick = () => li.classList.toggle('expanded');
+          negativeList.appendChild(li);
+        });
+        
+        showStatus('✅ Test completed successfully! Click on aspects to view source text.', 'success');
+        
+        // Scroll to results
+        document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
+
+    function getColorClass(percentage) {
+      if (percentage >= 80) return 'green';
+      if (percentage >= 50) return 'yellow';
+      return 'red';
+    }
+
+    function getTrafficLightClass(trafficLight) {
+      if (trafficLight.includes('Green') || trafficLight.includes('🟢')) return 'green';
+      if (trafficLight.includes('Amber') || trafficLight.includes('Yellow') || trafficLight.includes('🟡')) return 'yellow';
+      return 'red';
+    }
+
+    async function runTest() {
+      const btn = document.getElementById('runTestBtn');
+      btn.disabled = true;
+      
+      try {
+        showStatus('Starting test...', 'info');
+        
+        // Step 1: Simulate API call
+        const results = await simulateApiCall();
+        
+        // Step 2: Display results
+        displayAnalysisResults(results);
+        
+      } catch (error) {
+        showStatus(`❌ Test failed: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function clearResults() {
+      document.getElementById('resultsContainer').style.display = 'none';
+      document.getElementById('testStatus').innerHTML = '';
+      document.getElementById('apiCallResult').innerHTML = '';
+      document.getElementById('apiDetails').innerHTML = '';
+    }
+  </script>
+</body>
+</html>
