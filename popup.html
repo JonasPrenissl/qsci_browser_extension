@@ -91,10 +91,6 @@
           <button class="btn btn-primary" id="analyze-btn" data-i18n="page.analyzeButton">Paper analysieren</button>
           <button class="btn btn-secondary" id="refresh-btn" data-i18n="page.refreshButton">Aktualisieren</button>
         </div>
-        <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px;">
-          <input type="checkbox" id="analyze-pdf" />
-          <label for="analyze-pdf" style="font-size: 12px;" data-i18n="page.analyzePdf">PDF analysieren (falls verfügbar)</label>
-        </div>
       </div>
 
       <!-- Stats section (hidden until analysis run) -->
@@ -106,14 +102,12 @@
             <div class="stat-label" data-i18n="results.quality">Qualität</div>
           </div>
         </div>
-        <button class="btn btn-outline" id="view-details-btn" style="display: none;" data-i18n="results.viewDetails">Details anzeigen</button>
       </div>
 
       <!-- Detailed analysis section (hidden until requested) -->
       <div class="section detailed-section" id="detailed-section" style="display: none;">
         <h3 data-i18n="detailed.title">Detaillierte Analyse</h3>
-        <button class="btn btn-secondary" id="close-details-btn" style="margin-bottom: 12px;" data-i18n="detailed.close">Schließen</button>
-        <div id="journal-info" style="margin-bottom: 8px;">
+        <div id="journal-info" style="margin-bottom: 12px;">
           <div><strong data-i18n="detailed.journal">Journal:</strong> <span id="journal-name"></span></div>
           <div id="journal-category"></div>
           <div><strong data-i18n="detailed.quality">Qualität:</strong> <span id="detailed-quality-percentage"></span></div>
@@ -122,7 +116,6 @@
         </div>
         <div id="badges-container" class="qsci-badges"></div>
         <div style="margin-top: 12px;">
-          <button class="btn btn-outline" id="open-web-app-detailed" style="margin-right: 8px;">🌐 Open in Web App</button>
           <button class="btn btn-outline" id="export-analysis-btn">📥 Export Analysis</button>
         </div>
         <h4 style="margin-top: 12px;" data-i18n="detailed.positiveAspects">✅ Positive Aspekte</h4>

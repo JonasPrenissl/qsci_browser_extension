@@ -49,13 +49,11 @@ function initializeElements() {
     statsSection: document.getElementById('stats-section'),
     qualityScore: document.getElementById('quality-score'),
     qualityStatItem: document.getElementById('quality-stat-item'),
-    viewDetailsBtn: document.getElementById('view-details-btn'),
     loadingMessage: document.getElementById('loading-overlay'),
     errorMessage: document.getElementById('error-message'),
     successMessage: document.getElementById('success-message'),
     // Detailed view elements
     detailedSection: document.getElementById('detailed-section'),
-    closeDetailsBtn: document.getElementById('close-details-btn'),
     journalInfo: document.getElementById('journal-info'),
     journalName: document.getElementById('journal-name'),
     journalCategory: document.getElementById('journal-category'),
@@ -67,10 +65,8 @@ function initializeElements() {
     sourceCitationsSection: document.getElementById('source-citations-section'),
     sourceTextDisplay: document.getElementById('source-text-display'),
     sourceContent: document.getElementById('source-content'),
-    openWebAppDetailed: document.getElementById('open-web-app-detailed'),
     exportAnalysisBtn: document.getElementById('export-analysis-btn'),
     // Settings elements
-    analyzePdfCheckbox: document.getElementById('analyze-pdf'),
     settingsBtn: document.getElementById('settings-btn'),
     // Auth elements
     authSection: document.getElementById('auth-section'),
@@ -112,27 +108,6 @@ function setupEventListeners() {
     elements.refreshBtn.addEventListener('click', function() {
       console.log('Q-SCI Debug Popup: Refresh button clicked');
       updatePageStatus();
-    });
-  }
-  
-  if (elements.viewDetailsBtn) {
-    elements.viewDetailsBtn.addEventListener('click', function() {
-      console.log('Q-SCI Debug Popup: View details button clicked');
-      showDetailedAnalysis();
-    });
-  }
-  
-  if (elements.closeDetailsBtn) {
-    elements.closeDetailsBtn.addEventListener('click', function() {
-      console.log('Q-SCI Debug Popup: Close details button clicked');
-      hideDetailedAnalysis();
-    });
-  }
-  
-  if (elements.openWebAppDetailed) {
-    elements.openWebAppDetailed.addEventListener('click', function() {
-      console.log('Q-SCI Debug Popup: Open web app detailed button clicked');
-      openDetailedAnalysis();
     });
   }
   
@@ -662,35 +637,17 @@ async function analyzePage() {
       throw new Error('Insufficient content found on the page (less than 50 characters). Please ensure you are on a paper details page with visible content, or use the Manual Analysis feature below.');
     }
     
-    // Check if PDF analysis is enabled
-    const usePdfAnalysis = elements.analyzePdfCheckbox && elements.analyzePdfCheckbox.checked;
-    console.log('Q-SCI Debug Popup: PDF analysis enabled:', usePdfAnalysis);
-    console.log('Q-SCI Debug Popup: PDF checkbox element:', elements.analyzePdfCheckbox);
-    console.log('Q-SCI Debug Popup: PDF checkbox checked:', elements.analyzePdfCheckbox ? elements.analyzePdfCheckbox.checked : 'N/A');
-    
-    let requestData;
-    if (usePdfAnalysis && pageData.pdfUrls && pageData.pdfUrls.length > 0) {
-      // Use PDF URL for analysis
-      console.log('Q-SCI Debug Popup: Using PDF analysis with URL:', pageData.pdfUrls[0]);
-      requestData = {
-        pdf_url: pageData.pdfUrls[0],
-        title: pageData.title || 'Unknown Title',
-        source_url: currentTab.url
-      };
-    } else {
-      // Use HTML text for analysis
-      console.log('Q-SCI Debug Popup: Using HTML text analysis');
-      requestData = {
-        text: pageData.text,
-        title: pageData.title || 'Unknown Title',
-        source_url: currentTab.url
-      };
-    }
+    // Always use HTML text for analysis (PDF option removed)
+    console.log('Q-SCI Debug Popup: Using HTML text analysis');
+    let requestData = {
+      text: pageData.text,
+      title: pageData.title || 'Unknown Title',
+      source_url: currentTab.url
+    };
     
     console.log('Q-SCI Debug Popup: Request data prepared:', {
-      type: usePdfAnalysis && pageData.pdfUrls && pageData.pdfUrls.length > 0 ? 'PDF' : 'HTML',
+      type: 'HTML',
       textLength: requestData.text ? requestData.text.length : 'N/A',
-      pdfUrl: requestData.pdf_url || 'N/A',
       title: requestData.title,
       url: requestData.source_url
     });
@@ -871,22 +828,14 @@ function displayAnalysisResults(analysis) {
     elements.statsSection.style.display = 'block';
   }
 
-  // Show the view details button when results are available
-  if (elements.viewDetailsBtn) {
-    elements.viewDetailsBtn.style.display = 'block';
-  }
+  // Automatically show detailed analysis after displaying the quality score
+  console.log('Q-SCI Debug Popup: Auto-showing detailed analysis');
+  showDetailedAnalysis();
   
   console.log('Q-SCI Debug Popup: Results displayed successfully');
 }
 
-// Open detailed analysis
-function openDetailedAnalysis() {
-  if (currentAnalysis) {
-    chrome.tabs.create({
-      url: 'https://3000-ic4ghrpbrssboc1wpxpwt-618fd2b2.manusvm.computer'
-    });
-  }
-}
+// openDetailedAnalysis function removed (no longer needed)
 
 // UI Helper Functions
 function showLoading() {
@@ -928,9 +877,9 @@ function showDetailedAnalysis() {
     return;
   }
   
-  // Hide main sections and show detailed section
+  // Show both stats and detailed section (no toggle needed)
   if (elements.statsSection) {
-    elements.statsSection.style.display = 'none';
+    elements.statsSection.style.display = 'block';
   }
   
   if (elements.detailedSection) {
@@ -939,19 +888,6 @@ function showDetailedAnalysis() {
   
   // Populate detailed analysis data
   populateDetailedAnalysis(currentAnalysis);
-}
-
-// Hide detailed analysis and return to main view
-function hideDetailedAnalysis() {
-  console.log('Q-SCI Debug Popup: Hiding detailed analysis...');
-  
-  if (elements.detailedSection) {
-    elements.detailedSection.style.display = 'none';
-  }
-  
-  if (elements.statsSection) {
-    elements.statsSection.style.display = 'block';
-  }
 }
 
 // Populate detailed analysis data
