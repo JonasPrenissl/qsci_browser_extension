@@ -52,6 +52,9 @@ function initializeElements() {
     loadingMessage: document.getElementById('loading-overlay'),
     errorMessage: document.getElementById('error-message'),
     successMessage: document.getElementById('success-message'),
+    // Score reasoning elements
+    scoreReasoningSection: document.getElementById('score-reasoning-section'),
+    scoreReasoningText: document.getElementById('score-reasoning-text'),
     // Detailed view elements
     detailedSection: document.getElementById('detailed-section'),
     journalInfo: document.getElementById('journal-info'),
@@ -820,6 +823,17 @@ function displayAnalysisResults(analysis) {
       elements.qualityStatItem.classList.add('quality-medium');
     } else {
       elements.qualityStatItem.classList.add('quality-low');
+    }
+  }
+  
+  // Display reasoning/justification if available
+  if (elements.scoreReasoningSection && elements.scoreReasoningText) {
+    if (analysis.reasoning || analysis.justification) {
+      elements.scoreReasoningText.textContent = analysis.reasoning || analysis.justification;
+      elements.scoreReasoningSection.style.display = 'block';
+    } else {
+      // Hide reasoning section if not available
+      elements.scoreReasoningSection.style.display = 'none';
     }
   }
   

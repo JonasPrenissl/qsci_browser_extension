@@ -43,6 +43,7 @@
       // Analysis results
       'results.title': 'Analyseergebnisse',
       'results.quality': 'Qualität',
+      'results.reasoning': 'Begründung',
       'results.journalTier': 'Journal-Tier',
       'results.quartile': 'Quartil',
       'results.viewDetails': 'Details anzeigen',
@@ -138,6 +139,7 @@
       // Analysis results
       'results.title': 'Analysis Results',
       'results.quality': 'Quality',
+      'results.reasoning': 'Reasoning',
       'results.journalTier': 'Journal Tier',
       'results.quartile': 'Quartile',
       'results.viewDetails': 'View Details',
