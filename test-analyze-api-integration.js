@@ -135,7 +135,7 @@ async function testStep2() {
   
   log('Preparing API request...', 'cyan');
   log('   Endpoint: https://api.openai.com/v1/chat/completions', 'gray');
-  log('   Model: gpt-3.5-turbo-0125', 'gray');
+  log('   Model: gpt-4o-mini', 'gray');
   log('   Temperature: 0.0', 'gray');
   
   const progress = displayProgressBar('  Sending request to OpenAI');
@@ -308,7 +308,7 @@ This test validates that the Q-SCI browser extension properly:
 ### 2. API Call
 - ✅ OpenAI API endpoint called successfully
 - Endpoint: https://api.openai.com/v1/chat/completions
-- Model: gpt-3.5-turbo-0125
+- Model: gpt-4o-mini
 - Status: 200 OK
 
 ### 3. Response Parsing

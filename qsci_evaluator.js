@@ -35,7 +35,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
 
   // Model to use.  You can adjust this if you have access to
   // different models (e.g. 'gpt-4-turbo', 'gpt-3.5-turbo-0125').
-  const MODEL_NAME = 'gpt-3.5-turbo-0125';
+  const MODEL_NAME = 'gpt-4o-mini';
 
   // Temperature setting for the model.  Lower values make the output
   // more deterministic.
