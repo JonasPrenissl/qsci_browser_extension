@@ -67,16 +67,18 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Identify study design features (e.g. randomized controlled trial, crossover, meta‑analysis, observational study), sample size and clear reporting practices. ` +
       `Consider whether the study is blinded, placebo controlled or non‑inferiority, whether it follows reporting guidelines (e.g. CONSORT for trials, PRISMA for reviews, STROBE for observational studies), and whether sample sizes are adequate. ` +
       `Assign a quality score between 0 and 100. 90–100 = 🟢 Green, 70–89 = 🟡 Amber, below 70 = 🔴 Red. ` +
-      `Then provide at least three positive aspects and three negative aspects. Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
+      `Then provide between 3 and 7 positive aspects and between 3 and 7 negative aspects. Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
       `For each aspect, set the 'aspect' field to a complete, clear sentence that stands alone and communicates the evaluation point in plain language (e.g., "The study objective is stated clearly" or "The sample size is small"). ` +
       `Set 'source_text' to the exact sentence or sentences from the paper that support it. ` +
       `Do not invent content: every aspect and snippet must be present in the provided paper text. ` +
       `Ignore the reference list entirely when choosing aspects and source text. ` +
+      `Also provide a 'reasoning' field that explains in 2-3 sentences why you assigned this specific quality score, referencing the key strengths and weaknesses you identified. ` +
       `Return your answer strictly as a JSON object with the following keys:\n\n` +
       `quality_percentage (number),\n` +
       `traffic_light (string, one of \"🟢 Green\", \"🟡 Amber\", \"🔴 Red\"),\n` +
-      `positive_aspects (array of objects with keys 'aspect' and 'source_text'),\n` +
-      `negative_aspects (array of objects with keys 'aspect' and 'source_text')\n\n` +
+      `reasoning (string, 2-3 sentences explaining the quality score),\n` +
+      `positive_aspects (array of 3-7 objects with keys 'aspect' and 'source_text'),\n` +
+      `negative_aspects (array of 3-7 objects with keys 'aspect' and 'source_text')\n\n` +
       `Do not include any code block formatting, backticks or additional commentary.  Only output a single valid JSON object.`;
 
     const user = `Paper Title: ${title || 'Unknown Title'}\n` +
@@ -119,9 +121,16 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       if (!parsed || typeof parsed !== 'object') throw new Error('Invalid JSON structure');
       const quality = typeof parsed.quality_percentage === 'number' ? parsed.quality_percentage : 0;
       const traffic = typeof parsed.traffic_light === 'string' ? parsed.traffic_light : '🟡 Amber';
+      const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning : '';
       const pos = Array.isArray(parsed.positive_aspects) ? parsed.positive_aspects : [];
       const neg = Array.isArray(parsed.negative_aspects) ? parsed.negative_aspects : [];
-      return { quality_percentage: quality, traffic_light: traffic, positive_aspects: pos, negative_aspects: neg };
+      return { 
+        quality_percentage: quality, 
+        traffic_light: traffic, 
+        reasoning: reasoning,
+        positive_aspects: pos, 
+        negative_aspects: neg 
+      };
     } catch (e) {
       console.error('Q‑SCI LLM Evaluator: Failed to parse OpenAI response', e);
       return null;

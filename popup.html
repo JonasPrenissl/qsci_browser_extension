@@ -32,6 +32,50 @@
 
     <!-- Content wrapper -->
     <div class="popup-content">
+      <!-- Stats section (hidden until analysis run) - MOVED TO TOP -->
+      <div class="section stats-section" id="stats-section" style="display: none;">
+        <h3 data-i18n="results.title">Analyseergebnisse</h3>
+        <div class="stats-grid">
+          <div class="stat-item" id="quality-stat-item">
+            <div class="stat-value" id="quality-score">--</div>
+            <div class="stat-label" data-i18n="results.quality">Qualität</div>
+          </div>
+        </div>
+        
+        <!-- Justification/Reasoning section -->
+        <div id="score-reasoning-section" style="margin-top: 16px; padding: 12px; background: #f8fafc; border-left: 4px solid #667eea; border-radius: 4px; display: none;">
+          <div style="font-size: 12px; font-weight: 600; color: #667eea; margin-bottom: 6px;" data-i18n="results.reasoning">Begründung:</div>
+          <div id="score-reasoning-text" style="font-size: 13px; line-height: 1.6; color: #374151;"></div>
+        </div>
+      </div>
+
+      <!-- Detailed analysis section (hidden until requested) - MOVED TO TOP -->
+      <div class="section detailed-section" id="detailed-section" style="display: none;">
+        <h3 data-i18n="detailed.title">Detaillierte Analyse</h3>
+        <div id="journal-info" style="margin-bottom: 12px;">
+          <div><strong data-i18n="detailed.journal">Journal:</strong> <span id="journal-name"></span></div>
+          <div id="journal-category"></div>
+          <div><strong data-i18n="detailed.quality">Qualität:</strong> <span id="detailed-quality-percentage"></span></div>
+          <div id="detailed-quality-circle"></div>
+          <div><strong data-i18n="detailed.trafficLight">Ampel:</strong> <span id="detailed-traffic-light"></span></div>
+        </div>
+        <div id="badges-container" class="qsci-badges"></div>
+        <div style="margin-top: 12px;">
+          <button class="btn btn-outline" id="export-analysis-btn">📥 Export Analysis</button>
+        </div>
+        <h4 style="margin-top: 12px;" data-i18n="detailed.positiveAspects">✅ Positive Aspekte</h4>
+        <div id="positive-aspects-list"></div>
+        <h4 style="margin-top: 12px;" data-i18n="detailed.negativeAspects">⚠️ Verbesserungsbereiche</h4>
+        <div id="negative-aspects-list"></div>
+        <!-- Source citations wrapper; hidden by default and populated dynamically -->
+        <div id="source-citations-section" style="display: none; margin-top: 12px;">
+          <h4 data-i18n="detailed.source">Quelle</h4>
+          <div id="source-text-display" style="display: none; margin-top: 8px;">
+            <div id="source-content" style="font-style: italic;"></div>
+          </div>
+        </div>
+      </div>
+      
       <!-- Authentication section -->
       <div class="section auth-section" id="auth-section">
         <!-- Login form (shown when not logged in) -->
@@ -92,44 +136,6 @@
           <button class="btn btn-secondary" id="refresh-btn" data-i18n="page.refreshButton">Aktualisieren</button>
         </div>
       </div>
-
-      <!-- Stats section (hidden until analysis run) -->
-      <div class="section stats-section" id="stats-section" style="display: none;">
-        <h3 data-i18n="results.title">Analyseergebnisse</h3>
-        <div class="stats-grid">
-          <div class="stat-item" id="quality-stat-item">
-            <div class="stat-value" id="quality-score">--</div>
-            <div class="stat-label" data-i18n="results.quality">Qualität</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Detailed analysis section (hidden until requested) -->
-      <div class="section detailed-section" id="detailed-section" style="display: none;">
-        <h3 data-i18n="detailed.title">Detaillierte Analyse</h3>
-        <div id="journal-info" style="margin-bottom: 12px;">
-          <div><strong data-i18n="detailed.journal">Journal:</strong> <span id="journal-name"></span></div>
-          <div id="journal-category"></div>
-          <div><strong data-i18n="detailed.quality">Qualität:</strong> <span id="detailed-quality-percentage"></span></div>
-          <div id="detailed-quality-circle"></div>
-          <div><strong data-i18n="detailed.trafficLight">Ampel:</strong> <span id="detailed-traffic-light"></span></div>
-        </div>
-        <div id="badges-container" class="qsci-badges"></div>
-        <div style="margin-top: 12px;">
-          <button class="btn btn-outline" id="export-analysis-btn">📥 Export Analysis</button>
-        </div>
-        <h4 style="margin-top: 12px;" data-i18n="detailed.positiveAspects">✅ Positive Aspekte</h4>
-        <div id="positive-aspects-list"></div>
-        <h4 style="margin-top: 12px;" data-i18n="detailed.negativeAspects">⚠️ Verbesserungsbereiche</h4>
-        <div id="negative-aspects-list"></div>
-        <!-- Source citations wrapper; hidden by default and populated dynamically -->
-        <div id="source-citations-section" style="display: none; margin-top: 12px;">
-          <h4 data-i18n="detailed.source">Quelle</h4>
-          <div id="source-text-display" style="display: none; margin-top: 8px;">
-            <div id="source-content" style="font-style: italic;"></div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Loading overlay -->
@@ -148,8 +154,11 @@
     </div>
 
     <!-- Settings button -->
-    <div style="text-align: center; margin-top: 12px;">
-      <button id="settings-btn" style="padding: 6px 12px; font-size: 14px; cursor: pointer;" data-i18n="settings.button">Einstellungen</button>
+    <div style="text-align: center; margin: 20px 16px; padding-bottom: 8px;">
+      <button id="settings-btn" class="settings-button" data-i18n="settings.button">
+        <span class="settings-icon">⚙️</span>
+        <span class="settings-text">Einstellungen</span>
+      </button>
     </div>
   </div>
 
