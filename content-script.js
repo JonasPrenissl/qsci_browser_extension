@@ -199,7 +199,7 @@
           
           if (combinedText.length > 100) {
             text = combinedText.trim();
-            console.log('Q-SCI Content Script: Extracted from viewer selector', selector, ':', text.length, 'characters');
+            console.log('Q-SCI Content Script: Extracted from viewer selector', selector, '-', text.length, 'characters');
             break;
           }
         }
@@ -230,7 +230,7 @@
           const elText = element.textContent || '';
           if (elText.trim().length > 100) {
             text = elText.trim();
-            console.log('Q-SCI Content Script: Extracted from main content selector', selector, ':', text.length, 'characters');
+            console.log('Q-SCI Content Script: Extracted from main content selector', selector, '-', text.length, 'characters');
             break;
           }
         }
@@ -241,17 +241,31 @@
     if (!text || text.length < 100) {
       console.log('Q-SCI Content Script: Trying body text extraction as fallback');
       
-      // Filter out script, style, and other non-visible elements
-      const clonedBody = document.body.cloneNode(true);
+      // Get all text nodes without cloning - more efficient
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: function(node) {
+            // Skip text nodes inside script, style, noscript tags
+            const parent = node.parentElement;
+            if (parent && ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'].includes(parent.tagName)) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
       
-      // Remove script, style, noscript tags
-      const tagsToRemove = ['script', 'style', 'noscript', 'iframe', 'object', 'embed'];
-      tagsToRemove.forEach(tag => {
-        const elements = clonedBody.querySelectorAll(tag);
-        elements.forEach(el => el.remove());
-      });
+      let bodyText = '';
+      let node;
+      while (node = walker.nextNode()) {
+        const nodeText = node.textContent || '';
+        if (nodeText.trim()) {
+          bodyText += nodeText;
+        }
+      }
       
-      const bodyText = clonedBody.textContent || '';
       if (bodyText.trim().length > 100) {
         text = bodyText.trim();
         console.log('Q-SCI Content Script: Extracted from body:', text.length, 'characters');

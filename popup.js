@@ -964,14 +964,31 @@ function extractPageContent() {
   
   // Fallback: get visible text from body (clean up scripts and styles)
   if (!text || text.length < 100) {
-    const clonedBody = document.body.cloneNode(true);
-    const tagsToRemove = ['script', 'style', 'noscript', 'iframe', 'object', 'embed'];
-    tagsToRemove.forEach(tag => {
-      const elements = clonedBody.querySelectorAll(tag);
-      elements.forEach(el => el.remove());
-    });
+    // Get all text nodes without cloning - more efficient
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: function(node) {
+          // Skip text nodes inside script, style, noscript tags
+          const parent = node.parentElement;
+          if (parent && ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'].includes(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
     
-    const bodyText = clonedBody.textContent || '';
+    let bodyText = '';
+    let node;
+    while (node = walker.nextNode()) {
+      const nodeText = node.textContent || '';
+      if (nodeText.trim()) {
+        bodyText += nodeText;
+      }
+    }
+    
     if (bodyText.trim().length > 100) {
       text = bodyText.trim();
       console.log('Q-SCI Content Extractor: Extracted from body (cleaned):', text.length, 'characters');
