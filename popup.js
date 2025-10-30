@@ -637,32 +637,94 @@ async function analyzePage() {
       isPdfViewer: pageData.isPdfViewer
     });
     
-    if (!pageData.text || pageData.text.length < 50) {
-      let errorMsg = 'Insufficient content found on the page (less than 50 characters).';
+    // Try to analyze PDF first if PDF URLs are available
+    let requestData = null;
+    let pdfAnalysisAttempted = false;
+    
+    if (pageData.pdfUrls && pageData.pdfUrls.length > 0 && window.QSCIPDFHandler) {
+      console.log('Q-SCI Debug Popup: PDF URLs found, attempting PDF download and analysis...');
+      pdfAnalysisAttempted = true;
       
-      // Provide specific guidance for PDF pages
-      if (pageData.isPdfViewer || (pageData.pdfUrls && pageData.pdfUrls.length > 0)) {
-        errorMsg += ' This appears to be a PDF viewer page. PDF text extraction from embedded viewers is limited. Please try one of these alternatives:\n\n';
-        errorMsg += '1. Wait a few seconds for the PDF to fully load, then try again\n';
-        errorMsg += '2. Use the Manual Analysis feature below by copying text from the PDF\n';
-        errorMsg += '3. Visit the article\'s abstract/landing page instead of the PDF viewer';
-      } else {
-        errorMsg += ' Please ensure you are on a paper details page with visible content, or use the Manual Analysis feature below.';
+      // Show a status message to the user
+      if (elements.loadingMessage) {
+        const loadingText = elements.loadingMessage.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = 'Downloading PDF for analysis...';
+        }
       }
       
-      throw new Error(errorMsg);
+      try {
+        const pdfResult = await window.QSCIPDFHandler.tryDownloadAndExtractPDF(pageData.pdfUrls);
+        
+        if (pdfResult.success && pdfResult.text && pdfResult.text.length >= 50) {
+          console.log('Q-SCI Debug Popup: PDF text extracted successfully:', pdfResult.text.length, 'characters');
+          requestData = {
+            text: pdfResult.text,
+            title: pageData.title || 'Unknown Title',
+            source_url: pdfResult.pdfUrl || currentTab.url,
+            source_type: 'PDF'
+          };
+          
+          // Update loading message
+          if (elements.loadingMessage) {
+            const loadingText = elements.loadingMessage.querySelector('.loading-text');
+            if (loadingText) {
+              loadingText.textContent = 'Analyzing PDF content...';
+            }
+          }
+        } else {
+          console.warn('Q-SCI Debug Popup: PDF extraction failed or insufficient text:', pdfResult.error);
+          // Fall back to HTML text analysis
+        }
+      } catch (pdfError) {
+        console.warn('Q-SCI Debug Popup: Error during PDF analysis:', pdfError.message);
+        // Fall back to HTML text analysis
+      }
     }
     
-    // Always use HTML text for analysis (PDF option removed)
-    console.log('Q-SCI Debug Popup: Using HTML text analysis');
-    let requestData = {
-      text: pageData.text,
-      title: pageData.title || 'Unknown Title',
-      source_url: currentTab.url
-    };
+    // Fall back to HTML text if PDF analysis wasn't attempted or failed
+    if (!requestData) {
+      console.log('Q-SCI Debug Popup: Using HTML text analysis', pdfAnalysisAttempted ? '(PDF analysis failed)' : '(no PDF URLs)');
+      
+      // Update loading message
+      if (elements.loadingMessage) {
+        const loadingText = elements.loadingMessage.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = 'Analyzing page content...';
+        }
+      }
+      
+      if (!pageData.text || pageData.text.length < 50) {
+        let errorMsg = 'Insufficient content found on the page (less than 50 characters).';
+        
+        // Provide specific guidance based on context
+        if (pdfAnalysisAttempted) {
+          errorMsg += ' PDF analysis was attempted but failed. Please try one of these alternatives:\n\n';
+          errorMsg += '1. Wait a few seconds and try again (the page may still be loading)\n';
+          errorMsg += '2. Use the Manual Analysis feature below by copying text from the page\n';
+          errorMsg += '3. Visit a different version of the article (e.g., abstract page vs PDF viewer)';
+        } else if (pageData.isPdfViewer || (pageData.pdfUrls && pageData.pdfUrls.length > 0)) {
+          errorMsg += ' This appears to be a PDF page. PDF text extraction from embedded viewers is limited. Please try one of these alternatives:\n\n';
+          errorMsg += '1. Wait a few seconds for the PDF to fully load, then try again\n';
+          errorMsg += '2. Use the Manual Analysis feature below by copying text from the PDF\n';
+          errorMsg += '3. Visit the article\'s abstract/landing page instead of the PDF viewer';
+        } else {
+          errorMsg += ' Please ensure you are on a paper details page with visible content, or use the Manual Analysis feature below.';
+        }
+        
+        throw new Error(errorMsg);
+      }
+      
+      requestData = {
+        text: pageData.text,
+        title: pageData.title || 'Unknown Title',
+        source_url: currentTab.url,
+        source_type: 'HTML'
+      };
+    }
     
     console.log('Q-SCI Debug Popup: Request data prepared:', {
-      type: 'HTML',
+      type: requestData.source_type,
       textLength: requestData.text ? requestData.text.length : 'N/A',
       title: requestData.title,
       url: requestData.source_url
