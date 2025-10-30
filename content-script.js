@@ -15,6 +15,7 @@
   
   // Configuration
   const EXTRACTION_DELAY = 1000; // Wait for page to fully load
+  const MAX_FULLTEXT_LENGTH = 2000; // Maximum characters to include from full text when combining with abstract
   
   // Initialize content script
   function initialize() {
@@ -234,7 +235,7 @@
 
     // If we have both abstract and some full text, combine them
     if (abstract && fullText && fullText !== abstract) {
-      analysisText = abstract + '\n\n' + fullText.substring(0, 2000); // Limit full text
+      analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
     }
 
     return {
@@ -332,7 +333,7 @@
     let title = '';
     let abstract = '';
     let fullText = '';
-    let pdfUrls = [];
+    const pdfUrlSet = new Set(); // Use Set for O(1) lookup performance
     
     // Lancet title selectors - try multiple approaches
     const lancetTitleSelectors = [
@@ -411,13 +412,13 @@
     lancetPdfSelectors.forEach(selector => {
       const links = document.querySelectorAll(selector);
       links.forEach(link => {
-        if (link.href && !pdfUrls.includes(link.href)) {
+        if (link.href && !pdfUrlSet.has(link.href)) {
           if (link.href.includes('.pdf') || 
               link.href.includes('pdf') || 
               link.textContent.toLowerCase().includes('pdf') ||
               link.title?.toLowerCase().includes('pdf') ||
               link.getAttribute('aria-label')?.toLowerCase().includes('pdf')) {
-            pdfUrls.push(link.href);
+            pdfUrlSet.add(link.href);
             console.log('Q-SCI Content Script: Found Lancet PDF URL:', link.href);
           }
         }
@@ -433,14 +434,14 @@
     
     // If we have both abstract and some full text, combine them
     if (abstract && fullText && fullText !== abstract) {
-      analysisText = abstract + '\n\n' + fullText.substring(0, 2000); // Limit full text
+      analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
     }
     
     return {
       title: title,
       abstract: abstract,
       text: analysisText,
-      pdfUrls: pdfUrls,
+      pdfUrls: Array.from(pdfUrlSet), // Convert Set to Array
       hostname: 'thelancet.com',
       url: window.location.href
     };
@@ -563,7 +564,7 @@
 
     // If we have both abstract and some full text, combine them
     if (abstract && fullText && fullText !== abstract) {
-      analysisText = abstract + '\n\n' + fullText.substring(0, 2000); // Limit full text
+      analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
     }
     
     const result = {
