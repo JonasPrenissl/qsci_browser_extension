@@ -16,6 +16,7 @@
   // Configuration
   const EXTRACTION_DELAY = 1000; // Wait for page to fully load
   const MAX_FULLTEXT_LENGTH = 2000; // Maximum characters to include from full text when combining with abstract
+  const PDF_EXTRACTION_DELAY = 3000; // Wait longer for PDF viewers to render text
   
   // Initialize content script
   function initialize() {
@@ -44,6 +45,12 @@
     console.log('Q-SCI Content Script: Extracting page data...');
     
     try {
+      // Check if this might be a PDF page to determine delay
+      const isPdf = isPDFViewerPage();
+      const delay = isPdf ? PDF_EXTRACTION_DELAY : EXTRACTION_DELAY;
+      
+      console.log('Q-SCI Content Script: Using extraction delay:', delay, 'ms', isPdf ? '(PDF page)' : '(regular page)');
+      
       // Wait a moment for dynamic content to load
       setTimeout(() => {
         const pageData = extractPageData();
@@ -56,12 +63,19 @@
           });
         } else {
           console.warn('Q-SCI Content Script: Insufficient content extracted');
+          let errorMsg = 'Insufficient content found. Please ensure you are on a paper details page with abstract or content.';
+          
+          // Provide specific guidance for PDF pages
+          if (pageData.isPdfViewer) {
+            errorMsg = 'Unable to extract text from this PDF viewer. Please try: (1) waiting a few more seconds and trying again, (2) using Manual Analysis by copying text from the PDF, or (3) visiting the article\'s abstract page instead.';
+          }
+          
           sendResponse({ 
             success: false, 
-            error: 'Insufficient content found. Please ensure you are on a paper details page with abstract or content.' 
+            error: errorMsg
           });
         }
-      }, EXTRACTION_DELAY);
+      }, delay);
       
     } catch (error) {
       console.error('Q-SCI Content Script: Extraction error:', error);
@@ -72,15 +86,148 @@
     }
   }
   
+  /**
+   * Check if the current page is a PDF viewer page
+   * @returns {boolean} true if this is a PDF viewer page
+   */
+  function isPDFViewerPage() {
+    const url = window.location.href.toLowerCase();
+    const contentType = document.contentType || document.mimeType || '';
+    
+    // Check URL patterns that indicate PDF viewing
+    if (url.includes('/showpdf') || 
+        url.includes('/getpdf') || 
+        url.includes('/downloadpdf') ||
+        url.includes('/viewpdf') ||
+        url.includes('.pdf') ||
+        url.includes('pdf=')) {
+      console.log('Q-SCI Content Script: PDF detected from URL pattern');
+      return true;
+    }
+    
+    // Check for PDF mime type
+    if (contentType.includes('application/pdf')) {
+      console.log('Q-SCI Content Script: PDF detected from content type');
+      return true;
+    }
+    
+    // Check for PDF embed elements
+    const pdfEmbed = document.querySelector('embed[type="application/pdf"]');
+    const pdfObject = document.querySelector('object[type="application/pdf"]');
+    const pdfIframe = document.querySelector('iframe[src*=".pdf"]');
+    
+    if (pdfEmbed || pdfObject || pdfIframe) {
+      console.log('Q-SCI Content Script: PDF detected from embed/object/iframe elements');
+      return true;
+    }
+    
+    // Check for PDF.js viewer (common in modern browsers)
+    if (document.getElementById('viewer') && document.querySelector('.textLayer')) {
+      console.log('Q-SCI Content Script: PDF.js viewer detected');
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Extract data from PDF viewer pages
+   * @returns {Object} Extracted page data
+   */
+  function extractPDFViewerData() {
+    const hostname = window.location.hostname.toLowerCase();
+    const url = window.location.href;
+    
+    console.log('Q-SCI Content Script: Attempting PDF text extraction');
+    
+    let title = '';
+    let text = '';
+    let pdfUrl = url;
+    
+    // Try to extract title from page title or document
+    title = document.title || '';
+    
+    // Try to extract text from PDF.js text layer if available
+    const textLayers = document.querySelectorAll('.textLayer');
+    if (textLayers.length > 0) {
+      console.log('Q-SCI Content Script: Found PDF.js text layers:', textLayers.length);
+      let extractedText = '';
+      textLayers.forEach(layer => {
+        const layerText = layer.textContent || '';
+        if (layerText.trim()) {
+          extractedText += layerText + '\n';
+        }
+      });
+      
+      if (extractedText.length > 100) {
+        text = extractedText.trim();
+        console.log('Q-SCI Content Script: Successfully extracted text from PDF.js:', text.length, 'characters');
+      }
+    }
+    
+    // Try to extract text from any visible text on the page (fallback)
+    if (!text || text.length < 100) {
+      console.log('Q-SCI Content Script: Text layer extraction insufficient, trying body text');
+      const bodyText = document.body.textContent || '';
+      if (bodyText.length > 100) {
+        text = bodyText.trim();
+        console.log('Q-SCI Content Script: Extracted from body:', text.length, 'characters');
+      }
+    }
+    
+    // If we still don't have enough text, check for specific viewer patterns
+    if (!text || text.length < 100) {
+      // Check for iframe with PDF
+      const pdfIframe = document.querySelector('iframe[src*="pdf"], iframe[src*="showPdf"]');
+      if (pdfIframe) {
+        console.log('Q-SCI Content Script: Found PDF iframe, but cannot access content due to cross-origin restrictions');
+      }
+      
+      // Check for embed/object with PDF
+      const pdfEmbed = document.querySelector('embed[type="application/pdf"], object[type="application/pdf"]');
+      if (pdfEmbed) {
+        console.log('Q-SCI Content Script: Found PDF embed/object, but cannot extract text directly');
+      }
+    }
+    
+    const result = {
+      title: title,
+      abstract: '',
+      text: text,
+      pdfUrls: [pdfUrl],
+      hostname: hostname,
+      url: url,
+      isPdfViewer: true
+    };
+    
+    console.log('Q-SCI Content Script: PDF extraction result:', {
+      title: result.title ? result.title.substring(0, 50) + '...' : 'None',
+      textLength: result.text ? result.text.length : 0,
+      pdfUrls: result.pdfUrls.length,
+      hostname: result.hostname
+    });
+    
+    return result;
+  }
+
   // Extract page data from current page
   function extractPageData() {
     const hostname = window.location.hostname.toLowerCase();
+    const url = window.location.href;
     console.log('Q-SCI Content Script: Extracting from hostname:', hostname);
+    console.log('Q-SCI Content Script: Full URL:', url);
     
     let title = '';
     let abstract = '';
     let fullText = '';
     let pdfUrls = [];
+    
+    // Check if this is a PDF viewer page (e.g., Lancet showPdf, embedded PDFs)
+    const isPdfPage = isPDFViewerPage();
+    if (isPdfPage) {
+      console.log('Q-SCI Content Script: Detected PDF viewer page');
+      return extractPDFViewerData();
+    }
     
     // Site-specific extraction for better accuracy
     if (hostname.includes('pmc.ncbi.nlm.nih.gov')) {

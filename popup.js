@@ -633,11 +633,24 @@ async function analyzePage() {
       title: pageData.title ? pageData.title.substring(0, 50) + '...' : 'N/A',
       textLength: pageData.text ? pageData.text.length : 0,
       hasPdfUrls: !!pageData.pdfUrls,
-      pdfUrlsCount: pageData.pdfUrls ? pageData.pdfUrls.length : 0
+      pdfUrlsCount: pageData.pdfUrls ? pageData.pdfUrls.length : 0,
+      isPdfViewer: pageData.isPdfViewer
     });
     
     if (!pageData.text || pageData.text.length < 50) {
-      throw new Error('Insufficient content found on the page (less than 50 characters). Please ensure you are on a paper details page with visible content, or use the Manual Analysis feature below.');
+      let errorMsg = 'Insufficient content found on the page (less than 50 characters).';
+      
+      // Provide specific guidance for PDF pages
+      if (pageData.isPdfViewer || (pageData.pdfUrls && pageData.pdfUrls.length > 0)) {
+        errorMsg += ' This appears to be a PDF viewer page. PDF text extraction from embedded viewers is limited. Please try one of these alternatives:\n\n';
+        errorMsg += '1. Wait a few seconds for the PDF to fully load, then try again\n';
+        errorMsg += '2. Use the Manual Analysis feature below by copying text from the PDF\n';
+        errorMsg += '3. Visit the article\'s abstract/landing page instead of the PDF viewer';
+      } else {
+        errorMsg += ' Please ensure you are on a paper details page with visible content, or use the Manual Analysis feature below.';
+      }
+      
+      throw new Error(errorMsg);
     }
     
     // Always use HTML text for analysis (PDF option removed)
@@ -731,8 +744,29 @@ async function analyzePage() {
 function extractPageContent() {
   console.log('Q-SCI Content Extractor: Starting extraction...');
   
+  const url = window.location.href;
+  let isPdfViewer = false;
+  
+  // Check if this is a PDF viewer page
+  const urlLower = url.toLowerCase();
+  const contentType = document.contentType || document.mimeType || '';
+  
+  if (urlLower.includes('/showpdf') || 
+      urlLower.includes('/getpdf') || 
+      urlLower.includes('/downloadpdf') ||
+      urlLower.includes('/viewpdf') ||
+      urlLower.includes('.pdf') ||
+      urlLower.includes('pdf=') ||
+      contentType.includes('application/pdf') ||
+      document.querySelector('embed[type="application/pdf"]') ||
+      document.querySelector('object[type="application/pdf"]') ||
+      document.querySelector('iframe[src*=".pdf"]')) {
+    isPdfViewer = true;
+    console.log('Q-SCI Content Extractor: Detected PDF viewer page');
+  }
+  
   // Try to extract title
-  let title = '';
+  let title = document.title || '';
   const titleSelectors = [
     'h1',
     '.article-title',
@@ -751,22 +785,46 @@ function extractPageContent() {
   
   // Try to extract text content
   let text = '';
-  const textSelectors = [
-    '.abstract',
-    '.article-abstract',
-    '.paper-abstract',
-    '[data-testid="abstract"]',
-    '.content',
-    '.article-content',
-    'main',
-    '.main-content'
-  ];
   
-  for (const selector of textSelectors) {
-    const element = document.querySelector(selector);
-    if (element && element.textContent.trim().length > 100) {
-      text = element.textContent.trim();
-      break;
+  // For PDF viewers, try to extract from PDF.js text layer first
+  if (isPdfViewer) {
+    console.log('Q-SCI Content Extractor: Attempting PDF text extraction');
+    const textLayers = document.querySelectorAll('.textLayer');
+    if (textLayers.length > 0) {
+      console.log('Q-SCI Content Extractor: Found PDF.js text layers:', textLayers.length);
+      let pdfText = '';
+      textLayers.forEach(layer => {
+        const layerText = layer.textContent || '';
+        if (layerText.trim()) {
+          pdfText += layerText + '\n';
+        }
+      });
+      if (pdfText.length > 100) {
+        text = pdfText.trim();
+        console.log('Q-SCI Content Extractor: Extracted from PDF.js text layer:', text.length, 'characters');
+      }
+    }
+  }
+  
+  // Regular text extraction if not PDF or if PDF extraction failed
+  if (!text || text.length < 100) {
+    const textSelectors = [
+      '.abstract',
+      '.article-abstract',
+      '.paper-abstract',
+      '[data-testid="abstract"]',
+      '.content',
+      '.article-content',
+      'main',
+      '.main-content'
+    ];
+    
+    for (const selector of textSelectors) {
+      const element = document.querySelector(selector);
+      if (element && element.textContent.trim().length > 100) {
+        text = element.textContent.trim();
+        break;
+      }
     }
   }
   
@@ -780,22 +838,29 @@ function extractPageContent() {
   const pdfLinks = document.querySelectorAll('a[href*=".pdf"], a[href*="pdf"]');
   pdfLinks.forEach(link => {
     const href = link.href;
-    if (href && (href.endsWith('.pdf') || href.includes('/pdf/') || href.includes('getPDF'))) {
+    if (href && (href.endsWith('.pdf') || href.includes('/pdf/') || href.includes('getPDF') || href.includes('showPdf'))) {
       pdfUrls.push(href);
     }
   });
   
+  // If this is a PDF viewer, add the current URL as a PDF URL
+  if (isPdfViewer && !pdfUrls.includes(url)) {
+    pdfUrls.push(url);
+  }
+  
   console.log('Q-SCI Content Extractor: Extracted:', {
-    title: title.substring(0, 50) + '...',
+    title: title ? title.substring(0, 50) + '...' : 'None',
     textLength: text.length,
-    pdfUrlsFound: pdfUrls.length
+    pdfUrlsFound: pdfUrls.length,
+    isPdfViewer: isPdfViewer
   });
   
   return {
     title: title,
     text: text,
     url: window.location.href,
-    pdfUrls: pdfUrls
+    pdfUrls: pdfUrls,
+    isPdfViewer: isPdfViewer
   };
 }
 
