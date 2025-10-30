@@ -147,7 +147,7 @@
     // Try to extract title from page title or document
     title = document.title || '';
     
-    // Try to extract text from PDF.js text layer if available
+    // Strategy 1: Try to extract text from PDF.js text layer if available
     const textLayers = document.querySelectorAll('.textLayer');
     if (textLayers.length > 0) {
       console.log('Q-SCI Content Script: Found PDF.js text layers:', textLayers.length);
@@ -165,25 +165,120 @@
       }
     }
     
-    // Try to extract text from any visible text on the page (fallback)
+    // Strategy 2: Try to extract from various viewer-specific elements
     if (!text || text.length < 100) {
-      console.log('Q-SCI Content Script: Text layer extraction insufficient, trying body text');
-      const bodyText = document.body.textContent || '';
-      if (bodyText.length > 100) {
+      console.log('Q-SCI Content Script: Trying viewer-specific text extraction');
+      
+      // Common PDF viewer text container selectors
+      const viewerTextSelectors = [
+        '.pdfViewer .textLayer',
+        '#viewer .textLayer',
+        '[class*="pdf"] [class*="text"]',
+        '[class*="viewer"] [class*="text"]',
+        '.page .textLayer',
+        '.pdf-page .textLayer',
+        '[data-page-number] .textLayer',
+        // Some sites use canvas + text overlays
+        '.canvasWrapper + .textLayer',
+        // Generic text container patterns
+        '[role="document"] [class*="text"]',
+        '.document-content',
+        '.pdf-content'
+      ];
+      
+      for (const selector of viewerTextSelectors) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          let combinedText = '';
+          elements.forEach(el => {
+            const elText = el.textContent || '';
+            if (elText.trim()) {
+              combinedText += elText + '\n';
+            }
+          });
+          
+          if (combinedText.length > 100) {
+            text = combinedText.trim();
+            console.log('Q-SCI Content Script: Extracted from viewer selector', selector, '-', text.length, 'characters');
+            break;
+          }
+        }
+      }
+    }
+    
+    // Strategy 3: Try to extract from main content areas with comprehensive selectors
+    if (!text || text.length < 100) {
+      console.log('Q-SCI Content Script: Trying main content extraction');
+      
+      const mainContentSelectors = [
+        'main',
+        '[role="main"]',
+        '#main',
+        '.main',
+        '#content',
+        '.content',
+        'article',
+        '[role="article"]',
+        '.article',
+        '#mainContent',
+        '.main-content'
+      ];
+      
+      for (const selector of mainContentSelectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          const elText = element.textContent || '';
+          if (elText.trim().length > 100) {
+            text = elText.trim();
+            console.log('Q-SCI Content Script: Extracted from main content selector', selector, '-', text.length, 'characters');
+            break;
+          }
+        }
+      }
+    }
+    
+    // Strategy 4: Extract all visible text from body as last resort
+    if (!text || text.length < 100) {
+      console.log('Q-SCI Content Script: Trying body text extraction as fallback');
+      
+      // Get all text nodes without cloning - more efficient
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: function(node) {
+            // Skip text nodes inside script, style, noscript tags
+            const parent = node.parentElement;
+            if (parent && ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'].includes(parent.tagName)) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+      
+      let bodyText = '';
+      let node;
+      while (node = walker.nextNode()) {
+        const nodeText = node.textContent || '';
+        if (nodeText.trim()) {
+          bodyText += nodeText;
+        }
+      }
+      
+      if (bodyText.trim().length > 100) {
         text = bodyText.trim();
         console.log('Q-SCI Content Script: Extracted from body:', text.length, 'characters');
       }
     }
     
-    // If we still don't have enough text, check for specific viewer patterns
+    // Log information about iframes/embeds even if we can't access them
     if (!text || text.length < 100) {
-      // Check for iframe with PDF
       const pdfIframe = document.querySelector('iframe[src*="pdf"], iframe[src*="showPdf"]');
       if (pdfIframe) {
         console.log('Q-SCI Content Script: Found PDF iframe, but cannot access content due to cross-origin restrictions');
       }
       
-      // Check for embed/object with PDF
       const pdfEmbed = document.querySelector('embed[type="application/pdf"], object[type="application/pdf"]');
       if (pdfEmbed) {
         console.log('Q-SCI Content Script: Found PDF embed/object, but cannot extract text directly');
@@ -488,7 +583,9 @@
       'h1.article-title', // Alternative article title
       '.article-header h1', // Header h1
       'h1', // Generic fallback
-      '.citation__title' // Citation title
+      '.citation__title', // Citation title
+      '[class*="article-title"]', // Pattern matching
+      '[class*="ArticleTitle"]' // CamelCase variant
     ];
     
     for (const selector of lancetTitleSelectors) {
@@ -510,7 +607,11 @@
       '[data-component="abstract"]', // Data component abstract
       '.article-section__abstract', // Article section abstract
       '.article-section.abstract', // Alternative
-      '#abstract' // Abstract ID
+      '#abstract', // Abstract ID
+      '[class*="abstract"]', // Pattern matching
+      '[class*="summary"]', // Pattern matching
+      'section[aria-label*="abstract"]', // Semantic
+      'section[aria-label*="summary"]' // Semantic
     ];
     
     for (const selector of lancetAbstractSelectors) {
@@ -531,7 +632,12 @@
       '.article-content', // Article content class
       'main.main-content', // Main content
       '.main-content', // Main content class
-      'main' // Generic main
+      'main', // Generic main
+      '[role="main"]', // Semantic main
+      'article', // Article tag
+      '.article', // Article class
+      '[class*="article-body"]', // Pattern matching
+      '[class*="ArticleBody"]' // CamelCase variant
     ];
     
     for (const selector of lancetContentSelectors) {
@@ -540,6 +646,29 @@
         fullText = element.textContent.trim();
         console.log('Q-SCI Content Script: Found Lancet content with selector:', selector);
         break;
+      }
+    }
+    
+    // If no full text found, try extracting paragraphs
+    if (!fullText && !abstract) {
+      console.log('Q-SCI Content Script: Trying Lancet paragraph extraction');
+      const articleContainers = document.querySelectorAll('article, main, [role="main"]');
+      if (articleContainers.length > 0) {
+        let combinedText = '';
+        articleContainers.forEach(container => {
+          const paragraphs = container.querySelectorAll('p');
+          paragraphs.forEach(p => {
+            const pText = p.textContent || '';
+            if (pText.trim().length > 50) {
+              combinedText += pText.trim() + '\n\n';
+            }
+          });
+        });
+        
+        if (combinedText.length > 100) {
+          fullText = combinedText.trim();
+          console.log('Q-SCI Content Script: Extracted Lancet text from paragraphs:', fullText.length, 'characters');
+        }
       }
     }
     
@@ -609,13 +738,17 @@
       'h1.heading-title', // PubMed
       'h1.title', // arXiv
       'h1[data-test="article-title"]', // Nature
+      'h1[data-testid="article-title"]', // Alternative Nature
       '.article-title', // Science
-      'h1.article-header__title', // Cell
+      'h1.article-header__title', // Cell, Lancet
       'h1.c-article-title', // Springer
       'h1#artTitle', // PLOS
       '.meta-article-title', // JAMA
       'h1.article-title', // BMJ, NEJM
       '.citation__title', // Wiley
+      '[class*="article-title"]', // Generic pattern matching
+      '[class*="ArticleTitle"]', // CamelCase variants
+      'header h1', // Header with h1
       'h1', // Generic fallback
       '.title' // Generic fallback
     ];
@@ -634,14 +767,23 @@
       '.abstract-content', // PubMed, JAMA
       'blockquote.abstract', // arXiv
       '[data-test="abstract-section"]', // Nature
+      '[data-testid="abstract-section"]', // Alternative Nature
       '.section.abstract', // Science
+      'section.abstract', // Alternative
       '.abstract', // Generic
       '.summary', // Lancet
+      'section.summary', // Lancet with section
       '.c-article-section__content', // Springer
       '#abstract', // Generic ID
       '.article-section__content', // Wiley
       '.abstract-text', // Alternative
-      '.article-abstract' // Alternative
+      '.article-abstract', // Alternative
+      '[class*="abstract"]', // Generic pattern matching
+      '[class*="Abstract"]', // CamelCase variants
+      '[class*="summary"]', // Summary variants
+      '[id*="abstract"]', // ID pattern matching
+      '[role="region"][aria-label*="abstract"]', // Semantic abstract
+      'section[aria-label*="abstract"]' // Section with label
     ];
     
     for (const selector of abstractSelectors) {
@@ -653,15 +795,28 @@
       }
     }
     
-    // Extract full text content for analysis
+    // Extract full text content for analysis with comprehensive selectors
     const contentSelectors = [
-      '.article-content',
-      '.main-content',
-      '.content',
-      '.article-body',
-      '.full-text',
-      'main',
-      '.paper-content'
+      'section.article-body', // Lancet and others
+      '.article-body', // Common article body
+      '.article-content', // Common article content
+      'article.article-content', // Article tag with content class
+      '.main-content', // Main content
+      'main.main-content', // Main tag with content class
+      '.content', // Generic content
+      '.full-text', // Full text class
+      'main', // Generic main tag
+      '[role="main"]', // Semantic main
+      '.paper-content', // Paper content
+      '.article', // Generic article
+      'article', // Article tag
+      '[class*="article-body"]', // Pattern matching
+      '[class*="ArticleBody"]', // CamelCase variants
+      '[class*="content"]', // Generic content pattern
+      '.document-content', // Document content
+      '#main-content', // Main content ID
+      '#content', // Content ID
+      '.body-content' // Body content
     ];
     
     for (const selector of contentSelectors) {
@@ -670,6 +825,48 @@
         fullText = element.textContent.trim();
         console.log('Q-SCI Content Script: Found full text with selector:', selector);
         break;
+      }
+    }
+    
+    // If still no content, try to extract from all paragraphs and sections
+    if (!fullText && !abstract) {
+      console.log('Q-SCI Content Script: Trying paragraph and section extraction as fallback');
+      
+      // Try extracting all paragraphs within article-like containers
+      const articleContainers = document.querySelectorAll('article, main, [role="main"], .article, .paper');
+      if (articleContainers.length > 0) {
+        let combinedText = '';
+        articleContainers.forEach(container => {
+          const paragraphs = container.querySelectorAll('p');
+          paragraphs.forEach(p => {
+            const pText = p.textContent || '';
+            if (pText.trim().length > 50) {
+              combinedText += pText.trim() + '\n\n';
+            }
+          });
+        });
+        
+        if (combinedText.length > 100) {
+          fullText = combinedText.trim();
+          console.log('Q-SCI Content Script: Extracted from paragraphs in containers:', fullText.length, 'characters');
+        }
+      }
+      
+      // Try extracting all paragraphs from body as last resort
+      if (!fullText) {
+        const allParagraphs = document.querySelectorAll('p');
+        let combinedText = '';
+        allParagraphs.forEach(p => {
+          const pText = p.textContent || '';
+          if (pText.trim().length > 50) {
+            combinedText += pText.trim() + '\n\n';
+          }
+        });
+        
+        if (combinedText.length > 100) {
+          fullText = combinedText.trim();
+          console.log('Q-SCI Content Script: Extracted from all paragraphs:', fullText.length, 'characters');
+        }
       }
     }
     

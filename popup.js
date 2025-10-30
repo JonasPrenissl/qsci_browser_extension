@@ -827,13 +827,17 @@ function extractPageContent() {
     console.log('Q-SCI Content Extractor: Detected PDF viewer page');
   }
   
-  // Try to extract title
+  // Try to extract title with comprehensive selectors
   let title = document.title || '';
   const titleSelectors = [
     'h1',
+    'h1.article-header__title',
     '.article-title',
     '.paper-title',
     '[data-testid="article-title"]',
+    '[data-test="article-title"]',
+    '[class*="article-title"]',
+    'header h1',
     '.title'
   ];
   
@@ -848,9 +852,11 @@ function extractPageContent() {
   // Try to extract text content
   let text = '';
   
-  // For PDF viewers, try to extract from PDF.js text layer first
+  // For PDF viewers, try multiple strategies
   if (isPdfViewer) {
     console.log('Q-SCI Content Extractor: Attempting PDF text extraction');
+    
+    // Strategy 1: PDF.js text layers
     const textLayers = document.querySelectorAll('.textLayer');
     if (textLayers.length > 0) {
       console.log('Q-SCI Content Extractor: Found PDF.js text layers:', textLayers.length);
@@ -866,6 +872,39 @@ function extractPageContent() {
         console.log('Q-SCI Content Extractor: Extracted from PDF.js text layer:', text.length, 'characters');
       }
     }
+    
+    // Strategy 2: Try viewer-specific containers
+    if (!text || text.length < 100) {
+      const viewerSelectors = [
+        '.pdfViewer .textLayer',
+        '#viewer .textLayer',
+        '[class*="pdf"] [class*="text"]',
+        '[class*="viewer"] [class*="text"]',
+        'main',
+        '[role="main"]',
+        '.main-content',
+        '#content'
+      ];
+      
+      for (const selector of viewerSelectors) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          let combinedText = '';
+          elements.forEach(el => {
+            const elText = el.textContent || '';
+            if (elText.trim()) {
+              combinedText += elText + '\n';
+            }
+          });
+          
+          if (combinedText.length > 100) {
+            text = combinedText.trim();
+            console.log('Q-SCI Content Extractor: Extracted from viewer selector:', selector, text.length, 'characters');
+            break;
+          }
+        }
+      }
+    }
   }
   
   // Regular text extraction if not PDF or if PDF extraction failed
@@ -874,25 +913,86 @@ function extractPageContent() {
       '.abstract',
       '.article-abstract',
       '.paper-abstract',
+      'section.abstract',
+      '.summary',
+      'section.summary',
       '[data-testid="abstract"]',
+      '[data-test="abstract-section"]',
+      '[class*="abstract"]',
+      '.article-body',
+      'section.article-body',
       '.content',
       '.article-content',
       'main',
-      '.main-content'
+      '[role="main"]',
+      '.main-content',
+      'article',
+      '.article'
     ];
     
     for (const selector of textSelectors) {
       const element = document.querySelector(selector);
       if (element && element.textContent.trim().length > 100) {
         text = element.textContent.trim();
+        console.log('Q-SCI Content Extractor: Extracted from selector:', selector, text.length, 'characters');
         break;
       }
     }
   }
   
-  // Fallback: get all text from body
+  // Try extracting from paragraphs if still no content
   if (!text || text.length < 100) {
-    text = document.body.textContent.trim();
+    const articleContainers = document.querySelectorAll('article, main, [role="main"]');
+    if (articleContainers.length > 0) {
+      let combinedText = '';
+      articleContainers.forEach(container => {
+        const paragraphs = container.querySelectorAll('p');
+        paragraphs.forEach(p => {
+          const pText = p.textContent || '';
+          if (pText.trim().length > 50) {
+            combinedText += pText.trim() + '\n\n';
+          }
+        });
+      });
+      
+      if (combinedText.length > 100) {
+        text = combinedText.trim();
+        console.log('Q-SCI Content Extractor: Extracted from paragraphs:', text.length, 'characters');
+      }
+    }
+  }
+  
+  // Fallback: get visible text from body (clean up scripts and styles)
+  if (!text || text.length < 100) {
+    // Get all text nodes without cloning - more efficient
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: function(node) {
+          // Skip text nodes inside script, style, noscript tags
+          const parent = node.parentElement;
+          if (parent && ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'].includes(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+    
+    let bodyText = '';
+    let node;
+    while (node = walker.nextNode()) {
+      const nodeText = node.textContent || '';
+      if (nodeText.trim()) {
+        bodyText += nodeText;
+      }
+    }
+    
+    if (bodyText.trim().length > 100) {
+      text = bodyText.trim();
+      console.log('Q-SCI Content Extractor: Extracted from body (cleaned):', text.length, 'characters');
+    }
   }
   
   // Try to extract PDF URLs
