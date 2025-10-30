@@ -36,8 +36,7 @@ Thumbs.db
 verify-fix.js
 
 # Test artifacts
-test-results/*.json
-test-results/*.html
+test-results/
 playwright-report/
 test-report.json
 patch.diff

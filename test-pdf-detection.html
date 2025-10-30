@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PDF Detection - Q-SCI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #output {
+            white-space: pre-wrap;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Q-SCI PDF Detection Test Page</h1>
+    <p>This page simulates different PDF viewing scenarios to test the extension's PDF detection and extraction capabilities.</p>
+
+    <div class="test-section">
+        <div class="test-title">Test 1: Simulated PDF.js Text Layer</div>
+        <p>This simulates a PDF.js viewer with text layers (like modern browser PDF viewers)</p>
+        <div class="textLayer" style="display: none;">
+            This is a test abstract for a scientific paper. The study examined the effects of various treatments 
+            on patient outcomes. Results showed significant improvements in the treatment group compared to controls.
+            Methods included randomized controlled trials with double-blinding. Conclusions indicate that the 
+            treatment is effective and safe for patient use.
+        </div>
+        <button onclick="testPdfJsExtraction()">Test PDF.js Extraction</button>
+        <div id="pdfjs-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">Test 2: Simulated PDF Embed</div>
+        <p>This simulates a page with an embedded PDF</p>
+        <embed type="application/pdf" src="#" width="0" height="0" style="display: none;">
+        <button onclick="testPdfDetection('embed')">Test PDF Embed Detection</button>
+        <div id="embed-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">Test 3: Regular Article Page</div>
+        <div class="abstract">
+            <h2>Article Title: Testing Content Extraction</h2>
+            <h3>Abstract</h3>
+            <p>This is a regular article page with visible text content that should be easily extracted.
+            The abstract contains information about the study design, methods, results, and conclusions.
+            This text is visible and accessible via standard DOM queries.</p>
+        </div>
+        <button onclick="testRegularExtraction()">Test Regular Extraction</button>
+        <div id="regular-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">Full Test Output</div>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('output');
+            output.textContent += message + '\n';
+            console.log(message);
+        }
+
+        function testPdfJsExtraction() {
+            log('Testing PDF.js text layer extraction...');
+            const textLayers = document.querySelectorAll('.textLayer');
+            const resultDiv = document.getElementById('pdfjs-result');
+            
+            if (textLayers.length > 0) {
+                let text = '';
+                textLayers.forEach(layer => {
+                    text += layer.textContent + '\n';
+                });
+                
+                resultDiv.className = 'result success';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<strong>✓ Success:</strong> Found ${textLayers.length} text layer(s)<br>Extracted ${text.length} characters`;
+                log(`✓ PDF.js extraction successful: ${text.length} characters`);
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<strong>✗ Error:</strong> No text layers found';
+                log('✗ PDF.js extraction failed: No text layers found');
+            }
+        }
+
+        function testPdfDetection(type) {
+            log(`Testing ${type} PDF detection...`);
+            const resultDiv = document.getElementById(`${type}-result`);
+            
+            let detected = false;
+            if (type === 'embed') {
+                detected = document.querySelector('embed[type="application/pdf"]') !== null;
+            }
+            
+            if (detected) {
+                resultDiv.className = 'result success';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<strong>✓ Success:</strong> PDF ${type} detected correctly`;
+                log(`✓ PDF ${type} detected successfully`);
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<strong>✗ Error:</strong> PDF ${type} not detected`;
+                log(`✗ PDF ${type} detection failed`);
+            }
+        }
+
+        function testRegularExtraction() {
+            log('Testing regular content extraction...');
+            const abstract = document.querySelector('.abstract');
+            const resultDiv = document.getElementById('regular-result');
+            
+            if (abstract && abstract.textContent.length > 100) {
+                resultDiv.className = 'result success';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<strong>✓ Success:</strong> Extracted ${abstract.textContent.length} characters`;
+                log(`✓ Regular extraction successful: ${abstract.textContent.length} characters`);
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<strong>✗ Error:</strong> Failed to extract sufficient content';
+                log('✗ Regular extraction failed');
+            }
+        }
+
+        function runAllTests() {
+            document.getElementById('output').textContent = '';
+            log('========== Running All Tests ==========');
+            testPdfJsExtraction();
+            testPdfDetection('embed');
+            testRegularExtraction();
+            log('========== Tests Complete ==========');
+        }
+
+        // Log page load
+        window.addEventListener('load', () => {
+            log('Test page loaded successfully');
+            log('URL: ' + window.location.href);
+            log('Content type: ' + (document.contentType || document.mimeType || 'not available'));
+        });
+    </script>
+</body>
+</html>
