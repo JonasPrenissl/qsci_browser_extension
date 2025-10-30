@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page for PDF Analysis - Q-SCI Extension</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .paper {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .metadata {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .abstract {
+            background: #f9f9f9;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .abstract h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .links {
+            margin: 30px 0;
+            padding: 20px;
+            background: #e8f4f8;
+            border-radius: 4px;
+        }
+        .links a {
+            display: inline-block;
+            margin: 5px 10px 5px 0;
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .links a:hover {
+            background: #2980b9;
+        }
+        .content {
+            line-height: 1.6;
+            color: #333;
+        }
+        .instructions {
+            background: #fff3cd;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <strong>Test Instructions:</strong>
+        <ol>
+            <li>Make sure the Q-SCI extension is installed and loaded in Chrome</li>
+            <li>Click the Q-SCI extension icon while on this page</li>
+            <li>Click "Analyze Paper" button</li>
+            <li>The extension should attempt to download the PDF and extract text from it</li>
+            <li>Check the browser console for logs about PDF download/extraction</li>
+        </ol>
+    </div>
+
+    <div class="paper">
+        <h1>A Randomized Controlled Trial of Novel Treatment Intervention</h1>
+        
+        <div class="metadata">
+            <strong>Authors:</strong> Smith J, Johnson A, Williams B<br>
+            <strong>Journal:</strong> Journal of Medical Science, 2024<br>
+            <strong>DOI:</strong> 10.1234/jms.2024.12345
+        </div>
+
+        <div class="links">
+            <strong>Download:</strong>
+            <!-- These are example PDF links - in a real scenario, these would point to actual PDFs -->
+            <a href="https://arxiv.org/pdf/2301.00001.pdf" class="pdf-link">📄 View PDF</a>
+            <a href="https://arxiv.org/pdf/2301.00001.pdf" download>⬇️ Download PDF</a>
+        </div>
+
+        <div class="abstract">
+            <h2>Abstract</h2>
+            <p>
+                <strong>Background:</strong> This is a test abstract for the Q-SCI extension PDF analysis feature.
+                The study was designed as a randomized, double-blind, placebo-controlled trial to evaluate
+                the efficacy of a novel intervention.
+            </p>
+            <p>
+                <strong>Methods:</strong> We enrolled 500 participants aged 18-65 years and randomly assigned
+                them to receive either the active treatment or placebo. The primary outcome was measured
+                at 12 weeks using validated assessment tools. Sample size calculation was based on 80% power
+                to detect a clinically significant difference.
+            </p>
+            <p>
+                <strong>Results:</strong> The intervention group showed significant improvement compared to
+                placebo (p < 0.001). Safety analysis revealed no serious adverse events. The study followed
+                CONSORT guidelines for reporting.
+            </p>
+            <p>
+                <strong>Conclusions:</strong> This randomized controlled trial demonstrates the efficacy
+                and safety of the novel intervention. The findings support its use in clinical practice.
+            </p>
+        </div>
+
+        <div class="content">
+            <h2>Introduction</h2>
+            <p>
+                Scientific research requires rigorous methodology to ensure reliable results. This study
+                employed a randomized controlled trial design, considered the gold standard for evaluating
+                interventions. The protocol was registered prospectively and followed international guidelines.
+            </p>
+
+            <h2>Study Design</h2>
+            <p>
+                This was a parallel-group, randomized, double-blind, placebo-controlled trial. Participants
+                were stratified by age and gender. Randomization was performed using a computer-generated
+                sequence with concealed allocation. Both participants and investigators were blinded to
+                treatment assignment throughout the study period.
+            </p>
+
+            <h2>Statistical Analysis</h2>
+            <p>
+                Sample size calculation determined that 500 participants would provide 80% power to detect
+                a clinically meaningful difference. Analysis followed the intention-to-treat principle.
+                Missing data were handled using multiple imputation. All statistical tests were two-tailed
+                with significance set at p < 0.05.
+            </p>
+
+            <h2>Quality Indicators</h2>
+            <ul>
+                <li>✓ Randomized controlled trial design</li>
+                <li>✓ Double-blind methodology</li>
+                <li>✓ Placebo control</li>
+                <li>✓ Adequate sample size (n=500)</li>
+                <li>✓ Prospective registration</li>
+                <li>✓ CONSORT reporting guidelines followed</li>
+                <li>✓ Intention-to-treat analysis</li>
+                <li>✓ Pre-specified primary outcome</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Log to help with debugging
+        console.log('Test page loaded');
+        console.log('PDF links on page:', document.querySelectorAll('a[href*=".pdf"]').length);
+        
+        // Make sure PDF links are detected
+        window.addEventListener('load', function() {
+            const pdfLinks = document.querySelectorAll('a[href*=".pdf"]');
+            console.log('PDF links found:', Array.from(pdfLinks).map(a => a.href));
+        });
+    </script>
+</body>
+</html>

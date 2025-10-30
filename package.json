@@ -25,6 +25,7 @@
     "ws": "^8.18.0"
   },
   "dependencies": {
-    "@clerk/clerk-js": "^5.0.0"
+    "@clerk/clerk-js": "^5.0.0",
+    "pdfjs-dist": "^3.11.174"
   }
 }
