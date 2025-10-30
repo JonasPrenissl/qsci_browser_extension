@@ -88,6 +88,8 @@
       return extractPubMedData();
     } else if (hostname.includes('arxiv.org')) {
       return extractArXivData();
+    } else if (hostname.includes('thelancet.com')) {
+      return extractLancetData();
     }
     
     // Generic extraction for other sites
@@ -319,6 +321,127 @@
       text: abstract || title,
       pdfUrls,
       hostname: 'arxiv.org',
+      url: window.location.href
+    };
+  }
+  
+  // Lancet-specific extraction
+  function extractLancetData() {
+    console.log('Q-SCI Content Script: Using Lancet-specific extraction');
+    
+    let title = '';
+    let abstract = '';
+    let fullText = '';
+    let pdfUrls = [];
+    
+    // Lancet title selectors - try multiple approaches
+    const lancetTitleSelectors = [
+      'h1.article-header__title', // Lancet article header
+      'h1.article-title', // Alternative article title
+      '.article-header h1', // Header h1
+      'h1', // Generic fallback
+      '.citation__title' // Citation title
+    ];
+    
+    for (const selector of lancetTitleSelectors) {
+      const element = document.querySelector(selector);
+      if (element && element.textContent.trim()) {
+        title = element.textContent.trim();
+        console.log('Q-SCI Content Script: Found Lancet title with selector:', selector);
+        break;
+      }
+    }
+    
+    // Lancet abstract/summary selectors
+    // The Lancet often uses "Summary" instead of "Abstract"
+    const lancetAbstractSelectors = [
+      'section.summary', // Lancet summary section
+      '.summary', // Summary class
+      'section.abstract', // Abstract section
+      '.abstract', // Abstract class
+      '[data-component="abstract"]', // Data component abstract
+      '.article-section__abstract', // Article section abstract
+      '.article-section.abstract', // Alternative
+      '#abstract' // Abstract ID
+    ];
+    
+    for (const selector of lancetAbstractSelectors) {
+      const element = document.querySelector(selector);
+      if (element && element.textContent.trim()) {
+        abstract = element.textContent.trim();
+        console.log('Q-SCI Content Script: Found Lancet abstract with selector:', selector);
+        break;
+      }
+    }
+    
+    // Lancet full text selectors
+    // The Lancet uses section.article-body for main content
+    const lancetContentSelectors = [
+      'section.article-body', // Lancet main article body
+      '.article-body', // Alternative article body
+      'article.article-content', // Article content
+      '.article-content', // Article content class
+      'main.main-content', // Main content
+      '.main-content', // Main content class
+      'main' // Generic main
+    ];
+    
+    for (const selector of lancetContentSelectors) {
+      const element = document.querySelector(selector);
+      if (element && element.textContent.trim()) {
+        fullText = element.textContent.trim();
+        console.log('Q-SCI Content Script: Found Lancet content with selector:', selector);
+        break;
+      }
+    }
+    
+    // Lancet PDF link selectors
+    const lancetPdfSelectors = [
+      'a[href*=".pdf"]', // Direct PDF links
+      'a[href*="pdf"]', // PDF in URL
+      'a[title*="PDF"]', // PDF in title
+      'a[aria-label*="PDF"]', // PDF in aria-label
+      '.pdf-link', // PDF link class
+      '.download-link', // Download link
+      '[data-track-action="Download PDF"]', // Lancet tracking
+      'a[href*="pdfplus"]', // Lancet PDF plus
+      'a.downloadPdf' // Download PDF class
+    ];
+    
+    lancetPdfSelectors.forEach(selector => {
+      const links = document.querySelectorAll(selector);
+      links.forEach(link => {
+        if (link.href && !pdfUrls.includes(link.href)) {
+          if (link.href.includes('.pdf') || 
+              link.href.includes('pdf') || 
+              link.textContent.toLowerCase().includes('pdf') ||
+              link.title?.toLowerCase().includes('pdf') ||
+              link.getAttribute('aria-label')?.toLowerCase().includes('pdf')) {
+            pdfUrls.push(link.href);
+            console.log('Q-SCI Content Script: Found Lancet PDF URL:', link.href);
+          }
+        }
+      });
+    });
+    
+    // Strip references from abstract and full text
+    abstract = stripReferences(abstract);
+    fullText = stripReferences(fullText);
+    
+    // Combine text for analysis (prefer abstract, fallback to full text, then title)
+    let analysisText = abstract || fullText || title;
+    
+    // If we have both abstract and some full text, combine them
+    if (abstract && fullText && fullText !== abstract) {
+      analysisText = abstract + '\n\n' + fullText.substring(0, 2000); // Limit full text
+    }
+    
+    return {
+      title: title,
+      abstract: abstract,
+      text: analysisText,
+      pdfUrls: pdfUrls,
+      hostname: 'thelancet.com',
       url: window.location.href
     };
   }
