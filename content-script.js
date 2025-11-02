@@ -14,9 +14,10 @@
   window.qsciContentScriptLoaded = true;
   
   // Configuration
-  const EXTRACTION_DELAY = 1000; // Wait for page to fully load
+  const EXTRACTION_DELAY = 2000; // Wait for page to fully load (increased from 1000ms)
   const MAX_FULLTEXT_LENGTH = 2000; // Maximum characters to include from full text when combining with abstract
   const PDF_EXTRACTION_DELAY = 3000; // Wait longer for PDF viewers to render text
+  const DYNAMIC_CONTENT_DELAY = 2500; // Wait for dynamically loaded content (React, Vue, etc.)
   
   // Initialize content script
   function initialize() {
@@ -47,9 +48,20 @@
     try {
       // Check if this might be a PDF page to determine delay
       const isPdf = isPDFViewerPage();
-      const delay = isPdf ? PDF_EXTRACTION_DELAY : EXTRACTION_DELAY;
       
-      console.log('Q-SCI Content Script: Using extraction delay:', delay, 'ms', isPdf ? '(PDF page)' : '(regular page)');
+      // Check if page might have dynamic content (React, Vue, etc.)
+      const hasDynamicContent = document.querySelector('[data-react-root], [data-reactroot], #root, #app, [ng-app], [data-vue-app]') !== null;
+      
+      // Determine appropriate delay
+      let delay = EXTRACTION_DELAY;
+      if (isPdf) {
+        delay = PDF_EXTRACTION_DELAY;
+      } else if (hasDynamicContent) {
+        delay = DYNAMIC_CONTENT_DELAY;
+      }
+      
+      console.log('Q-SCI Content Script: Using extraction delay:', delay, 'ms', 
+        isPdf ? '(PDF page)' : (hasDynamicContent ? '(dynamic content detected)' : '(regular page)'));
       
       // Wait a moment for dynamic content to load
       setTimeout(() => {
@@ -577,15 +589,23 @@
     let fullText = '';
     const pdfUrlSet = new Set(); // Use Set for O(1) lookup performance
     
-    // Lancet title selectors - try multiple approaches
+    // Lancet title selectors - try multiple approaches including modern framework patterns
     const lancetTitleSelectors = [
       'h1.article-header__title', // Lancet article header
       'h1.article-title', // Alternative article title
       '.article-header h1', // Header h1
-      'h1', // Generic fallback
+      'header h1', // Generic header h1
+      '[data-component="article-header"] h1', // Data component header
+      '[data-testid="article-title"]', // Test ID pattern
+      '[data-component="article-title"]', // Data component title
+      'h1[itemprop="headline"]', // Schema.org markup
+      'h1[itemprop="name"]', // Schema.org name
       '.citation__title', // Citation title
       '[class*="article-title"]', // Pattern matching
-      '[class*="ArticleTitle"]' // CamelCase variant
+      '[class*="ArticleTitle"]', // CamelCase variant
+      'h1', // Generic fallback
+      '.title h1', // Title container
+      '#article-title' // ID-based selector
     ];
     
     for (const selector of lancetTitleSelectors) {
@@ -597,7 +617,7 @@
       }
     }
     
-    // Lancet abstract/summary selectors
+    // Lancet abstract/summary selectors - enhanced for modern frameworks
     // The Lancet often uses "Summary" instead of "Abstract"
     const lancetAbstractSelectors = [
       'section.summary', // Lancet summary section
@@ -605,13 +625,23 @@
       'section.abstract', // Abstract section
       '.abstract', // Abstract class
       '[data-component="abstract"]', // Data component abstract
+      '[data-component="summary"]', // Data component summary
+      '[data-testid="abstract"]', // Test ID abstract
+      '[data-testid="summary"]', // Test ID summary
       '.article-section__abstract', // Article section abstract
       '.article-section.abstract', // Alternative
       '#abstract', // Abstract ID
+      '#summary', // Summary ID
+      'section[id*="abstract"]', // ID pattern matching
+      'section[id*="summary"]', // ID pattern matching
       '[class*="abstract"]', // Pattern matching
       '[class*="summary"]', // Pattern matching
       'section[aria-label*="abstract"]', // Semantic
-      'section[aria-label*="summary"]' // Semantic
+      'section[aria-label*="summary"]', // Semantic
+      'div[role="region"][aria-label*="abstract"]', // ARIA region
+      'div[role="region"][aria-label*="summary"]', // ARIA region
+      '[itemprop="abstract"]', // Schema.org abstract
+      '[itemprop="description"]' // Schema.org description
     ];
     
     for (const selector of lancetAbstractSelectors) {
@@ -623,21 +653,28 @@
       }
     }
     
-    // Lancet full text selectors
+    // Lancet full text selectors - enhanced for modern frameworks
     // The Lancet uses section.article-body for main content
     const lancetContentSelectors = [
       'section.article-body', // Lancet main article body
       '.article-body', // Alternative article body
+      '[data-component="article-body"]', // Data component body
+      '[data-testid="article-body"]', // Test ID body
       'article.article-content', // Article content
       '.article-content', // Article content class
+      '[data-component="article-content"]', // Data component content
       'main.main-content', // Main content
       '.main-content', // Main content class
       'main', // Generic main
       '[role="main"]', // Semantic main
       'article', // Article tag
       '.article', // Article class
+      '[itemprop="articleBody"]', // Schema.org article body
       '[class*="article-body"]', // Pattern matching
-      '[class*="ArticleBody"]' // CamelCase variant
+      '[class*="ArticleBody"]', // CamelCase variant
+      '#article-content', // ID-based selector
+      '.fulltext-view', // Full text view
+      '[data-component="fulltext"]' // Data component fulltext
     ];
     
     for (const selector of lancetContentSelectors) {
@@ -649,13 +686,23 @@
       }
     }
     
-    // If no full text found, try extracting paragraphs
+    // If no full text found, try extracting paragraphs from various containers
     if (!fullText && !abstract) {
       console.log('Q-SCI Content Script: Trying Lancet paragraph extraction');
-      const articleContainers = document.querySelectorAll('article, main, [role="main"]');
-      if (articleContainers.length > 0) {
+      
+      // Try to find section containers with content
+      const sectionContainers = document.querySelectorAll(
+        'section[id*="section"], ' +
+        'section[class*="section"], ' +
+        'div[class*="section"], ' +
+        'div[data-component*="section"], ' +
+        'article, main, [role="main"], ' +
+        '[itemprop="articleBody"]'
+      );
+      
+      if (sectionContainers.length > 0) {
         let combinedText = '';
-        articleContainers.forEach(container => {
+        sectionContainers.forEach(container => {
           const paragraphs = container.querySelectorAll('p');
           paragraphs.forEach(p => {
             const pText = p.textContent || '';
@@ -667,7 +714,31 @@
         
         if (combinedText.length > 100) {
           fullText = combinedText.trim();
-          console.log('Q-SCI Content Script: Extracted Lancet text from paragraphs:', fullText.length, 'characters');
+          console.log('Q-SCI Content Script: Extracted Lancet text from section paragraphs:', fullText.length, 'characters');
+        }
+      }
+      
+      // If still no content, try extracting from div with text content
+      if (!fullText || fullText.length < 100) {
+        console.log('Q-SCI Content Script: Trying div-based extraction for Lancet');
+        const contentDivs = document.querySelectorAll(
+          'div[class*="content"], ' +
+          'div[class*="text"], ' +
+          'div[class*="body"], ' +
+          'div[data-component]'
+        );
+        
+        let combinedText = '';
+        contentDivs.forEach(div => {
+          const divText = div.textContent || '';
+          if (divText.trim().length > 100 && !div.querySelector('nav')) { // Avoid navigation sections
+            combinedText += divText.trim() + '\n\n';
+          }
+        });
+        
+        if (combinedText.length > 100) {
+          fullText = combinedText.trim();
+          console.log('Q-SCI Content Script: Extracted Lancet text from content divs:', fullText.length, 'characters');
         }
       }
     }
@@ -733,12 +804,16 @@
     let fullText = '';
     let pdfUrls = [];
     
-    // Extract title using multiple selectors
+    // Extract title using multiple selectors including modern framework patterns
     const titleSelectors = [
       'h1.heading-title', // PubMed
       'h1.title', // arXiv
       'h1[data-test="article-title"]', // Nature
       'h1[data-testid="article-title"]', // Alternative Nature
+      '[data-component="article-title"]', // Data component pattern
+      '[data-testid="title"]', // Test ID pattern
+      'h1[itemprop="headline"]', // Schema.org headline
+      'h1[itemprop="name"]', // Schema.org name
       '.article-title', // Science
       'h1.article-header__title', // Cell, Lancet
       'h1.c-article-title', // Springer
@@ -750,7 +825,8 @@
       '[class*="ArticleTitle"]', // CamelCase variants
       'header h1', // Header with h1
       'h1', // Generic fallback
-      '.title' // Generic fallback
+      '.title', // Generic fallback
+      '#article-title' // ID-based selector
     ];
     
     for (const selector of titleSelectors) {
@@ -762,12 +838,16 @@
       }
     }
     
-    // Extract abstract using multiple selectors
+    // Extract abstract using multiple selectors including modern framework patterns
     const abstractSelectors = [
       '.abstract-content', // PubMed, JAMA
       'blockquote.abstract', // arXiv
       '[data-test="abstract-section"]', // Nature
       '[data-testid="abstract-section"]', // Alternative Nature
+      '[data-component="abstract"]', // Data component pattern
+      '[data-testid="abstract"]', // Test ID pattern
+      '[itemprop="abstract"]', // Schema.org abstract
+      '[itemprop="description"]', // Schema.org description
       '.section.abstract', // Science
       'section.abstract', // Alternative
       '.abstract', // Generic
@@ -782,8 +862,11 @@
       '[class*="Abstract"]', // CamelCase variants
       '[class*="summary"]', // Summary variants
       '[id*="abstract"]', // ID pattern matching
+      'section[id*="abstract"]', // Section ID pattern
+      'div[id*="abstract"]', // Div ID pattern
       '[role="region"][aria-label*="abstract"]', // Semantic abstract
-      'section[aria-label*="abstract"]' // Section with label
+      'section[aria-label*="abstract"]', // Section with label
+      'div[role="region"][aria-label*="summary"]' // Summary region
     ];
     
     for (const selector of abstractSelectors) {
@@ -795,16 +878,21 @@
       }
     }
     
-    // Extract full text content for analysis with comprehensive selectors
+    // Extract full text content for analysis with comprehensive selectors including modern patterns
     const contentSelectors = [
       'section.article-body', // Lancet and others
       '.article-body', // Common article body
+      '[data-component="article-body"]', // Data component body
+      '[data-testid="article-body"]', // Test ID body
+      '[itemprop="articleBody"]', // Schema.org article body
       '.article-content', // Common article content
       'article.article-content', // Article tag with content class
+      '[data-component="article-content"]', // Data component content
       '.main-content', // Main content
       'main.main-content', // Main tag with content class
       '.content', // Generic content
       '.full-text', // Full text class
+      '.fulltext-view', // Full text view
       'main', // Generic main tag
       '[role="main"]', // Semantic main
       '.paper-content', // Paper content
@@ -813,10 +901,13 @@
       '[class*="article-body"]', // Pattern matching
       '[class*="ArticleBody"]', // CamelCase variants
       '[class*="content"]', // Generic content pattern
+      '[class*="fulltext"]', // Full text pattern
       '.document-content', // Document content
       '#main-content', // Main content ID
       '#content', // Content ID
-      '.body-content' // Body content
+      '.body-content', // Body content
+      '[data-component*="content"]', // Data component with content
+      '[data-component="fulltext"]' // Data component fulltext
     ];
     
     for (const selector of contentSelectors) {
@@ -832,15 +923,28 @@
     if (!fullText && !abstract) {
       console.log('Q-SCI Content Script: Trying paragraph and section extraction as fallback');
       
-      // Try extracting all paragraphs within article-like containers
-      const articleContainers = document.querySelectorAll('article, main, [role="main"], .article, .paper');
+      // Try extracting all paragraphs within article-like containers first
+      const articleContainers = document.querySelectorAll(
+        'article, main, [role="main"], ' +
+        '.article, .paper, ' +
+        '[data-component*="article"], ' +
+        '[data-component*="content"], ' +
+        '[itemprop="articleBody"], ' +
+        'section[id*="section"], ' +
+        'div[class*="article"]'
+      );
+      
       if (articleContainers.length > 0) {
         let combinedText = '';
         articleContainers.forEach(container => {
           const paragraphs = container.querySelectorAll('p');
           paragraphs.forEach(p => {
             const pText = p.textContent || '';
-            if (pText.trim().length > 50) {
+            // Skip navigation, headers, footers
+            if (pText.trim().length > 50 && 
+                !p.closest('nav') && 
+                !p.closest('header') && 
+                !p.closest('footer')) {
               combinedText += pText.trim() + '\n\n';
             }
           });
@@ -854,11 +958,16 @@
       
       // Try extracting all paragraphs from body as last resort
       if (!fullText) {
-        const allParagraphs = document.querySelectorAll('p');
+        const allParagraphs = document.querySelectorAll('body p');
         let combinedText = '';
         allParagraphs.forEach(p => {
           const pText = p.textContent || '';
-          if (pText.trim().length > 50) {
+          // Skip navigation, headers, footers, and short paragraphs
+          if (pText.trim().length > 50 && 
+              !p.closest('nav') && 
+              !p.closest('header') && 
+              !p.closest('footer') &&
+              !p.closest('aside')) {
             combinedText += pText.trim() + '\n\n';
           }
         });
