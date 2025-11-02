@@ -1259,7 +1259,8 @@ function showSourceText(evaluationPoint, type, index, sourceText) {
   let displayText;
   // Consider empty string as valid source text; only treat undefined or null as unavailable
   if (sourceText !== undefined && sourceText !== null) {
-    displayText = sourceText;
+    // Wrap the citation in quotation marks to clearly indicate it's a direct quote
+    displayText = `"${sourceText}"`;
   } else {
     displayText = `Source text for "${evaluationPoint}" is not available. This evaluation point was generated based on the overall analysis of the paper content.`;
   }
