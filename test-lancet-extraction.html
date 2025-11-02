@@ -131,8 +131,12 @@
         </article>
     </div>
 
-    <script src="content-script.js"></script>
+        <script src="content-script.js"></script>
     <script>
+        // Constants for content extraction
+        const MIN_PARAGRAPH_LENGTH = 50;  // Minimum characters for a valid paragraph
+        const MIN_CONTENT_LENGTH = 100;   // Minimum characters for valid content
+        
         // Wait for content script to load
         setTimeout(() => {
             runTests();
@@ -240,11 +244,11 @@
                         const paragraphs = tempContainer.querySelectorAll('p');
                         let combinedText = '';
                         paragraphs.forEach(p => {
-                            if (p.textContent.trim().length > 50) {
+                            if (p.textContent.trim().length > MIN_PARAGRAPH_LENGTH) {
                                 combinedText += p.textContent.trim() + '\n\n';
                             }
                         });
-                        if (combinedText.length > 100) {
+                        if (combinedText.length > MIN_CONTENT_LENGTH) {
                             content = combinedText;
                         }
                     }
@@ -252,15 +256,15 @@
                     document.body.removeChild(tempContainer);
 
                     const hasTitle = title && title.length > 10;
-                    const hasContent = (abstract && abstract.length > 50) || (content && content.length > 100);
+                    const hasContent = (abstract && abstract.length > MIN_PARAGRAPH_LENGTH) || (content && content.length > MIN_CONTENT_LENGTH);
                     const success = hasTitle && hasContent;
 
                     resultDiv.innerHTML = `
                         <div class="result ${success ? 'success' : 'error'}">
                             <p><strong>Status:</strong> ${success ? '✓ PASS' : '✗ FAIL'}</p>
                             <p><strong>Title Found:</strong> ${hasTitle ? '✓ Yes' : '✗ No'} ${title ? `(${title.substring(0, 60)}...)` : ''}</p>
-                            <p><strong>Abstract Found:</strong> ${abstract && abstract.length > 50 ? '✓ Yes' : '✗ No'} ${abstract ? `(${abstract.length} chars)` : ''}</p>
-                            <p><strong>Content Found:</strong> ${content && content.length > 100 ? '✓ Yes' : '✗ No'} ${content ? `(${content.length} chars)` : ''}</p>
+                            <p><strong>Abstract Found:</strong> ${abstract && abstract.length > MIN_PARAGRAPH_LENGTH ? '✓ Yes' : '✗ No'} ${abstract ? `(${abstract.length} chars)` : ''}</p>
+                            <p><strong>Content Found:</strong> ${content && content.length > MIN_CONTENT_LENGTH ? '✓ Yes' : '✗ No'} ${content ? `(${content.length} chars)` : ''}</p>
                             ${success ? '' : '<p><strong>Issue:</strong> Extraction failed - selectors may need adjustment</p>'}
                         </div>
                     `;

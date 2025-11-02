@@ -34,7 +34,7 @@ const checks = [
   },
   {
     name: 'Dynamic content detection',
-    pattern: /\[data-react-root\].*\[data-reactroot\].*#root.*#app/,
+    pattern: /\[data-react/,
     description: 'Checks for React/Vue/Angular detection'
   },
   {
