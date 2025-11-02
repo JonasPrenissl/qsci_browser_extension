@@ -46,3 +46,7 @@ patch.diff
 !test-results/*.png
 test-results/
 test-citation-display.html
+
+# Test files for development
+test-lancet-*.js
+test-fix-*.js
