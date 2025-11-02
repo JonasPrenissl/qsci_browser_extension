@@ -17,7 +17,8 @@
   const EXTRACTION_DELAY = 2000; // Wait for page to fully load (increased from 1000ms)
   const MAX_FULLTEXT_LENGTH = 2000; // Maximum characters to include from full text when combining with abstract
   const PDF_EXTRACTION_DELAY = 3000; // Wait longer for PDF viewers to render text
-  const DYNAMIC_CONTENT_DELAY = 2500; // Wait for dynamically loaded content (React, Vue, etc.)
+  const DYNAMIC_CONTENT_DELAY = 3500; // Wait for dynamically loaded content (React, Vue, etc.) - increased to 3.5s
+  const MIN_SUBSTANTIVE_LENGTH = 200; // Minimum length for substantive scientific content
   
   // Initialize content script
   function initialize() {
@@ -374,6 +375,79 @@
     }
   }
   
+  /**
+   * Clean and validate extracted text to ensure it contains substantive scientific content.
+   * Removes navigation, headers, footers, cookie banners, and other non-content text.
+   * @param {string} text - extracted text
+   * @returns {string} cleaned text
+   */
+  function cleanExtractedText(text) {
+    if (!text) return '';
+    
+    // Remove common non-content patterns
+    const patternsToRemove = [
+      // Navigation and menu patterns
+      /\b(Home|About|Contact|Login|Sign in|Sign up|Register|Subscribe|Menu|Navigation)\b/gi,
+      // Cookie consent patterns
+      /\b(Cookie|Cookies|We use cookies|Accept cookies|Privacy Policy|Terms of Service)\b.*?(\.|$)/gi,
+      // Social media patterns  
+      /\b(Share|Tweet|Facebook|Twitter|LinkedIn|Email this|Print)\b/gi,
+      // Common website footer patterns
+      /\b(Copyright|©|\(c\)|All rights reserved|Terms|Privacy)\b.*?(\.|$)/gi,
+      // Journal navigation patterns
+      /\b(Previous article|Next article|Back to|View PDF|Download PDF)\b/gi,
+      // Subscription/paywall patterns
+      /\b(Subscribe now|Get access|Purchase|Buy article)\b.*?(\.|$)/gi
+    ];
+    
+    let cleaned = text;
+    for (const pattern of patternsToRemove) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+    
+    // Remove excessive whitespace
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
+    return cleaned;
+  }
+  
+  /**
+   * Validate that extracted text contains substantive scientific content.
+   * Checks for scientific indicators like methods, results, study design terms.
+   * @param {string} text - text to validate
+   * @returns {boolean} true if text appears to be scientific content
+   */
+  function isSubstantiveScientificContent(text) {
+    if (!text || text.length < MIN_SUBSTANTIVE_LENGTH) {
+      return false;
+    }
+    
+    // Check for scientific content indicators
+    const scientificIndicators = [
+      // Study design indicators
+      /\b(study|trial|experiment|research|investigation|analysis|survey|cohort|sample)\b/i,
+      // Methods indicators
+      /\b(method|methodology|procedure|protocol|measurement|data|statistical|participants?|patients?)\b/i,
+      // Results indicators
+      /\b(result|finding|outcome|conclusion|significant|p\s*[<>=]|effect|correlation)\b/i,
+      // Abstract/paper structure indicators
+      /\b(abstract|introduction|background|methods?|results?|discussion|conclusion)\b/i,
+      // Medical/scientific terminology
+      /\b(treatment|intervention|diagnosis|clinical|medical|therapeutic|disease|condition|syndrome)\b/i
+    ];
+    
+    // Count how many indicators are present
+    let indicatorCount = 0;
+    for (const indicator of scientificIndicators) {
+      if (indicator.test(text)) {
+        indicatorCount++;
+      }
+    }
+    
+    // Text should match at least 2 scientific indicators to be considered substantive
+    return indicatorCount >= 2;
+  }
+  
   // PMC-specific extraction
   function extractPMCData() {
     console.log('Q-SCI Content Script: Using PMC-specific extraction');
@@ -603,17 +677,29 @@
       '.citation__title', // Citation title
       '[class*="article-title"]', // Pattern matching
       '[class*="ArticleTitle"]', // CamelCase variant
+      'meta[name="citation_title"]', // Meta tag for title
+      'meta[property="og:title"]', // Open Graph title
       'h1', // Generic fallback
       '.title h1', // Title container
       '#article-title' // ID-based selector
     ];
     
     for (const selector of lancetTitleSelectors) {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.trim()) {
-        title = element.textContent.trim();
-        console.log('Q-SCI Content Script: Found Lancet title with selector:', selector);
-        break;
+      // Handle meta tags differently
+      if (selector.startsWith('meta')) {
+        const element = document.querySelector(selector);
+        if (element && element.getAttribute('content')?.trim()) {
+          title = element.getAttribute('content').trim();
+          console.log('Q-SCI Content Script: Found Lancet title with selector:', selector);
+          break;
+        }
+      } else {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          title = element.textContent.trim();
+          console.log('Q-SCI Content Script: Found Lancet title with selector:', selector);
+          break;
+        }
       }
     }
     
@@ -634,22 +720,38 @@
       '#summary', // Summary ID
       'section[id*="abstract"]', // ID pattern matching
       'section[id*="summary"]', // ID pattern matching
+      'section[id*="Abstract"]', // CamelCase Abstract
+      'section[id*="Summary"]', // CamelCase Summary
+      'div[id*="abstract"]', // Div ID pattern
+      'div[id*="summary"]', // Div ID pattern
       '[class*="abstract"]', // Pattern matching
       '[class*="summary"]', // Pattern matching
+      '[class*="Summary"]', // CamelCase Summary
       'section[aria-label*="abstract"]', // Semantic
       'section[aria-label*="summary"]', // Semantic
       'div[role="region"][aria-label*="abstract"]', // ARIA region
       'div[role="region"][aria-label*="summary"]', // ARIA region
       '[itemprop="abstract"]', // Schema.org abstract
-      '[itemprop="description"]' // Schema.org description
+      '[itemprop="description"]', // Schema.org description
+      'meta[name="citation_abstract"]' // Meta tag for abstract
     ];
     
     for (const selector of lancetAbstractSelectors) {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.trim()) {
-        abstract = element.textContent.trim();
-        console.log('Q-SCI Content Script: Found Lancet abstract with selector:', selector);
-        break;
+      // Handle meta tags differently
+      if (selector.startsWith('meta')) {
+        const element = document.querySelector(selector);
+        if (element && element.getAttribute('content')?.trim()) {
+          abstract = element.getAttribute('content').trim();
+          console.log('Q-SCI Content Script: Found Lancet abstract with selector:', selector);
+          break;
+        }
+      } else {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          abstract = element.textContent.trim();
+          console.log('Q-SCI Content Script: Found Lancet abstract with selector:', selector);
+          break;
+        }
       }
     }
     
@@ -672,9 +774,13 @@
       '[itemprop="articleBody"]', // Schema.org article body
       '[class*="article-body"]', // Pattern matching
       '[class*="ArticleBody"]', // CamelCase variant
+      '[class*="articleBody"]', // camelCase variant
       '#article-content', // ID-based selector
+      '#main-content', // Main content ID
       '.fulltext-view', // Full text view
-      '[data-component="fulltext"]' // Data component fulltext
+      '.full-text', // Full text
+      '[data-component="fulltext"]', // Data component fulltext
+      '[data-component="full-text"]' // Data component full-text
     ];
     
     for (const selector of lancetContentSelectors) {
@@ -690,12 +796,18 @@
     if (!fullText && !abstract) {
       console.log('Q-SCI Content Script: Trying Lancet paragraph extraction');
       
-      // Try to find section containers with content
+      // Try to find section containers with content - cast wider net
       const sectionContainers = document.querySelectorAll(
         'section[id*="section"], ' +
+        'section[id*="Section"], ' +
         'section[class*="section"], ' +
+        'section[class*="Section"], ' +
         'div[class*="section"], ' +
+        'div[class*="Section"], ' +
+        'div[id*="section"], ' +
+        'div[id*="content"], ' +
         'div[data-component*="section"], ' +
+        'div[data-component*="content"], ' +
         'article, main, [role="main"], ' +
         '[itemprop="articleBody"]'
       );
@@ -703,8 +815,18 @@
       if (sectionContainers.length > 0) {
         let combinedText = '';
         sectionContainers.forEach(container => {
+          // Skip navigation, header, footer containers
+          if (container.closest('nav, header, footer, aside')) {
+            return;
+          }
+          
           const paragraphs = container.querySelectorAll('p');
           paragraphs.forEach(p => {
+            // Skip paragraphs in navigation, header, footer
+            if (p.closest('nav, header, footer, aside')) {
+              return;
+            }
+            
             const pText = p.textContent || '';
             if (pText.trim().length > 50) {
               combinedText += pText.trim() + '\n\n';
@@ -722,16 +844,23 @@
       if (!fullText || fullText.length < 100) {
         console.log('Q-SCI Content Script: Trying div-based extraction for Lancet');
         const contentDivs = document.querySelectorAll(
-          'div[class*="content"], ' +
-          'div[class*="text"], ' +
-          'div[class*="body"], ' +
-          'div[data-component]'
+          'div[class*="content"]:not([class*="nav"]):not([class*="menu"]):not([class*="header"]):not([class*="footer"]), ' +
+          'div[class*="Content"]:not([class*="Nav"]):not([class*="Menu"]):not([class*="Header"]):not([class*="Footer"]), ' +
+          'div[class*="text"]:not([class*="nav"]):not([class*="menu"]), ' +
+          'div[class*="body"]:not([class*="nav"]):not([class*="menu"]), ' +
+          'div[class*="Body"]:not([class*="Nav"]):not([class*="Menu"]), ' +
+          'div[data-component]:not([data-component*="nav"]):not([data-component*="menu"]):not([data-component*="header"]):not([data-component*="footer"])'
         );
         
         let combinedText = '';
         contentDivs.forEach(div => {
+          // Skip navigation sections
+          if (div.closest('nav, header, footer, aside')) {
+            return;
+          }
+          
           const divText = div.textContent || '';
-          if (divText.trim().length > 100 && !div.querySelector('nav')) { // Avoid navigation sections
+          if (divText.trim().length > 100) {
             combinedText += divText.trim() + '\n\n';
           }
         });
@@ -776,6 +905,10 @@
     abstract = stripReferences(abstract);
     fullText = stripReferences(fullText);
     
+    // Clean the extracted text
+    abstract = cleanExtractedText(abstract);
+    fullText = cleanExtractedText(fullText);
+    
     // Combine text for analysis (prefer abstract, fallback to full text, then title)
     let analysisText = abstract || fullText || title;
     
@@ -783,6 +916,12 @@
     if (abstract && fullText && fullText !== abstract) {
       analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
     }
+    
+    // Validate that we have substantive scientific content
+    const isSubstantive = isSubstantiveScientificContent(analysisText);
+    console.log('Q-SCI Content Script: Content validation -', 
+      'Length:', analysisText.length, 
+      'Substantive:', isSubstantive);
     
     return {
       title: title,
@@ -823,6 +962,8 @@
       '.citation__title', // Wiley
       '[class*="article-title"]', // Generic pattern matching
       '[class*="ArticleTitle"]', // CamelCase variants
+      'meta[name="citation_title"]', // Meta tag for title
+      'meta[property="og:title"]', // Open Graph title
       'header h1', // Header with h1
       'h1', // Generic fallback
       '.title', // Generic fallback
@@ -830,11 +971,21 @@
     ];
     
     for (const selector of titleSelectors) {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.trim()) {
-        title = element.textContent.trim();
-        console.log('Q-SCI Content Script: Found title with selector:', selector);
-        break;
+      // Handle meta tags differently
+      if (selector.startsWith('meta')) {
+        const element = document.querySelector(selector);
+        if (element && element.getAttribute('content')?.trim()) {
+          title = element.getAttribute('content').trim();
+          console.log('Q-SCI Content Script: Found title with selector:', selector);
+          break;
+        }
+      } else {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          title = element.textContent.trim();
+          console.log('Q-SCI Content Script: Found title with selector:', selector);
+          break;
+        }
       }
     }
     
@@ -845,36 +996,57 @@
       '[data-test="abstract-section"]', // Nature
       '[data-testid="abstract-section"]', // Alternative Nature
       '[data-component="abstract"]', // Data component pattern
+      '[data-component="summary"]', // Summary component
       '[data-testid="abstract"]', // Test ID pattern
+      '[data-testid="summary"]', // Summary test ID
       '[itemprop="abstract"]', // Schema.org abstract
       '[itemprop="description"]', // Schema.org description
       '.section.abstract', // Science
       'section.abstract', // Alternative
+      'section.summary', // Summary section
       '.abstract', // Generic
-      '.summary', // Lancet
-      'section.summary', // Lancet with section
+      '.summary', // Lancet summary
       '.c-article-section__content', // Springer
       '#abstract', // Generic ID
+      '#summary', // Summary ID
       '.article-section__content', // Wiley
       '.abstract-text', // Alternative
       '.article-abstract', // Alternative
       '[class*="abstract"]', // Generic pattern matching
       '[class*="Abstract"]', // CamelCase variants
       '[class*="summary"]', // Summary variants
+      '[class*="Summary"]', // Summary CamelCase
       '[id*="abstract"]', // ID pattern matching
+      '[id*="Abstract"]', // ID CamelCase
+      '[id*="summary"]', // ID summary
+      '[id*="Summary"]', // ID summary CamelCase
       'section[id*="abstract"]', // Section ID pattern
+      'section[id*="summary"]', // Section ID summary
       'div[id*="abstract"]', // Div ID pattern
+      'div[id*="summary"]', // Div ID summary
       '[role="region"][aria-label*="abstract"]', // Semantic abstract
+      '[role="region"][aria-label*="summary"]', // Semantic summary
       'section[aria-label*="abstract"]', // Section with label
-      'div[role="region"][aria-label*="summary"]' // Summary region
+      'section[aria-label*="summary"]', // Section summary label
+      'meta[name="citation_abstract"]' // Meta tag for abstract
     ];
     
     for (const selector of abstractSelectors) {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.trim()) {
-        abstract = element.textContent.trim();
-        console.log('Q-SCI Content Script: Found abstract with selector:', selector);
-        break;
+      // Handle meta tags differently
+      if (selector.startsWith('meta')) {
+        const element = document.querySelector(selector);
+        if (element && element.getAttribute('content')?.trim()) {
+          abstract = element.getAttribute('content').trim();
+          console.log('Q-SCI Content Script: Found abstract with selector:', selector);
+          break;
+        }
+      } else {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          abstract = element.textContent.trim();
+          console.log('Q-SCI Content Script: Found abstract with selector:', selector);
+          break;
+        }
       }
     }
     
@@ -900,14 +1072,19 @@
       'article', // Article tag
       '[class*="article-body"]', // Pattern matching
       '[class*="ArticleBody"]', // CamelCase variants
+      '[class*="articleBody"]', // camelCase variants
       '[class*="content"]', // Generic content pattern
+      '[class*="Content"]', // CamelCase content
       '[class*="fulltext"]', // Full text pattern
+      '[class*="full-text"]', // Full-text pattern
       '.document-content', // Document content
       '#main-content', // Main content ID
       '#content', // Content ID
+      '#article-content', // Article content ID
       '.body-content', // Body content
       '[data-component*="content"]', // Data component with content
-      '[data-component="fulltext"]' // Data component fulltext
+      '[data-component="fulltext"]', // Data component fulltext
+      '[data-component="full-text"]' // Data component full-text
     ];
     
     for (const selector of contentSelectors) {
@@ -931,20 +1108,30 @@
         '[data-component*="content"], ' +
         '[itemprop="articleBody"], ' +
         'section[id*="section"], ' +
-        'div[class*="article"]'
+        'section[id*="Section"], ' +
+        'div[class*="article"], ' +
+        'div[class*="Article"], ' +
+        'div[id*="content"], ' +
+        'div[id*="article"]'
       );
       
       if (articleContainers.length > 0) {
         let combinedText = '';
         articleContainers.forEach(container => {
+          // Skip navigation, header, footer containers
+          if (container.closest('nav, header, footer, aside')) {
+            return;
+          }
+          
           const paragraphs = container.querySelectorAll('p');
           paragraphs.forEach(p => {
+            // Skip paragraphs in navigation, headers, footers
+            if (p.closest('nav, header, footer, aside')) {
+              return;
+            }
+            
             const pText = p.textContent || '';
-            // Skip navigation, headers, footers
-            if (pText.trim().length > 50 && 
-                !p.closest('nav') && 
-                !p.closest('header') && 
-                !p.closest('footer')) {
+            if (pText.trim().length > 50) {
               combinedText += pText.trim() + '\n\n';
             }
           });
@@ -1011,6 +1198,10 @@
     // citations in the reference list as part of the main content
     abstract = stripReferences(abstract);
     fullText = stripReferences(fullText);
+    
+    // Clean the extracted text
+    abstract = cleanExtractedText(abstract);
+    fullText = cleanExtractedText(fullText);
 
     // Combine text for analysis (prefer abstract, fallback to full text, then title)
     let analysisText = abstract || fullText || title;
@@ -1019,6 +1210,12 @@
     if (abstract && fullText && fullText !== abstract) {
       analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
     }
+    
+    // Validate that we have substantive scientific content
+    const isSubstantive = isSubstantiveScientificContent(analysisText);
+    console.log('Q-SCI Content Script: Content validation -', 
+      'Length:', analysisText.length, 
+      'Substantive:', isSubstantive);
     
     const result = {
       title: title,
@@ -1035,7 +1232,8 @@
       text: result.text ? result.text.substring(0, 50) + '...' : 'None',
       textLength: result.text ? result.text.length : 0,
       pdfUrls: result.pdfUrls.length,
-      hostname: result.hostname
+      hostname: result.hostname,
+      isSubstantive: isSubstantive
     });
     
     return result;
