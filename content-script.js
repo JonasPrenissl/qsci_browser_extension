@@ -15,7 +15,7 @@
   
   // Configuration
   const EXTRACTION_DELAY = 2000; // Wait for page to fully load (increased from 1000ms)
-  const MAX_FULLTEXT_LENGTH = 2000; // Maximum characters to include from full text when combining with abstract
+  const MAX_FULLTEXT_LENGTH = 100000; // Maximum characters to include from full text when combining with abstract (increased to capture full articles for quality analysis)
   const PDF_EXTRACTION_DELAY = 3000; // Wait longer for PDF viewers to render text
   // Dynamic content delay: increased to 7.0s for The Lancet and similar complex sites
   // - Simple static sites: 1-2 seconds (don't use dynamic detection)
