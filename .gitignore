@@ -45,3 +45,4 @@ patch.diff
 # Allow test result screenshots
 !test-results/*.png
 test-results/
+test-citation-display.html
