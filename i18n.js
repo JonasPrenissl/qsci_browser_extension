@@ -43,6 +43,7 @@
       // Analysis results
       'results.title': 'Analyseergebnisse',
       'results.quality': 'Qualität',
+      'results.reasoning': 'Begründung',
       'results.journalTier': 'Journal-Tier',
       'results.quartile': 'Quartil',
       'results.viewDetails': 'Details anzeigen',
@@ -63,6 +64,7 @@
       'detailed.positiveAspects': '✅ Positive Aspekte',
       'detailed.negativeAspects': '⚠️ Verbesserungsbereiche',
       'detailed.source': 'Quelle',
+      'detailed.noExactCitation': 'Aspekt aus Argumentation bezüglich mehrerer Teile der Publikation extrahiert',
       
       // Messages
       'message.analyzing': 'Analysiere...',
@@ -138,6 +140,7 @@
       // Analysis results
       'results.title': 'Analysis Results',
       'results.quality': 'Quality',
+      'results.reasoning': 'Reasoning',
       'results.journalTier': 'Journal Tier',
       'results.quartile': 'Quartile',
       'results.viewDetails': 'View Details',
@@ -158,6 +161,7 @@
       'detailed.positiveAspects': '✅ Positive Aspects',
       'detailed.negativeAspects': '⚠️ Areas for Improvement',
       'detailed.source': 'Source',
+      'detailed.noExactCitation': 'aspect extracted from reasoning regarding multiple parts of the publication',
       
       // Messages
       'message.analyzing': 'Analyzing...',

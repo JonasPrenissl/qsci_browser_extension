@@ -1,12 +1,14 @@
 # Node modules (if any)
 node_modules/
 
-# Build artifacts (but allow dist/js/bundle-auth.js)
+# Build artifacts (but allow dist/js/bundle-auth.js and bundle-pdf-handler.js)
 dist/*
 !dist/js/
 dist/js/*
 !dist/js/bundle-auth.js
 !dist/js/bundle-auth.js.map
+!dist/js/bundle-pdf-handler.js
+!dist/js/bundle-pdf-handler.js.map
 build/
 
 # IDE files
@@ -36,10 +38,15 @@ Thumbs.db
 verify-fix.js
 
 # Test artifacts
-test-results/*.json
-test-results/*.html
+test-results/
 playwright-report/
 test-report.json
 patch.diff
 # Allow test result screenshots
 !test-results/*.png
+test-results/
+test-citation-display.html
+
+# Test files for development
+test-lancet-*.js
+test-fix-*.js

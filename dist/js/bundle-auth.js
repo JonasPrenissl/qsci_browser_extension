@@ -39414,6 +39414,7 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
   } else {
     console.warn("Q-SCI Clerk Auth: clerk-config.js not found, using default test key. For production, create clerk-config.js from clerk-config.example.js");
   }
+  var AUTH_CALLBACK_URL = "https://www.q-sci.org/auth-callback";
   var currentLanguage = "de";
   document.addEventListener("DOMContentLoaded", async function() {
     if (window.QSCIi18n) {
@@ -39466,12 +39467,17 @@ Learn more: https://clerk.com/docs/components/clerk-provider`.trim());
       clerkContainer.innerHTML = "";
       console.log("Q-SCI Clerk Auth: Mounting sign-in component...");
       clerk.mountSignIn(clerkContainer, {
-        // Do NOT set afterSignInUrl or afterSignUpUrl - this prevents Clerk from attempting redirects
-        // which would cause "Invalid URL scheme" errors since we're in a browser extension context
-        // We use postMessage and chrome.storage for communication instead
-        redirectUrl: void 0,
-        afterSignInUrl: void 0,
-        afterSignUpUrl: void 0,
+        // Use valid HTTPS URLs for Clerk's redirect validation
+        // These URLs satisfy Clerk's requirement for http/https schemes
+        // Actual authentication uses postMessage and chrome.storage, so redirects are never followed
+        redirectUrl: AUTH_CALLBACK_URL,
+        afterSignInUrl: AUTH_CALLBACK_URL,
+        afterSignUpUrl: AUTH_CALLBACK_URL,
+        // Explicitly set ALL redirect-related parameters to prevent undefined values
+        signInForceRedirectUrl: AUTH_CALLBACK_URL,
+        signUpForceRedirectUrl: AUTH_CALLBACK_URL,
+        signInFallbackRedirectUrl: AUTH_CALLBACK_URL,
+        signUpFallbackRedirectUrl: AUTH_CALLBACK_URL,
         // Additional routing configuration to prevent chrome-extension:// URL usage
         routing: "hash",
         // Explicitly tell Clerk this is embedded/popup context

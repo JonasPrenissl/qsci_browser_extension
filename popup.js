@@ -7,6 +7,22 @@ let currentTab = null;
 let currentAnalysis = null;
 let currentUser = null;
 
+// Global error handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', function(event) {
+  console.error('Q-SCI Debug Popup: Unhandled promise rejection:', event.reason);
+  console.error('Q-SCI Debug Popup: Promise:', event.promise);
+  
+  // Show error to user if it's not already handled
+  if (event.reason && event.reason.message) {
+    showError('Unexpected error: ' + event.reason.message);
+  } else {
+    showError('An unexpected error occurred. Please check the console for details.');
+  }
+  
+  // Prevent the default browser behavior (showing error in console only)
+  event.preventDefault();
+});
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('Q-SCI Debug Popup: DOM loaded, initializing...');
@@ -32,21 +48,17 @@ function initializeElements() {
     refreshBtn: document.getElementById('refresh-btn'),
     statsSection: document.getElementById('stats-section'),
     qualityScore: document.getElementById('quality-score'),
-    impactFactor: document.getElementById('impact-factor'),
-    quartile: document.getElementById('quartile'),
-    viewDetailsBtn: document.getElementById('view-details-btn'),
-    manualText: document.getElementById('manual-text'),
-    manualAnalyzeBtn: document.getElementById('manual-analyze-btn'),
+    qualityStatItem: document.getElementById('quality-stat-item'),
     loadingMessage: document.getElementById('loading-overlay'),
     errorMessage: document.getElementById('error-message'),
     successMessage: document.getElementById('success-message'),
+    // Score reasoning elements
+    scoreReasoningSection: document.getElementById('score-reasoning-section'),
+    scoreReasoningText: document.getElementById('score-reasoning-text'),
     // Detailed view elements
     detailedSection: document.getElementById('detailed-section'),
-    closeDetailsBtn: document.getElementById('close-details-btn'),
     journalInfo: document.getElementById('journal-info'),
     journalName: document.getElementById('journal-name'),
-    detailedImpactFactor: document.getElementById('detailed-impact-factor'),
-    detailedQuartile: document.getElementById('detailed-quartile'),
     journalCategory: document.getElementById('journal-category'),
     detailedQualityCircle: document.getElementById('detailed-quality-circle'),
     detailedQualityPercentage: document.getElementById('detailed-quality-percentage'),
@@ -56,10 +68,8 @@ function initializeElements() {
     sourceCitationsSection: document.getElementById('source-citations-section'),
     sourceTextDisplay: document.getElementById('source-text-display'),
     sourceContent: document.getElementById('source-content'),
-    openWebAppDetailed: document.getElementById('open-web-app-detailed'),
     exportAnalysisBtn: document.getElementById('export-analysis-btn'),
     // Settings elements
-    analyzePdfCheckbox: document.getElementById('analyze-pdf'),
     settingsBtn: document.getElementById('settings-btn'),
     // Auth elements
     authSection: document.getElementById('auth-section'),
@@ -101,34 +111,6 @@ function setupEventListeners() {
     elements.refreshBtn.addEventListener('click', function() {
       console.log('Q-SCI Debug Popup: Refresh button clicked');
       updatePageStatus();
-    });
-  }
-  
-  if (elements.manualAnalyzeBtn) {
-    elements.manualAnalyzeBtn.addEventListener('click', function() {
-      console.log('Q-SCI Debug Popup: Manual analyze button clicked');
-      analyzeText();
-    });
-  }
-  
-  if (elements.viewDetailsBtn) {
-    elements.viewDetailsBtn.addEventListener('click', function() {
-      console.log('Q-SCI Debug Popup: View details button clicked');
-      showDetailedAnalysis();
-    });
-  }
-  
-  if (elements.closeDetailsBtn) {
-    elements.closeDetailsBtn.addEventListener('click', function() {
-      console.log('Q-SCI Debug Popup: Close details button clicked');
-      hideDetailedAnalysis();
-    });
-  }
-  
-  if (elements.openWebAppDetailed) {
-    elements.openWebAppDetailed.addEventListener('click', function() {
-      console.log('Q-SCI Debug Popup: Open web app detailed button clicked');
-      openDetailedAnalysis();
     });
   }
   
@@ -387,10 +369,6 @@ function showLoginForm() {
     elements.analyzeBtn.disabled = true;
     elements.analyzeBtn.style.opacity = '0.5';
   }
-  if (elements.manualAnalyzeBtn) {
-    elements.manualAnalyzeBtn.disabled = true;
-    elements.manualAnalyzeBtn.style.opacity = '0.5';
-  }
 }
 
 // Update subscription badge with i18n support
@@ -441,10 +419,6 @@ function showUserStatus(user) {
   if (elements.analyzeBtn) {
     elements.analyzeBtn.disabled = false;
     elements.analyzeBtn.style.opacity = '1';
-  }
-  if (elements.manualAnalyzeBtn) {
-    elements.manualAnalyzeBtn.disabled = false;
-    elements.manualAnalyzeBtn.style.opacity = '1';
   }
 }
 
@@ -576,6 +550,7 @@ function showPageStatus(message, canAnalyze) {
 
 // Analyze current page - SIMPLIFIED VERSION
 async function analyzePage() {
+  console.log('Q-SCI Debug Popup: ==================== STARTING ANALYSIS ====================');
   console.log('Q-SCI Debug Popup: Starting simplified page analysis...');
   console.log('Q-SCI Debug Popup: window.qsciEvaluatePaper available:', typeof window.qsciEvaluatePaper !== 'undefined');
   console.log('Q-SCI Debug Popup: window.QSCIAuth available:', typeof window.QSCIAuth !== 'undefined');
@@ -589,15 +564,19 @@ async function analyzePage() {
   }
   
   console.log('Q-SCI Debug Popup: Current user:', currentUser.email);
+  console.log('Q-SCI Debug Popup: Subscription status:', currentUser.subscriptionStatus);
   
   // Check usage limits
   try {
+    console.log('Q-SCI Debug Popup: Checking usage limits...');
     const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
+    console.log('Q-SCI Debug Popup: Usage info:', usageInfo);
     
     if (!usageInfo.canAnalyze) {
       const limit = usageInfo.limit;
       const subscriptionType = currentUser.subscriptionStatus === 'subscribed' ? 'subscribed' : 'free';
       
+      console.warn('Q-SCI Debug Popup: Usage limit reached:', usageInfo);
       if (subscriptionType === 'free') {
         showError(`You have reached your daily limit of ${limit} analyses. Please subscribe at q-sci.org for more analyses (up to 100 per day).`);
       } else {
@@ -614,6 +593,7 @@ async function analyzePage() {
   }
   
   // Show loading immediately
+  console.log('Q-SCI Debug Popup: Showing loading indicator...');
   showLoading();
   
   try {
@@ -631,126 +611,233 @@ async function analyzePage() {
     }
     
     console.log('Q-SCI Debug Popup: Using tab:', currentTab.url);
+    console.log('Q-SCI Debug Popup: Tab ID:', currentTab.id);
     
     // Extract page content using content script
-    console.log('Q-SCI Debug Popup: Injecting content script...');
+    console.log('Q-SCI Debug Popup: Injecting content script to extract page content...');
     
     const results = await chrome.scripting.executeScript({
       target: { tabId: currentTab.id },
       function: extractPageContent
     });
     
+    console.log('Q-SCI Debug Popup: Script execution results:', results);
+    
     if (!results || !results[0] || !results[0].result) {
-      throw new Error('Failed to extract page content');
+      throw new Error('Failed to extract page content. The page may not be accessible or the content script failed to execute.');
     }
     
     const pageData = results[0].result;
     console.log('Q-SCI Debug Popup: Extracted page data:', {
       hasTitle: !!pageData.title,
-      textLength: pageData.text ? pageData.text.length : 0
+      title: pageData.title ? pageData.title.substring(0, 50) + '...' : 'N/A',
+      textLength: pageData.text ? pageData.text.length : 0,
+      hasPdfUrls: !!pageData.pdfUrls,
+      pdfUrlsCount: pageData.pdfUrls ? pageData.pdfUrls.length : 0,
+      isPdfViewer: pageData.isPdfViewer
     });
     
-    if (!pageData.text || pageData.text.length < 50) {
-      throw new Error('Insufficient content found. Please ensure you are on a paper details page.');
+    // Try to analyze PDF first if PDF URLs are available
+    let requestData = null;
+    let pdfAnalysisAttempted = false;
+    
+    if (pageData.pdfUrls && pageData.pdfUrls.length > 0 && window.QSCIPDFHandler) {
+      console.log('Q-SCI Debug Popup: PDF URLs found, attempting PDF download and analysis...');
+      pdfAnalysisAttempted = true;
+      
+      // Show a status message to the user
+      if (elements.loadingMessage) {
+        const loadingText = elements.loadingMessage.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = 'Downloading PDF for analysis...';
+        }
+      }
+      
+      try {
+        const pdfResult = await window.QSCIPDFHandler.tryDownloadAndExtractPDF(pageData.pdfUrls);
+        
+        if (pdfResult.success && pdfResult.text && pdfResult.text.length >= 50) {
+          console.log('Q-SCI Debug Popup: PDF text extracted successfully:', pdfResult.text.length, 'characters');
+          requestData = {
+            text: pdfResult.text,
+            title: pageData.title || 'Unknown Title',
+            source_url: pdfResult.pdfUrl || currentTab.url,
+            source_type: 'PDF'
+          };
+          
+          // Update loading message
+          if (elements.loadingMessage) {
+            const loadingText = elements.loadingMessage.querySelector('.loading-text');
+            if (loadingText) {
+              loadingText.textContent = 'Analyzing PDF content...';
+            }
+          }
+        } else {
+          console.warn('Q-SCI Debug Popup: PDF extraction failed or insufficient text:', pdfResult.error);
+          // Fall back to HTML text analysis
+        }
+      } catch (pdfError) {
+        console.warn('Q-SCI Debug Popup: Error during PDF analysis:', pdfError.message);
+        // Fall back to HTML text analysis
+      }
     }
     
-    // Check if PDF analysis is enabled
-    const usePdfAnalysis = elements.analyzePdfCheckbox && elements.analyzePdfCheckbox.checked;
-    console.log('Q-SCI Debug Popup: PDF analysis enabled:', usePdfAnalysis);
-    
-    let requestData;
-    if (usePdfAnalysis && pageData.pdfUrls && pageData.pdfUrls.length > 0) {
-      // Use PDF URL for analysis
-      console.log('Q-SCI Debug Popup: Using PDF analysis with URL:', pageData.pdfUrls[0]);
-      requestData = {
-        pdf_url: pageData.pdfUrls[0],
-        title: pageData.title || 'Unknown Title',
-        source_url: currentTab.url
-      };
-    } else {
-      // Use HTML text for analysis
-      console.log('Q-SCI Debug Popup: Using HTML text analysis');
+    // Fall back to HTML text if PDF analysis wasn't attempted or failed
+    if (!requestData) {
+      console.log('Q-SCI Debug Popup: Using HTML text analysis', pdfAnalysisAttempted ? '(PDF analysis failed)' : '(no PDF URLs)');
+      
+      // Update loading message
+      if (elements.loadingMessage) {
+        const loadingText = elements.loadingMessage.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = 'Analyzing page content...';
+        }
+      }
+      
+      if (!pageData.text || pageData.text.length < 50) {
+        let errorMsg = 'Insufficient content found on the page (less than 50 characters).';
+        
+        // Provide specific guidance based on context
+        if (pdfAnalysisAttempted) {
+          errorMsg += ' PDF analysis was attempted but failed. Please try one of these alternatives:\n\n';
+          errorMsg += '1. Wait a few seconds and try again (the page may still be loading)\n';
+          errorMsg += '2. Use the Manual Analysis feature below by copying text from the page\n';
+          errorMsg += '3. Visit a different version of the article (e.g., abstract page vs PDF viewer)';
+        } else if (pageData.isPdfViewer || (pageData.pdfUrls && pageData.pdfUrls.length > 0)) {
+          errorMsg += ' This appears to be a PDF page. PDF text extraction from embedded viewers is limited. Please try one of these alternatives:\n\n';
+          errorMsg += '1. Wait a few seconds for the PDF to fully load, then try again\n';
+          errorMsg += '2. Use the Manual Analysis feature below by copying text from the PDF\n';
+          errorMsg += '3. Visit the article\'s abstract/landing page instead of the PDF viewer';
+        } else {
+          errorMsg += ' Please ensure you are on a paper details page with visible content, or use the Manual Analysis feature below.';
+        }
+        
+        throw new Error(errorMsg);
+      }
+      
       requestData = {
         text: pageData.text,
         title: pageData.title || 'Unknown Title',
-        source_url: currentTab.url
+        source_url: currentTab.url,
+        source_type: 'HTML'
       };
     }
     
-    console.log('Q-SCI Debug Popup: Request data:', {
-      type: usePdfAnalysis && pageData.pdfUrls && pageData.pdfUrls.length > 0 ? 'PDF' : 'HTML',
+    console.log('Q-SCI Debug Popup: Request data prepared:', {
+      type: requestData.source_type,
       textLength: requestData.text ? requestData.text.length : 'N/A',
-      pdfUrl: requestData.pdf_url || 'N/A',
       title: requestData.title,
       url: requestData.source_url
     });
     
-    // Perform evaluation locally using the in-browser evaluator.  The
-    // evaluator is exposed on the global window (qsciEvaluatePaper) and
-    // returns an object with quality metrics.  This avoids any
-    // network requests and runs entirely within the extension.
+    // Perform evaluation using the LLM evaluator which fetches the API key
+    // from the backend and calls OpenAI API
     console.log('Q-SCI Debug Popup: About to call window.qsciEvaluatePaper');
+    console.log('Q-SCI Debug Popup: Function type:', typeof window.qsciEvaluatePaper);
     
-    try {
-      const textToEvaluate = requestData.text || '';
-      console.log('Q-SCI Debug Popup: Text length:', textToEvaluate.length);
-      console.log('Q-SCI Debug Popup: Title:', requestData.title);
-      
-      // Support both synchronous and asynchronous evaluators.  If
-      // qsciEvaluatePaper returns a promise, await it; otherwise use the
-      // returned value directly.
-      console.log('Q-SCI Debug Popup: Calling qsciEvaluatePaper...');
-      let evaluation = window.qsciEvaluatePaper(
-        textToEvaluate,
-        requestData.title || 'Unknown Title',
-        requestData.source_url || currentTab.url || ''
-      );
-      console.log('Q-SCI Debug Popup: qsciEvaluatePaper returned:', evaluation);
-      console.log('Q-SCI Debug Popup: Is promise?', evaluation && typeof evaluation.then === 'function');
-      
-      if (evaluation && typeof evaluation.then === 'function') {
-        console.log('Q-SCI Debug Popup: Awaiting promise...');
-        evaluation = await evaluation;
-        console.log('Q-SCI Debug Popup: Promise resolved');
-      }
-      console.log('Q-SCI Debug Popup: Evaluation result:', evaluation);
-      currentAnalysis = evaluation;
-      displayAnalysisResults(evaluation);
-      
-      // Increment usage after successful analysis
-      try {
-        await window.QSCIUsage.incrementUsage();
-        await updateUsageDisplay();
-        console.log('Q-SCI Debug Popup: Usage incremented');
-      } catch (usageError) {
-        console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
-      }
-      
-      showSuccess('Analysis completed successfully!');
-    } catch (error) {
-      console.error('Q-SCI Debug Popup: Evaluation error:', error);
-      showError(error.message || 'Analysis failed. Please try again.');
-    } finally {
-      hideLoading();
+    const textToEvaluate = requestData.text || '';
+    console.log('Q-SCI Debug Popup: Text length to evaluate:', textToEvaluate.length);
+    console.log('Q-SCI Debug Popup: Title:', requestData.title);
+    console.log('Q-SCI Debug Popup: Source URL:', requestData.source_url);
+    
+    // Call the evaluator function which always returns a promise
+    console.log('Q-SCI Debug Popup: Calling qsciEvaluatePaper...');
+    const evaluation = await window.qsciEvaluatePaper(
+      textToEvaluate,
+      requestData.title || 'Unknown Title',
+      requestData.source_url || currentTab.url || ''
+    );
+    console.log('Q-SCI Debug Popup: Promise resolved successfully');
+    
+    console.log('Q-SCI Debug Popup: Evaluation result received:', {
+      hasResult: !!evaluation,
+      quality: evaluation?.quality_percentage,
+      trafficLight: evaluation?.traffic_light,
+      positiveAspectsCount: evaluation?.positive_aspects?.length,
+      negativeAspectsCount: evaluation?.negative_aspects?.length
+    });
+    
+    if (!evaluation) {
+      throw new Error('Evaluation returned no results. This may indicate an issue with the evaluator or API.');
     }
+    
+    currentAnalysis = evaluation;
+    console.log('Q-SCI Debug Popup: Displaying analysis results...');
+    displayAnalysisResults(evaluation);
+    
+    // Increment usage after successful analysis
+    try {
+      console.log('Q-SCI Debug Popup: Incrementing usage counter...');
+      await window.QSCIUsage.incrementUsage();
+      await updateUsageDisplay();
+      console.log('Q-SCI Debug Popup: Usage incremented successfully');
+    } catch (usageError) {
+      console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
+      // Don't throw here, as the analysis was successful
+    }
+    
+    console.log('Q-SCI Debug Popup: Analysis completed successfully!');
+    showSuccess('Analysis completed successfully!');
   } catch (error) {
-    console.error('Q-SCI Debug Popup: Outer analysis error:', error);
-    showError(error.message || 'Analysis failed. Please try again.');
+    console.error('Q-SCI Debug Popup: Analysis error:', error);
+    console.error('Q-SCI Debug Popup: Error type:', error.constructor.name);
+    console.error('Q-SCI Debug Popup: Error message:', error.message);
+    console.error('Q-SCI Debug Popup: Error stack:', error.stack);
+    
+    // Ensure the error message is user-friendly
+    let errorMessage = error.message || 'Analysis failed. Please try again.';
+    
+    // Add helpful context for common errors
+    if (errorMessage.includes('Insufficient content')) {
+      errorMessage += ' You can also try the Manual Analysis feature by pasting text in the text area below.';
+    }
+    
+    showError(errorMessage);
+  } finally {
+    // Always hide loading, even if there was an error
+    console.log('Q-SCI Debug Popup: Hiding loading indicator in finally block...');
     hideLoading();
   }
+  
+  console.log('Q-SCI Debug Popup: ==================== ANALYSIS COMPLETE ====================');
 }
 
 // Content extraction function (injected into page)
 function extractPageContent() {
   console.log('Q-SCI Content Extractor: Starting extraction...');
   
-  // Try to extract title
-  let title = '';
+  const url = window.location.href;
+  let isPdfViewer = false;
+  
+  // Check if this is a PDF viewer page
+  const urlLower = url.toLowerCase();
+  const contentType = document.contentType || document.mimeType || '';
+  
+  if (urlLower.includes('/showpdf') || 
+      urlLower.includes('/getpdf') || 
+      urlLower.includes('/downloadpdf') ||
+      urlLower.includes('/viewpdf') ||
+      urlLower.includes('.pdf') ||
+      urlLower.includes('pdf=') ||
+      contentType.includes('application/pdf') ||
+      document.querySelector('embed[type="application/pdf"]') ||
+      document.querySelector('object[type="application/pdf"]') ||
+      document.querySelector('iframe[src*=".pdf"]')) {
+    isPdfViewer = true;
+    console.log('Q-SCI Content Extractor: Detected PDF viewer page');
+  }
+  
+  // Try to extract title with comprehensive selectors
+  let title = document.title || '';
   const titleSelectors = [
     'h1',
+    'h1.article-header__title',
     '.article-title',
     '.paper-title',
     '[data-testid="article-title"]',
+    '[data-test="article-title"]',
+    '[class*="article-title"]',
+    'header h1',
     '.title'
   ];
   
@@ -764,28 +851,148 @@ function extractPageContent() {
   
   // Try to extract text content
   let text = '';
-  const textSelectors = [
-    '.abstract',
-    '.article-abstract',
-    '.paper-abstract',
-    '[data-testid="abstract"]',
-    '.content',
-    '.article-content',
-    'main',
-    '.main-content'
-  ];
   
-  for (const selector of textSelectors) {
-    const element = document.querySelector(selector);
-    if (element && element.textContent.trim().length > 100) {
-      text = element.textContent.trim();
-      break;
+  // For PDF viewers, try multiple strategies
+  if (isPdfViewer) {
+    console.log('Q-SCI Content Extractor: Attempting PDF text extraction');
+    
+    // Strategy 1: PDF.js text layers
+    const textLayers = document.querySelectorAll('.textLayer');
+    if (textLayers.length > 0) {
+      console.log('Q-SCI Content Extractor: Found PDF.js text layers:', textLayers.length);
+      let pdfText = '';
+      textLayers.forEach(layer => {
+        const layerText = layer.textContent || '';
+        if (layerText.trim()) {
+          pdfText += layerText + '\n';
+        }
+      });
+      if (pdfText.length > 100) {
+        text = pdfText.trim();
+        console.log('Q-SCI Content Extractor: Extracted from PDF.js text layer:', text.length, 'characters');
+      }
+    }
+    
+    // Strategy 2: Try viewer-specific containers
+    if (!text || text.length < 100) {
+      const viewerSelectors = [
+        '.pdfViewer .textLayer',
+        '#viewer .textLayer',
+        '[class*="pdf"] [class*="text"]',
+        '[class*="viewer"] [class*="text"]',
+        'main',
+        '[role="main"]',
+        '.main-content',
+        '#content'
+      ];
+      
+      for (const selector of viewerSelectors) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          let combinedText = '';
+          elements.forEach(el => {
+            const elText = el.textContent || '';
+            if (elText.trim()) {
+              combinedText += elText + '\n';
+            }
+          });
+          
+          if (combinedText.length > 100) {
+            text = combinedText.trim();
+            console.log('Q-SCI Content Extractor: Extracted from viewer selector:', selector, text.length, 'characters');
+            break;
+          }
+        }
+      }
     }
   }
   
-  // Fallback: get all text from body
+  // Regular text extraction if not PDF or if PDF extraction failed
   if (!text || text.length < 100) {
-    text = document.body.textContent.trim();
+    const textSelectors = [
+      '.abstract',
+      '.article-abstract',
+      '.paper-abstract',
+      'section.abstract',
+      '.summary',
+      'section.summary',
+      '[data-testid="abstract"]',
+      '[data-test="abstract-section"]',
+      '[class*="abstract"]',
+      '.article-body',
+      'section.article-body',
+      '.content',
+      '.article-content',
+      'main',
+      '[role="main"]',
+      '.main-content',
+      'article',
+      '.article'
+    ];
+    
+    for (const selector of textSelectors) {
+      const element = document.querySelector(selector);
+      if (element && element.textContent.trim().length > 100) {
+        text = element.textContent.trim();
+        console.log('Q-SCI Content Extractor: Extracted from selector:', selector, text.length, 'characters');
+        break;
+      }
+    }
+  }
+  
+  // Try extracting from paragraphs if still no content
+  if (!text || text.length < 100) {
+    const articleContainers = document.querySelectorAll('article, main, [role="main"]');
+    if (articleContainers.length > 0) {
+      let combinedText = '';
+      articleContainers.forEach(container => {
+        const paragraphs = container.querySelectorAll('p');
+        paragraphs.forEach(p => {
+          const pText = p.textContent || '';
+          if (pText.trim().length > 50) {
+            combinedText += pText.trim() + '\n\n';
+          }
+        });
+      });
+      
+      if (combinedText.length > 100) {
+        text = combinedText.trim();
+        console.log('Q-SCI Content Extractor: Extracted from paragraphs:', text.length, 'characters');
+      }
+    }
+  }
+  
+  // Fallback: get visible text from body (clean up scripts and styles)
+  if (!text || text.length < 100) {
+    // Get all text nodes without cloning - more efficient
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: function(node) {
+          // Skip text nodes inside script, style, noscript tags
+          const parent = node.parentElement;
+          if (parent && ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'].includes(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+    
+    let bodyText = '';
+    let node;
+    while (node = walker.nextNode()) {
+      const nodeText = node.textContent || '';
+      if (nodeText.trim()) {
+        bodyText += nodeText;
+      }
+    }
+    
+    if (bodyText.trim().length > 100) {
+      text = bodyText.trim();
+      console.log('Q-SCI Content Extractor: Extracted from body (cleaned):', text.length, 'characters');
+    }
   }
   
   // Try to extract PDF URLs
@@ -793,97 +1000,30 @@ function extractPageContent() {
   const pdfLinks = document.querySelectorAll('a[href*=".pdf"], a[href*="pdf"]');
   pdfLinks.forEach(link => {
     const href = link.href;
-    if (href && (href.endsWith('.pdf') || href.includes('/pdf/') || href.includes('getPDF'))) {
+    if (href && (href.endsWith('.pdf') || href.includes('/pdf/') || href.includes('getPDF') || href.includes('showPdf'))) {
       pdfUrls.push(href);
     }
   });
   
+  // If this is a PDF viewer, add the current URL as a PDF URL
+  if (isPdfViewer && !pdfUrls.includes(url)) {
+    pdfUrls.push(url);
+  }
+  
   console.log('Q-SCI Content Extractor: Extracted:', {
-    title: title.substring(0, 50) + '...',
+    title: title ? title.substring(0, 50) + '...' : 'None',
     textLength: text.length,
-    pdfUrlsFound: pdfUrls.length
+    pdfUrlsFound: pdfUrls.length,
+    isPdfViewer: isPdfViewer
   });
   
   return {
     title: title,
     text: text,
     url: window.location.href,
-    pdfUrls: pdfUrls
+    pdfUrls: pdfUrls,
+    isPdfViewer: isPdfViewer
   };
-}
-
-// Analyze manual text
-async function analyzeText() {
-  // Check if user is logged in
-  if (!currentUser) {
-    showError('Please login to use analysis features.');
-    return;
-  }
-  
-  const text = elements.manualText?.value?.trim();
-  
-  if (!text || text.length < 50) {
-    showError('Please enter at least 50 characters of text to analyze.');
-    return;
-  }
-  
-  // Check usage limits
-  try {
-    const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
-    
-    if (!usageInfo.canAnalyze) {
-      const limit = usageInfo.limit;
-      const subscriptionType = currentUser.subscriptionStatus === 'subscribed' ? 'subscribed' : 'free';
-      
-      if (subscriptionType === 'free') {
-        showError(`You have reached your daily limit of ${limit} analyses. Please subscribe at q-sci.org for more analyses (up to 100 per day).`);
-      } else {
-        showError(`You have reached your daily limit of ${limit} analyses. Please try again tomorrow.`);
-      }
-      return;
-    }
-  } catch (error) {
-    console.error('Q-SCI Debug Popup: Error checking usage:', error);
-    showError('Failed to check usage limits. Please try again.');
-    return;
-  }
-  
-  console.log('Q-SCI Debug Popup: Starting manual text analysis...');
-  showLoading();
-  
-  try {
-    // Use the same evaluator for manual text.  Title is arbitrary
-    // and the source is set to 'manual-input'.  The evaluator may
-    // return a promise when using the LLM backend, so handle both
-    // synchronous and asynchronous responses.
-    let evaluation = window.qsciEvaluatePaper(
-      text,
-      'Manual Text Analysis',
-      'manual-input'
-    );
-    if (evaluation && typeof evaluation.then === 'function') {
-      evaluation = await evaluation;
-    }
-    console.log('Q-SCI Debug Popup: Manual evaluation result:', evaluation);
-    currentAnalysis = evaluation;
-    displayAnalysisResults(evaluation);
-    
-    // Increment usage after successful analysis
-    try {
-      await window.QSCIUsage.incrementUsage();
-      await updateUsageDisplay();
-      console.log('Q-SCI Debug Popup: Usage incremented');
-    } catch (usageError) {
-      console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
-    }
-    
-    showSuccess('Text analysis completed successfully!');
-  } catch (error) {
-    console.error('Q-SCI Debug Popup: Text analysis error:', error);
-    showError(error.message || 'Text analysis failed. Please try again.');
-  } finally {
-    hideLoading();
-  }
 }
 
 // Display analysis results
@@ -895,38 +1035,32 @@ function displayAnalysisResults(analysis) {
     return;
   }
   
-  // Update quality score
-  if (elements.qualityScore) {
+  // Update quality score and background color
+  if (elements.qualityScore && elements.qualityStatItem) {
     const score = analysis.quality_percentage || analysis.score || 0;
     elements.qualityScore.textContent = `${Math.round(score)}%`;
     
-    // Color coding
-    let colorClass = 'red';
-    if (score >= 80) colorClass = 'green';
-    else if (score >= 50) colorClass = 'yellow';
+    // Remove all quality classes first
+    elements.qualityStatItem.classList.remove('quality-high', 'quality-medium', 'quality-low');
     
-    elements.qualityScore.className = `stat-value ${colorClass}`;
+    // Add background color based on quality score
+    if (score >= 80) {
+      elements.qualityStatItem.classList.add('quality-high');
+    } else if (score >= 50) {
+      elements.qualityStatItem.classList.add('quality-medium');
+    } else {
+      elements.qualityStatItem.classList.add('quality-low');
+    }
   }
   
-  // Update impact factor
-  if (elements.impactFactor) {
-    const impactFactor = analysis.journal_info?.impact_factor;
-    elements.impactFactor.textContent = impactFactor || 'N/A';
-  }
-  
-  // Update quartile
-  if (elements.quartile) {
-    const quartile = analysis.journal_info?.quartile;
-    elements.quartile.textContent = quartile || 'N/A';
-    
-    if (quartile) {
-      let quartileClass = '';
-      if (quartile === 'Q1') quartileClass = 'green';
-      else if (quartile === 'Q2') quartileClass = 'yellow';
-      else if (quartile === 'Q3') quartileClass = 'orange';
-      else if (quartile === 'Q4') quartileClass = 'red';
-      
-      elements.quartile.className = `stat-value ${quartileClass}`;
+  // Display reasoning/justification if available
+  if (elements.scoreReasoningSection && elements.scoreReasoningText) {
+    if (analysis.reasoning || analysis.justification) {
+      elements.scoreReasoningText.textContent = analysis.reasoning || analysis.justification;
+      elements.scoreReasoningSection.style.display = 'block';
+    } else {
+      // Hide reasoning section if not available
+      elements.scoreReasoningSection.style.display = 'none';
     }
   }
   
@@ -935,22 +1069,14 @@ function displayAnalysisResults(analysis) {
     elements.statsSection.style.display = 'block';
   }
 
-  // Show the view details button when results are available
-  if (elements.viewDetailsBtn) {
-    elements.viewDetailsBtn.style.display = 'block';
-  }
+  // Automatically show detailed analysis after displaying the quality score
+  console.log('Q-SCI Debug Popup: Auto-showing detailed analysis');
+  showDetailedAnalysis();
   
   console.log('Q-SCI Debug Popup: Results displayed successfully');
 }
 
-// Open detailed analysis
-function openDetailedAnalysis() {
-  if (currentAnalysis) {
-    chrome.tabs.create({
-      url: 'https://3000-ic4ghrpbrssboc1wpxpwt-618fd2b2.manusvm.computer'
-    });
-  }
-}
+// openDetailedAnalysis function removed (no longer needed)
 
 // UI Helper Functions
 function showLoading() {
@@ -962,7 +1088,9 @@ function showLoading() {
   
   if (elements.analyzeBtn) {
     elements.analyzeBtn.disabled = true;
-    elements.analyzeBtn.textContent = 'Analyzing...';
+    // Use i18n for button text
+    const analyzingText = window.QSCIi18n ? window.QSCIi18n.t('message.analyzing') : 'Analyzing...';
+    elements.analyzeBtn.textContent = analyzingText;
   }
 }
 
@@ -975,7 +1103,9 @@ function hideLoading() {
   
   if (elements.analyzeBtn) {
     elements.analyzeBtn.disabled = false;
-    elements.analyzeBtn.textContent = 'Analyze Paper';
+    // Use i18n for button text
+    const analyzeButtonText = window.QSCIi18n ? window.QSCIi18n.t('page.analyzeButton') : 'Analyze Paper';
+    elements.analyzeBtn.textContent = analyzeButtonText;
   }
 }
 
@@ -988,9 +1118,9 @@ function showDetailedAnalysis() {
     return;
   }
   
-  // Hide main sections and show detailed section
+  // Show both stats and detailed section (no toggle needed)
   if (elements.statsSection) {
-    elements.statsSection.style.display = 'none';
+    elements.statsSection.style.display = 'block';
   }
   
   if (elements.detailedSection) {
@@ -999,19 +1129,6 @@ function showDetailedAnalysis() {
   
   // Populate detailed analysis data
   populateDetailedAnalysis(currentAnalysis);
-}
-
-// Hide detailed analysis and return to main view
-function hideDetailedAnalysis() {
-  console.log('Q-SCI Debug Popup: Hiding detailed analysis...');
-  
-  if (elements.detailedSection) {
-    elements.detailedSection.style.display = 'none';
-  }
-  
-  if (elements.statsSection) {
-    elements.statsSection.style.display = 'block';
-  }
 }
 
 // Populate detailed analysis data
@@ -1026,27 +1143,6 @@ function populateDetailedAnalysis(analysis) {
     
     if (elements.journalName) {
       elements.journalName.textContent = analysis.journal_info.journal_name || analysis.journal_info.name;
-    }
-    
-    if (elements.detailedImpactFactor) {
-      // Display the prestige tier as the journal tier (stored in impact_factor field)
-      elements.detailedImpactFactor.textContent = analysis.journal_info.impact_factor || 'N/A';
-    }
-    
-    if (elements.detailedQuartile) {
-      elements.detailedQuartile.textContent = analysis.journal_info.quartile || 'N/A';
-      
-      // Apply quartile color
-      const quartile = analysis.journal_info.quartile;
-      if (quartile) {
-        let quartileClass = '';
-        if (quartile === 'Q1') quartileClass = 'green';
-        else if (quartile === 'Q2') quartileClass = 'yellow';
-        else if (quartile === 'Q3') quartileClass = 'orange';
-        else if (quartile === 'Q4') quartileClass = 'red';
-        
-        elements.detailedQuartile.className = `metric-value ${quartileClass}`;
-      }
     }
     
     if (elements.journalCategory) {
@@ -1159,13 +1255,15 @@ function populateDetailedAnalysis(analysis) {
 function showSourceText(evaluationPoint, type, index, sourceText) {
   console.log('Q-SCI Debug Popup: Showing source text for:', evaluationPoint);
   
-  // Use actual source text from API if available, otherwise show placeholder
+  // Use actual source text from API if available, otherwise show fallback message
   let displayText;
-  // Consider empty string as valid source text; only treat undefined or null as unavailable
-  if (sourceText !== undefined && sourceText !== null) {
-    displayText = sourceText;
+  // Consider empty string as not available - we need actual citation text
+  if (sourceText !== undefined && sourceText !== null && sourceText.trim() !== '') {
+    // Wrap the citation in quotation marks to clearly indicate it's a direct quote
+    displayText = `"${sourceText}"`;
   } else {
-    displayText = `Source text for "${evaluationPoint}" is not available. This evaluation point was generated based on the overall analysis of the paper content.`;
+    // Use i18n for fallback message
+    displayText = window.QSCIi18n ? window.QSCIi18n.t('detailed.noExactCitation') : 'aspect extracted from reasoning regarding multiple parts of the publication';
   }
   
   if (elements.sourceContent) {
@@ -1247,17 +1345,25 @@ function exportAnalysis() {
 
 function showError(message) {
   console.error('Q-SCI Debug Popup: Showing error:', message);
+  console.error('Q-SCI Debug Popup: Error stack trace:', new Error().stack);
+  
+  // TEMPORARY: Show alert for debugging
+  alert('Q-SCI Error: ' + message);
   
   if (elements.errorMessage) {
     const errorText = elements.errorMessage.querySelector('.error-text');
     if (errorText) {
       errorText.textContent = message;
     }
-    elements.errorMessage.style.display = 'flex';
+    elements.errorMessage.style.display = 'block';
     
-    // For API key or authentication errors, keep the message visible longer (15 seconds)
+    // For API key, authentication, or backend errors, keep the message visible longer (30 seconds)
+    // This ensures users have enough time to read and understand the error
     const timeout = message.includes('API key') || message.includes('authentication') || 
-                    message.includes('backend') || message.includes('login') ? 15000 : 8000;
+                    message.includes('backend') || message.includes('login') || 
+                    message.includes('endpoint') || message.includes('Unable to retrieve') ? 30000 : 12000;
+    
+    console.log('Q-SCI Debug Popup: Error message will be visible for', timeout, 'ms');
     
     setTimeout(() => {
       if (elements.errorMessage) {

@@ -50,8 +50,8 @@ try {
 // Check if watch mode is enabled
 const isWatchMode = process.argv.includes('--watch');
 
-// Build configuration
-const buildConfig = {
+// Build configuration for auth bundle
+const authBuildConfig = {
   entryPoints: ['src/clerk-auth-main.js'],
   bundle: true,
   outfile: 'dist/js/bundle-auth.js',
@@ -65,20 +65,31 @@ const buildConfig = {
   }
 };
 
-if (isWatchMode) {
-  // Watch mode
-  esbuild.context(buildConfig).then((ctx) => {
-    ctx.watch();
-    console.log('✓ Watching for changes...');
-  }).catch((error) => {
-    console.error('✗ Watch failed:', error);
-    process.exit(1);
-  });
-} else {
-  // Regular build
-  esbuild.build(buildConfig).then(() => {
+// Build configuration for PDF handler bundle
+const pdfBuildConfig = {
+  entryPoints: ['pdf-handler.js'],
+  bundle: true,
+  outfile: 'dist/js/bundle-pdf-handler.js',
+  platform: 'browser',
+  format: 'iife',
+  target: ['chrome91'],
+  sourcemap: true,
+  minify: false,
+  define: {
+    'global': 'window'
+  }
+};
+
+async function buildAll() {
+  try {
+    // Build auth bundle
+    await esbuild.build(authBuildConfig);
     console.log('✓ Build complete: dist/js/bundle-auth.js');
-  }).catch((error) => {
+    
+    // Build PDF handler bundle
+    await esbuild.build(pdfBuildConfig);
+    console.log('✓ Build complete: dist/js/bundle-pdf-handler.js');
+  } catch (error) {
     console.error('✗ Build failed:', error);
     
     // Provide helpful error messages for common issues
@@ -91,5 +102,23 @@ if (isWatchMode) {
     }
     
     process.exit(1);
+  }
+}
+
+if (isWatchMode) {
+  // Watch mode
+  Promise.all([
+    esbuild.context(authBuildConfig),
+    esbuild.context(pdfBuildConfig)
+  ]).then(([authCtx, pdfCtx]) => {
+    authCtx.watch();
+    pdfCtx.watch();
+    console.log('✓ Watching for changes...');
+  }).catch((error) => {
+    console.error('✗ Watch failed:', error);
+    process.exit(1);
   });
+} else {
+  // Regular build
+  buildAll();
 }

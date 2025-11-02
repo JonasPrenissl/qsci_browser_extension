@@ -8,7 +8,8 @@
     "activeTab",
     "storage",
     "scripting",
-    "tabs"
+    "tabs",
+    "downloads"
   ],
   
   "host_permissions": [
@@ -151,7 +152,9 @@
         "clerk-auth.html",
         "i18n.js",
         "dist/js/bundle-auth.js",
-        "dist/js/bundle-auth.js.map"
+        "dist/js/bundle-auth.js.map",
+        "dist/js/bundle-pdf-handler.js",
+        "dist/js/bundle-pdf-handler.js.map"
       ],
       "matches": ["<all_urls>"]
     }

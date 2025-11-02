@@ -159,7 +159,7 @@ test('OpenAI API is called and results are displayed when analyze button is pres
       id: 'chatcmpl-test123',
       object: 'chat.completion',
       created: Date.now(),
-      model: 'gpt-3.5-turbo-0125',
+      model: 'gpt-4o-mini',
       choices: [
         {
           index: 0,

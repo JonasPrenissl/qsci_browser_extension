@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  timeout: 60_000,
+  timeout: 90_000, // Increased from 60s to 90s to accommodate PDF detection delays
   testDir: './tests',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

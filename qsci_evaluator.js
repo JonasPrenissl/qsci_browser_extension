@@ -35,7 +35,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
 
   // Model to use.  You can adjust this if you have access to
   // different models (e.g. 'gpt-4-turbo', 'gpt-3.5-turbo-0125').
-  const MODEL_NAME = 'gpt-3.5-turbo-0125';
+  const MODEL_NAME = 'gpt-4o-mini';
 
   // Temperature setting for the model.  Lower values make the output
   // more deterministic.
@@ -43,6 +43,10 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
 
   // API endpoint for OpenAI chat completions
   const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+
+  // Timeout for API requests (in milliseconds)
+  // Prevents the request from hanging indefinitely if the API doesn't respond
+  const API_TIMEOUT_MS = 60000; // 60 seconds
 
   /**
    * Build the prompt for the OpenAI model.  The system message
@@ -63,15 +67,18 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Identify study design features (e.g. randomized controlled trial, crossover, meta‑analysis, observational study), sample size and clear reporting practices. ` +
       `Consider whether the study is blinded, placebo controlled or non‑inferiority, whether it follows reporting guidelines (e.g. CONSORT for trials, PRISMA for reviews, STROBE for observational studies), and whether sample sizes are adequate. ` +
       `Assign a quality score between 0 and 100. 90–100 = 🟢 Green, 70–89 = 🟡 Amber, below 70 = 🔴 Red. ` +
-      `Then provide at least three positive aspects and three negative aspects. Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
-      `For each aspect, set the 'aspect' field to a short summary of the point and set 'source_text' to the exact sentence or sentences from the paper that support it. ` +
-      `Do not invent content: every aspect and snippet must be present in the provided paper text. ` +
+      `Then provide between 3 and 7 positive aspects and between 3 and 7 negative aspects. Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
+      `For each aspect, set the 'aspect' field to a complete, clear sentence that stands alone and communicates the evaluation point in plain language (e.g., "The study objective is stated clearly" or "The sample size is small"). ` +
+      `CRITICAL REQUIREMENT FOR SOURCE_TEXT: You MUST copy the exact text word-for-word from the paper content provided below. This is a CITATION that will be shown to users in quotation marks. DO NOT write any new text, DO NOT paraphrase, DO NOT summarize, and DO NOT generate explanatory text. Simply copy and paste the relevant sentence(s) from the paper that support each aspect. The 'source_text' must be a verbatim substring that appears exactly as written in the provided paper content. If an aspect is based on reasoning regarding multiple parts of the publication where no single exact citation can be extracted, set 'source_text' to an empty string (""). Every non-empty 'source_text' value will be displayed as a direct quotation from the paper. ` +
+      `Do not invent content: every source text snippet must be present in the provided paper text. ` +
       `Ignore the reference list entirely when choosing aspects and source text. ` +
+      `Also provide a 'reasoning' field that explains in 2-3 sentences why you assigned this specific quality score, referencing the key strengths and weaknesses you identified. ` +
       `Return your answer strictly as a JSON object with the following keys:\n\n` +
       `quality_percentage (number),\n` +
       `traffic_light (string, one of \"🟢 Green\", \"🟡 Amber\", \"🔴 Red\"),\n` +
-      `positive_aspects (array of objects with keys 'aspect' and 'source_text'),\n` +
-      `negative_aspects (array of objects with keys 'aspect' and 'source_text')\n\n` +
+      `reasoning (string, 2-3 sentences explaining the quality score),\n` +
+      `positive_aspects (array of 3-7 objects with keys 'aspect' and 'source_text'),\n` +
+      `negative_aspects (array of 3-7 objects with keys 'aspect' and 'source_text')\n\n` +
       `Do not include any code block formatting, backticks or additional commentary.  Only output a single valid JSON object.`;
 
     const user = `Paper Title: ${title || 'Unknown Title'}\n` +
@@ -114,9 +121,16 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       if (!parsed || typeof parsed !== 'object') throw new Error('Invalid JSON structure');
       const quality = typeof parsed.quality_percentage === 'number' ? parsed.quality_percentage : 0;
       const traffic = typeof parsed.traffic_light === 'string' ? parsed.traffic_light : '🟡 Amber';
+      const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning : '';
       const pos = Array.isArray(parsed.positive_aspects) ? parsed.positive_aspects : [];
       const neg = Array.isArray(parsed.negative_aspects) ? parsed.negative_aspects : [];
-      return { quality_percentage: quality, traffic_light: traffic, positive_aspects: pos, negative_aspects: neg };
+      return { 
+        quality_percentage: quality, 
+        traffic_light: traffic, 
+        reasoning: reasoning,
+        positive_aspects: pos, 
+        negative_aspects: neg 
+      };
     } catch (e) {
       console.error('Q‑SCI LLM Evaluator: Failed to parse OpenAI response', e);
       return null;
@@ -151,7 +165,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       
       // Check if QSCIAuth is available (it should be loaded before this script)
       if (typeof window.QSCIAuth === 'undefined' || typeof window.QSCIAuth.getOpenAIApiKey !== 'function') {
-        const errorMsg = 'Authentication module not available. Please ensure you are logged in and the extension is properly loaded.';
+        const errorMsg = 'Authentication module not available. Please ensure you are logged in and the extension is properly loaded. Try reloading the extension at chrome://extensions/';
         console.error('Q‑SCI LLM Evaluator:', errorMsg);
         throw new Error(errorMsg);
       }
@@ -160,7 +174,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       apiKey = await window.QSCIAuth.getOpenAIApiKey();
       
       if (!apiKey) {
-        const errorMsg = 'Failed to retrieve API key from backend. Please try logging in again.';
+        const errorMsg = 'Failed to retrieve API key from backend. The backend may not be properly configured. Please ensure the /api/extension-auth endpoint is deployed and the OPENAI_API_KEY environment variable is set.';
         console.error('Q‑SCI LLM Evaluator:', errorMsg);
         throw new Error(errorMsg);
       }
@@ -169,7 +183,23 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
     } catch (error) {
       console.error('Q‑SCI LLM Evaluator: Error fetching API key:', error);
       console.error('Q‑SCI LLM Evaluator: Error stack:', error.stack);
-      throw new Error(`Unable to retrieve API key from backend: ${error.message}`);
+      console.error('Q‑SCI LLM Evaluator: Error type:', error.constructor.name);
+      
+      // Provide more specific error messages based on the error type
+      let userFriendlyMessage = error.message;
+      
+      // If the error already contains helpful information, use it
+      if (error.message.includes('404') || error.message.includes('endpoint not found')) {
+        userFriendlyMessage = 'Backend endpoint not found. The /api/extension-auth endpoint needs to be deployed. Please check your backend configuration.';
+      } else if (error.message.includes('500') || error.message.includes('server error')) {
+        userFriendlyMessage = 'Backend server error. The OPENAI_API_KEY environment variable may not be set. Please check your backend configuration.';
+      } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        userFriendlyMessage = 'Authentication failed. Your session may have expired. Please logout and login again.';
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('Unable to connect')) {
+        userFriendlyMessage = 'Unable to connect to backend server. Please check your internet connection and ensure the backend at https://www.q-sci.org is accessible.';
+      }
+      
+      throw new Error(userFriendlyMessage);
     }
 
     const messages = buildMessages(title, sourceUrl, text);
@@ -187,25 +217,60 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       'Authorization': `Bearer ${apiKey}`
     };
 
-    // Perform the API request using fetch.  The fetch API is available
-    // in the Chrome extension context.  Host permissions for
-    // https://api.openai.com/* must be declared in manifest.json.
-    const response = await fetch(OPENAI_API_ENDPOINT, {
-      method: 'POST',
-      headers: headers,
-      body: body
-    });
+    // Perform the API request using fetch with a timeout to prevent hanging
+    // The fetch API is available in the Chrome extension context.
+    // Host permissions for https://api.openai.com/* must be declared in manifest.json.
+    console.log('Q‑SCI LLM Evaluator: Sending request to OpenAI API...');
+    
+    // Create an AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.error(`Q‑SCI LLM Evaluator: Request timed out after ${API_TIMEOUT_MS / 1000} seconds`);
+    }, API_TIMEOUT_MS);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+    try {
+      const response = await fetch(OPENAI_API_ENDPOINT, {
+        method: 'POST',
+        headers: headers,
+        body: body,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      console.log('Q‑SCI LLM Evaluator: OpenAI API response received, status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Q‑SCI LLM Evaluator: OpenAI API error:', response.status, errorText);
+        throw new Error(`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+      }
+      
+      const json = await response.json();
+      console.log('Q‑SCI LLM Evaluator: Response parsed successfully');
+      
+      const parsed = parseOpenAIResponse(json);
+      if (!parsed) {
+        throw new Error('Failed to parse evaluation from OpenAI response');
+      }
+      
+      console.log('Q‑SCI LLM Evaluator: Evaluation completed successfully');
+      return parsed;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      
+      // Handle abort/timeout errors
+      if (error.name === 'AbortError') {
+        throw new Error(`Request to OpenAI API timed out after ${API_TIMEOUT_MS / 1000} seconds. The API may be experiencing issues. Please try again later.`);
+      }
+      
+      // Handle network errors with more robust checking
+      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+        throw new Error('Unable to connect to OpenAI API. Please check your internet connection and try again.');
+      }
+      
+      throw error;
     }
-    const json = await response.json();
-    const parsed = parseOpenAIResponse(json);
-    if (!parsed) {
-      throw new Error('Failed to parse evaluation from OpenAI response');
-    }
-    return parsed;
   }
 
   // Expose the evaluator on the window object.  The popup script will
