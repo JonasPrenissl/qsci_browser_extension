@@ -64,6 +64,7 @@
       'detailed.positiveAspects': '✅ Positive Aspekte',
       'detailed.negativeAspects': '⚠️ Verbesserungsbereiche',
       'detailed.source': 'Quelle',
+      'detailed.noExactCitation': 'Aspekt aus Argumentation bezüglich mehrerer Teile der Publikation extrahiert',
       
       // Messages
       'message.analyzing': 'Analysiere...',
@@ -160,6 +161,7 @@
       'detailed.positiveAspects': '✅ Positive Aspects',
       'detailed.negativeAspects': '⚠️ Areas for Improvement',
       'detailed.source': 'Source',
+      'detailed.noExactCitation': 'aspect extracted from reasoning regarding multiple parts of the publication',
       
       // Messages
       'message.analyzing': 'Analyzing...',

@@ -1255,14 +1255,15 @@ function populateDetailedAnalysis(analysis) {
 function showSourceText(evaluationPoint, type, index, sourceText) {
   console.log('Q-SCI Debug Popup: Showing source text for:', evaluationPoint);
   
-  // Use actual source text from API if available, otherwise show placeholder
+  // Use actual source text from API if available, otherwise show fallback message
   let displayText;
-  // Consider empty string as valid source text; only treat undefined or null as unavailable
-  if (sourceText !== undefined && sourceText !== null) {
+  // Consider empty string as not available - we need actual citation text
+  if (sourceText !== undefined && sourceText !== null && sourceText.trim() !== '') {
     // Wrap the citation in quotation marks to clearly indicate it's a direct quote
     displayText = `"${sourceText}"`;
   } else {
-    displayText = `Source text for "${evaluationPoint}" is not available. This evaluation point was generated based on the overall analysis of the paper content.`;
+    // Use i18n for fallback message
+    displayText = window.QSCIi18n ? window.QSCIi18n.t('detailed.noExactCitation') : 'aspect extracted from reasoning regarding multiple parts of the publication';
   }
   
   if (elements.sourceContent) {
