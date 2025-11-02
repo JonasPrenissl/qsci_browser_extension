@@ -17,6 +17,11 @@
   const EXTRACTION_DELAY = 2000; // Wait for page to fully load (increased from 1000ms)
   const MAX_FULLTEXT_LENGTH = 2000; // Maximum characters to include from full text when combining with abstract
   const PDF_EXTRACTION_DELAY = 3000; // Wait longer for PDF viewers to render text
+  // Dynamic content delay: 3.5s is a balance between user experience and content loading
+  // - Most JavaScript frameworks render within 2-3 seconds
+  // - Lancet and similar sites need extra time for complex content
+  // - Trade-off: slightly longer wait vs. reliable extraction
+  // Future enhancement: Use MutationObserver for intelligent waiting
   const DYNAMIC_CONTENT_DELAY = 3500; // Wait for dynamically loaded content (React, Vue, etc.) - increased to 3.5s
   const MIN_SUBSTANTIVE_LENGTH = 200; // Minimum length for substantive scientific content
   
