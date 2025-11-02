@@ -23,9 +23,9 @@
   // - Complex sites like The Lancet with heavy content: 5-7 seconds required
   // - We use 7.0s for Lancet specifically to handle slow networks and complex rendering
   // - Trade-off: slightly longer wait vs. reliable extraction
-  // Future enhancement: Use MutationObserver for intelligent waiting
+  // Future enhancement: Use MutationObserver for intelligent waiting or configurable site-specific delays
   const DYNAMIC_CONTENT_DELAY = 5000; // Wait for dynamically loaded content (React, Vue, etc.)
-  const LANCET_CONTENT_DELAY = 7000; // Extra delay for The Lancet due to complex React rendering
+  const LANCET_CONTENT_DELAY = 7000; // Extra delay for The Lancet due to complex React rendering (TODO: make configurable)
   const MIN_SUBSTANTIVE_LENGTH = 200; // Minimum length for substantive scientific content
   const META_FALLBACK_THRESHOLD = 100; // Trigger meta tag fallback when extracted content is below this length
   
@@ -63,9 +63,11 @@
       const hasDynamicContent = document.querySelector('[data-react-root], [data-reactroot], #root, #app, [ng-app], [data-vue-app]') !== null;
       
       // Check if this is The Lancet website (needs extra time for complex React rendering)
+      // TODO: Extract to configurable site-specific delay map for better maintainability
       const isLancet = window.location.hostname.toLowerCase().includes('thelancet.com');
       
-      // Determine appropriate delay
+      // Determine appropriate delay based on page characteristics
+      // Priority: PDF > Lancet+Dynamic > Dynamic > Regular
       let delay = EXTRACTION_DELAY;
       if (isPdf) {
         delay = PDF_EXTRACTION_DELAY;
