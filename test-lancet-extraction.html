@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Lancet Content Extraction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-case {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .result {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 0; }
+        .test-content { display: none; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+        pre { background: #f4f4f4; padding: 15px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Lancet Content Extraction Test Suite</h1>
+    <p>This page tests various HTML structures that might be encountered on The Lancet and similar journal websites.</p>
+
+    <div id="results"></div>
+
+    <!-- Test Case 1: Modern Lancet structure with data attributes -->
+    <div class="test-content" id="modern-structure">
+        <article>
+            <header>
+                <h1 data-component="article-title" itemprop="headline">
+                    Effects of Novel Treatment on Patient Outcomes: A Randomized Controlled Trial
+                </h1>
+            </header>
+            <section data-component="summary" data-testid="abstract">
+                <h2>Summary</h2>
+                <div itemprop="abstract">
+                    <p><strong>Background:</strong> This groundbreaking study investigates the efficacy of a novel therapeutic approach in treating chronic conditions.</p>
+                    <p><strong>Methods:</strong> We conducted a double-blind, placebo-controlled randomized trial with 500 participants across multiple centers.</p>
+                    <p><strong>Findings:</strong> The treatment group showed significant improvement (p < 0.001) compared to placebo, with minimal adverse effects.</p>
+                    <p><strong>Interpretation:</strong> This novel treatment represents a major advancement in patient care and warrants further investigation in larger populations.</p>
+                </div>
+            </section>
+            <section data-component="article-body" itemprop="articleBody">
+                <h2>Introduction</h2>
+                <p>Chronic diseases affect millions worldwide, and current treatment options remain limited. This study addresses this critical gap by evaluating a novel therapeutic approach.</p>
+                <h2>Methods</h2>
+                <p>Study design: Multicenter, double-blind, randomized controlled trial. Participants were randomly assigned to treatment or placebo groups.</p>
+                <h2>Results</h2>
+                <p>Primary outcome showed significant improvement in the treatment group. Secondary outcomes also favored the intervention.</p>
+            </section>
+        </article>
+    </div>
+
+    <!-- Test Case 2: Classic Lancet structure with semantic classes -->
+    <div class="test-content" id="classic-structure">
+        <h1 class="article-header__title">
+            Cardiovascular Risk Factors in Urban Populations: A Cross-Sectional Study
+        </h1>
+        <section class="summary">
+            <h2>Summary</h2>
+            <p><strong>Background:</strong> Urban environments present unique cardiovascular risk factors that require investigation.</p>
+            <p><strong>Methods:</strong> We analyzed data from 10,000 participants in major urban centers, assessing traditional and novel risk factors.</p>
+            <p><strong>Findings:</strong> Urban-specific factors contributed significantly to cardiovascular risk, independent of traditional factors.</p>
+        </section>
+        <section class="article-body">
+            <h3>Introduction</h3>
+            <p>Cardiovascular disease remains the leading cause of mortality globally. Understanding urban-specific risk factors is crucial for prevention.</p>
+            <h3>Study Population</h3>
+            <p>We recruited participants from five major cities, ensuring diverse representation across socioeconomic strata.</p>
+        </section>
+    </div>
+
+    <!-- Test Case 3: Nested div structure with mixed selectors -->
+    <div class="test-content" id="nested-structure">
+        <div class="article">
+            <div class="article-header">
+                <h1 class="article-title">Impact of Digital Health Interventions on Chronic Disease Management</h1>
+            </div>
+            <div class="article-content">
+                <div id="section-1" class="section">
+                    <h2>Abstract</h2>
+                    <div class="section-content">
+                        <p>Digital health technologies are transforming chronic disease management. This systematic review evaluates their effectiveness across multiple conditions.</p>
+                    </div>
+                </div>
+                <div id="section-2" class="section">
+                    <h2>Background</h2>
+                    <div class="section-content">
+                        <p>The rise of smartphone technology and wearable devices has created new opportunities for patient engagement and monitoring.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Case 4: Minimal structure (paragraph-based extraction) -->
+    <div class="test-content" id="minimal-structure">
+        <article>
+            <h1>Effectiveness of Vaccination Programs in Rural Communities</h1>
+            <p>Introduction: Vaccination programs are critical for public health, yet rural communities often face unique challenges in accessing these services.</p>
+            <p>Methods: We conducted a comprehensive evaluation of vaccination programs across 50 rural communities, analyzing coverage rates and barriers to access.</p>
+            <p>Results: Overall vaccination coverage was 78%, with significant variation between communities. Key barriers included transportation access and health literacy.</p>
+            <p>Conclusion: Targeted interventions addressing specific barriers can significantly improve vaccination coverage in rural settings.</p>
+        </article>
+    </div>
+
+    <script src="content-script.js"></script>
+    <script>
+        // Wait for content script to load
+        setTimeout(() => {
+            runTests();
+        }, 1000);
+
+        function runTests() {
+            const testCases = [
+                { id: 'modern-structure', name: 'Modern Structure (data attributes)' },
+                { id: 'classic-structure', name: 'Classic Structure (semantic classes)' },
+                { id: 'nested-structure', name: 'Nested Structure (mixed selectors)' },
+                { id: 'minimal-structure', name: 'Minimal Structure (paragraph-based)' }
+            ];
+
+            const resultsDiv = document.getElementById('results');
+            
+            testCases.forEach(testCase => {
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case';
+                testDiv.innerHTML = `
+                    <h2>${testCase.name}</h2>
+                    <button onclick="runTest('${testCase.id}')">Run Test</button>
+                    <div id="result-${testCase.id}"></div>
+                `;
+                resultsDiv.appendChild(testDiv);
+            });
+
+            // Automatically run all tests
+            testCases.forEach(testCase => {
+                setTimeout(() => runTest(testCase.id), 500);
+            });
+        }
+
+        function runTest(testId) {
+            const resultDiv = document.getElementById(`result-${testId}`);
+            resultDiv.innerHTML = '<div class="info">Running test...</div>';
+
+            // Temporarily insert the test content into the DOM
+            const testContent = document.getElementById(testId);
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = testContent.innerHTML;
+            tempContainer.style.display = 'none';
+            document.body.appendChild(tempContainer);
+
+            // Simulate content extraction
+            setTimeout(() => {
+                try {
+                    let title = '';
+                    let abstract = '';
+                    let content = '';
+
+                    // Title extraction
+                    const titleSelectors = [
+                        'h1[data-component="article-title"]',
+                        'h1.article-header__title',
+                        'h1.article-title',
+                        'h1[itemprop="headline"]',
+                        'h1'
+                    ];
+                    
+                    for (const selector of titleSelectors) {
+                        const el = tempContainer.querySelector(selector);
+                        if (el && el.textContent.trim()) {
+                            title = el.textContent.trim();
+                            break;
+                        }
+                    }
+
+                    // Abstract extraction
+                    const abstractSelectors = [
+                        '[data-component="summary"]',
+                        '[data-testid="abstract"]',
+                        'section.summary',
+                        '.abstract',
+                        '[itemprop="abstract"]',
+                        '#section-1'
+                    ];
+                    
+                    for (const selector of abstractSelectors) {
+                        const el = tempContainer.querySelector(selector);
+                        if (el && el.textContent.trim()) {
+                            abstract = el.textContent.trim();
+                            break;
+                        }
+                    }
+
+                    // Content extraction
+                    const contentSelectors = [
+                        '[data-component="article-body"]',
+                        'section.article-body',
+                        '.article-content',
+                        '[itemprop="articleBody"]',
+                        'article'
+                    ];
+                    
+                    for (const selector of contentSelectors) {
+                        const el = tempContainer.querySelector(selector);
+                        if (el && el.textContent.trim()) {
+                            content = el.textContent.trim();
+                            break;
+                        }
+                    }
+
+                    // If no content from selectors, try paragraph extraction
+                    if (!content && !abstract) {
+                        const paragraphs = tempContainer.querySelectorAll('p');
+                        let combinedText = '';
+                        paragraphs.forEach(p => {
+                            if (p.textContent.trim().length > 50) {
+                                combinedText += p.textContent.trim() + '\n\n';
+                            }
+                        });
+                        if (combinedText.length > 100) {
+                            content = combinedText;
+                        }
+                    }
+
+                    document.body.removeChild(tempContainer);
+
+                    const hasTitle = title && title.length > 10;
+                    const hasContent = (abstract && abstract.length > 50) || (content && content.length > 100);
+                    const success = hasTitle && hasContent;
+
+                    resultDiv.innerHTML = `
+                        <div class="result ${success ? 'success' : 'error'}">
+                            <p><strong>Status:</strong> ${success ? '✓ PASS' : '✗ FAIL'}</p>
+                            <p><strong>Title Found:</strong> ${hasTitle ? '✓ Yes' : '✗ No'} ${title ? `(${title.substring(0, 60)}...)` : ''}</p>
+                            <p><strong>Abstract Found:</strong> ${abstract && abstract.length > 50 ? '✓ Yes' : '✗ No'} ${abstract ? `(${abstract.length} chars)` : ''}</p>
+                            <p><strong>Content Found:</strong> ${content && content.length > 100 ? '✓ Yes' : '✗ No'} ${content ? `(${content.length} chars)` : ''}</p>
+                            ${success ? '' : '<p><strong>Issue:</strong> Extraction failed - selectors may need adjustment</p>'}
+                        </div>
+                    `;
+                } catch (error) {
+                    document.body.removeChild(tempContainer);
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <p><strong>Error:</strong> ${error.message}</p>
+                        </div>
+                    `;
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html>
