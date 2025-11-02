@@ -17,12 +17,13 @@
   const EXTRACTION_DELAY = 2000; // Wait for page to fully load (increased from 1000ms)
   const MAX_FULLTEXT_LENGTH = 2000; // Maximum characters to include from full text when combining with abstract
   const PDF_EXTRACTION_DELAY = 3000; // Wait longer for PDF viewers to render text
-  // Dynamic content delay: 3.5s is a balance between user experience and content loading
+  // Dynamic content delay: 5.0s allows sufficient time for complex React/Vue applications
   // - Most JavaScript frameworks render within 2-3 seconds
-  // - Lancet and similar sites need extra time for complex content
+  // - Lancet and similar sites with complex content need 4-5 seconds
+  // - The Lancet fulltext pages specifically need more time to render article body
   // - Trade-off: slightly longer wait vs. reliable extraction
   // Future enhancement: Use MutationObserver for intelligent waiting
-  const DYNAMIC_CONTENT_DELAY = 3500; // Wait for dynamically loaded content (React, Vue, etc.) - increased to 3.5s
+  const DYNAMIC_CONTENT_DELAY = 5000; // Wait for dynamically loaded content (React, Vue, etc.) - increased to 5.0s for Lancet
   const MIN_SUBSTANTIVE_LENGTH = 200; // Minimum length for substantive scientific content
   
   // Initialize content script
@@ -414,6 +415,37 @@
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
     
     return cleaned;
+  }
+  
+  /**
+   * Check if text is just a loading placeholder.
+   * Returns true if the text appears to be a "loading" message rather than actual content.
+   * @param {string} text - text to check
+   * @returns {boolean} true if text is a loading placeholder
+   */
+  function isLoadingPlaceholder(text) {
+    if (!text || text.length === 0) return true;
+    
+    const loadingPatterns = [
+      /^\s*loading\.{0,3}\s*$/i,
+      /^\s*please wait\.{0,3}\s*$/i,
+      /^\s*loading (article|content|page)\.{0,3}\s*$/i,
+      /^\s*loading\.{3,}\s*$/i,
+      /^[\s.]*$/, // Only whitespace or dots
+    ];
+    
+    const trimmed = text.trim().toLowerCase();
+    
+    // Check if text is very short and matches loading patterns
+    if (trimmed.length < 50) {
+      for (const pattern of loadingPatterns) {
+        if (pattern.test(trimmed)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
   
   /**
@@ -922,6 +954,60 @@
       analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
     }
     
+    // Check if the extracted text is just a loading placeholder
+    if (isLoadingPlaceholder(analysisText)) {
+      console.log('Q-SCI Content Script: Detected loading placeholder, attempting meta tag fallback');
+      analysisText = '';
+    }
+    
+    // If no substantial content found, try to use meta tags as fallback
+    // This handles cases where React/Vue hasn't rendered the DOM yet but meta tags exist
+    if (!analysisText || analysisText.length < 100) {
+      console.log('Q-SCI Content Script: Insufficient content from selectors, trying meta tag fallback');
+      
+      const metaTitle = document.querySelector('meta[name="citation_title"]')?.getAttribute('content') || '';
+      const metaAbstract = document.querySelector('meta[name="citation_abstract"]')?.getAttribute('content') || '';
+      const ogDescription = document.querySelector('meta[property="og:description"]')?.getAttribute('content') || '';
+      const metaDescription = document.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+      
+      // Use title from meta if not already found
+      if (!title && metaTitle) {
+        title = metaTitle;
+        console.log('Q-SCI Content Script: Using meta citation_title as fallback');
+      }
+      
+      // Build fallback text from meta tags
+      let metaText = '';
+      if (metaAbstract) {
+        metaText = metaAbstract;
+        console.log('Q-SCI Content Script: Using meta citation_abstract as fallback');
+      } else if (ogDescription) {
+        metaText = ogDescription;
+        console.log('Q-SCI Content Script: Using og:description as fallback');
+      } else if (metaDescription) {
+        metaText = metaDescription;
+        console.log('Q-SCI Content Script: Using meta description as fallback');
+      }
+      
+      // Combine meta title and description for better analysis
+      if (metaTitle && metaText) {
+        analysisText = metaTitle + '. ' + metaText;
+      } else if (metaText) {
+        analysisText = metaText;
+      } else if (metaTitle) {
+        analysisText = metaTitle;
+      }
+      
+      // If we got something from meta tags, use it as abstract too if we don't have one
+      if (metaText && !abstract) {
+        abstract = metaText;
+      }
+      
+      if (analysisText) {
+        console.log('Q-SCI Content Script: Meta tag fallback provided', analysisText.length, 'characters');
+      }
+    }
+    
     // Validate that we have substantive scientific content
     const isSubstantive = isSubstantiveScientificContent(analysisText);
     console.log('Q-SCI Content Script: Content validation -', 
@@ -1214,6 +1300,60 @@
     // If we have both abstract and some full text, combine them
     if (abstract && fullText && fullText !== abstract) {
       analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
+    }
+    
+    // Check if the extracted text is just a loading placeholder
+    if (isLoadingPlaceholder(analysisText)) {
+      console.log('Q-SCI Content Script: Detected loading placeholder, attempting meta tag fallback');
+      analysisText = '';
+    }
+    
+    // If no substantial content found, try to use meta tags as fallback
+    // This handles cases where React/Vue hasn't rendered the DOM yet but meta tags exist
+    if (!analysisText || analysisText.length < 100) {
+      console.log('Q-SCI Content Script: Insufficient content from selectors, trying meta tag fallback');
+      
+      const metaTitle = document.querySelector('meta[name="citation_title"]')?.getAttribute('content') || '';
+      const metaAbstract = document.querySelector('meta[name="citation_abstract"]')?.getAttribute('content') || '';
+      const ogDescription = document.querySelector('meta[property="og:description"]')?.getAttribute('content') || '';
+      const metaDescription = document.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+      
+      // Use title from meta if not already found
+      if (!title && metaTitle) {
+        title = metaTitle;
+        console.log('Q-SCI Content Script: Using meta citation_title as fallback');
+      }
+      
+      // Build fallback text from meta tags
+      let metaText = '';
+      if (metaAbstract) {
+        metaText = metaAbstract;
+        console.log('Q-SCI Content Script: Using meta citation_abstract as fallback');
+      } else if (ogDescription) {
+        metaText = ogDescription;
+        console.log('Q-SCI Content Script: Using og:description as fallback');
+      } else if (metaDescription) {
+        metaText = metaDescription;
+        console.log('Q-SCI Content Script: Using meta description as fallback');
+      }
+      
+      // Combine meta title and description for better analysis
+      if (metaTitle && metaText) {
+        analysisText = metaTitle + '. ' + metaText;
+      } else if (metaText) {
+        analysisText = metaText;
+      } else if (metaTitle) {
+        analysisText = metaTitle;
+      }
+      
+      // If we got something from meta tags, use it as abstract too if we don't have one
+      if (metaText && !abstract) {
+        abstract = metaText;
+      }
+      
+      if (analysisText) {
+        console.log('Q-SCI Content Script: Meta tag fallback provided', analysisText.length, 'characters');
+      }
     }
     
     // Validate that we have substantive scientific content
