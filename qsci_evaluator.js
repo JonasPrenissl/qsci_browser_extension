@@ -69,7 +69,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Assign a quality score between 0 and 100. 90–100 = 🟢 Green, 70–89 = 🟡 Amber, below 70 = 🔴 Red. ` +
       `Then provide between 3 and 7 positive aspects and between 3 and 7 negative aspects. Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
       `For each aspect, set the 'aspect' field to a complete, clear sentence that stands alone and communicates the evaluation point in plain language (e.g., "The study objective is stated clearly" or "The sample size is small"). ` +
-      `Set 'source_text' to the exact sentence or sentences from the paper that support it. ` +
+      `CRITICAL: Set 'source_text' to an EXACT, VERBATIM quote copied word-for-word from the paper text provided below. You must ONLY use direct quotes - do NOT paraphrase, summarize, or generate new text. Copy the exact words from the paper, including any specific numbers, technical terms, and phrasing exactly as they appear. If you cannot find an exact quote in the paper to support an aspect, do not include that aspect. Every 'source_text' value must be a substring that appears verbatim in the provided paper content. ` +
       `Do not invent content: every aspect and snippet must be present in the provided paper text. ` +
       `Ignore the reference list entirely when choosing aspects and source text. ` +
       `Also provide a 'reasoning' field that explains in 2-3 sentences why you assigned this specific quality score, referencing the key strengths and weaknesses you identified. ` +
