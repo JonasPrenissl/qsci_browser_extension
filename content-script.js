@@ -17,14 +17,15 @@
   const EXTRACTION_DELAY = 2000; // Wait for page to fully load (increased from 1000ms)
   const MAX_FULLTEXT_LENGTH = 2000; // Maximum characters to include from full text when combining with abstract
   const PDF_EXTRACTION_DELAY = 3000; // Wait longer for PDF viewers to render text
-  // Dynamic content delay: 5.0s allows sufficient time for complex React/Vue applications
+  // Dynamic content delay: increased to 7.0s for The Lancet and similar complex sites
   // - Simple static sites: 1-2 seconds (don't use dynamic detection)
   // - Standard React/Vue apps: 2-3 seconds
-  // - Complex sites like The Lancet with heavy content: 4-5 seconds required
-  // - We use 5.0s to provide a safe margin for content-heavy journal sites
+  // - Complex sites like The Lancet with heavy content: 5-7 seconds required
+  // - We use 7.0s for Lancet specifically to handle slow networks and complex rendering
   // - Trade-off: slightly longer wait vs. reliable extraction
-  // Future enhancement: Use MutationObserver for intelligent waiting
-  const DYNAMIC_CONTENT_DELAY = 5000; // Wait for dynamically loaded content (React, Vue, etc.) - increased to 5.0s for Lancet
+  // Future enhancement: Use MutationObserver for intelligent waiting or configurable site-specific delays
+  const DYNAMIC_CONTENT_DELAY = 5000; // Wait for dynamically loaded content (React, Vue, etc.)
+  const LANCET_CONTENT_DELAY = 7000; // Extra delay for The Lancet due to complex React rendering (TODO: make configurable)
   const MIN_SUBSTANTIVE_LENGTH = 200; // Minimum length for substantive scientific content
   const META_FALLBACK_THRESHOLD = 100; // Trigger meta tag fallback when extracted content is below this length
   
@@ -61,16 +62,25 @@
       // Check if page might have dynamic content (React, Vue, etc.)
       const hasDynamicContent = document.querySelector('[data-react-root], [data-reactroot], #root, #app, [ng-app], [data-vue-app]') !== null;
       
-      // Determine appropriate delay
+      // Check if this is The Lancet website (needs extra time for complex React rendering)
+      // TODO: Extract to configurable site-specific delay map for better maintainability
+      const isLancet = window.location.hostname.toLowerCase().includes('thelancet.com');
+      
+      // Determine appropriate delay based on page characteristics
+      // Priority: PDF > Lancet+Dynamic > Dynamic > Regular
       let delay = EXTRACTION_DELAY;
       if (isPdf) {
         delay = PDF_EXTRACTION_DELAY;
+      } else if (isLancet && hasDynamicContent) {
+        delay = LANCET_CONTENT_DELAY;
       } else if (hasDynamicContent) {
         delay = DYNAMIC_CONTENT_DELAY;
       }
       
       console.log('Q-SCI Content Script: Using extraction delay:', delay, 'ms', 
-        isPdf ? '(PDF page)' : (hasDynamicContent ? '(dynamic content detected)' : '(regular page)'));
+        isPdf ? '(PDF page)' : 
+        (isLancet && hasDynamicContent ? '(Lancet dynamic content)' : 
+        (hasDynamicContent ? '(dynamic content detected)' : '(regular page)')));
       
       // Wait a moment for dynamic content to load
       setTimeout(() => {
@@ -1035,9 +1045,17 @@
     
     // Validate that we have substantive scientific content
     const isSubstantive = isSubstantiveScientificContent(analysisText);
-    console.log('Q-SCI Content Script: Content validation -', 
+    console.log('Q-SCI Content Script: Lancet content validation -', 
       'Length:', analysisText.length, 
-      'Substantive:', isSubstantive);
+      'Substantive:', isSubstantive,
+      'Preview:', analysisText.substring(0, 200) + '...');
+    
+    // Log a warning if content seems insufficient
+    if (!isSubstantive && analysisText.length < MIN_SUBSTANTIVE_LENGTH) {
+      console.warn('Q-SCI Content Script: WARNING - Lancet extraction may have failed.',
+        'Content length:', analysisText.length,
+        'Consider waiting longer for page to load or checking selectors.');
+    }
     
     return {
       title: title,
@@ -1345,9 +1363,17 @@
     
     // Validate that we have substantive scientific content
     const isSubstantive = isSubstantiveScientificContent(analysisText);
-    console.log('Q-SCI Content Script: Content validation -', 
+    console.log('Q-SCI Content Script: Generic content validation -', 
       'Length:', analysisText.length, 
-      'Substantive:', isSubstantive);
+      'Substantive:', isSubstantive,
+      'Preview:', analysisText.substring(0, 150) + '...');
+    
+    // Log a warning if content seems insufficient
+    if (!isSubstantive && analysisText.length < MIN_SUBSTANTIVE_LENGTH) {
+      console.warn('Q-SCI Content Script: WARNING - Content extraction may be insufficient.',
+        'Content length:', analysisText.length,
+        'Site:', hostname);
+    }
     
     const result = {
       title: title,
