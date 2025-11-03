@@ -478,15 +478,34 @@ async function updatePageStatus() {
     console.log('Q-SCI Debug Popup: Site supported:', isSupported, 'URL:', currentTab.url);
     
     if (isSupported) {
-      // Check for PDF availability
+      // Check for PDF availability using content script if possible
       try {
+        let pageData = null;
+        
+        try {
+          // Try to use content script's message-based extraction
+          const response = await chrome.tabs.sendMessage(currentTab.id, { 
+            type: 'CHECK_CONTENT_SCRIPT' 
+          });
+          
+          if (response && response.success) {
+            console.log('Q-SCI Debug Popup: Content script is loaded');
+            // Content script is available, just show status without full extraction
+            showPageStatus('✅ Scientific site detected', true);
+            return;
+          }
+        } catch (messageError) {
+          console.log('Q-SCI Debug Popup: Content script not available for status check, using fallback');
+        }
+        
+        // Fallback: use inline extraction for status check only
         const results = await chrome.scripting.executeScript({
           target: { tabId: currentTab.id },
           function: extractPageContent
         });
         
         if (results && results[0] && results[0].result) {
-          const pageData = results[0].result;
+          pageData = results[0].result;
           const hasPdf = pageData.pdfUrls && pageData.pdfUrls.length > 0;
           
           if (hasPdf) {
@@ -613,21 +632,53 @@ async function analyzePage() {
     console.log('Q-SCI Debug Popup: Using tab:', currentTab.url);
     console.log('Q-SCI Debug Popup: Tab ID:', currentTab.id);
     
-    // Extract page content using content script
-    console.log('Q-SCI Debug Popup: Injecting content script to extract page content...');
+    // Extract page content using content script message-based extraction
+    // This uses the sophisticated extraction logic in content-script.js with delays and meta tag fallbacks
+    console.log('Q-SCI Debug Popup: Requesting page data extraction from content script...');
     
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: currentTab.id },
-      function: extractPageContent
-    });
+    let pageData = null;
     
-    console.log('Q-SCI Debug Popup: Script execution results:', results);
-    
-    if (!results || !results[0] || !results[0].result) {
-      throw new Error('Failed to extract page content. The page may not be accessible or the content script failed to execute.');
+    try {
+      // First, try to use the content script's message-based extraction
+      // This is preferred because it includes sophisticated features like:
+      // - 7 second delay for Lancet dynamic content
+      // - Meta tag fallback for pages that haven't finished rendering
+      // - Loading placeholder detection
+      // - Site-specific extraction logic
+      const response = await chrome.tabs.sendMessage(currentTab.id, { 
+        type: 'EXTRACT_PAGE_DATA' 
+      });
+      
+      console.log('Q-SCI Debug Popup: Content script response:', response);
+      
+      if (response && response.success && response.data) {
+        pageData = response.data;
+        console.log('Q-SCI Debug Popup: Successfully extracted page data via content script');
+      } else {
+        console.warn('Q-SCI Debug Popup: Content script extraction failed:', response?.error);
+        throw new Error(response?.error || 'Content script extraction failed');
+      }
+    } catch (messageError) {
+      console.warn('Q-SCI Debug Popup: Failed to communicate with content script:', messageError.message);
+      console.log('Q-SCI Debug Popup: Falling back to inline extraction function...');
+      
+      // Fallback: inject the extraction function directly
+      // This is less sophisticated but works when content script is not loaded
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: currentTab.id },
+        function: extractPageContent
+      });
+      
+      console.log('Q-SCI Debug Popup: Fallback script execution results:', results);
+      
+      if (!results || !results[0] || !results[0].result) {
+        throw new Error('Failed to extract page content. The page may not be accessible or the content script failed to execute.');
+      }
+      
+      pageData = results[0].result;
+      console.log('Q-SCI Debug Popup: Extracted page data via fallback method');
     }
     
-    const pageData = results[0].result;
     console.log('Q-SCI Debug Popup: Extracted page data:', {
       hasTitle: !!pageData.title,
       title: pageData.title ? pageData.title.substring(0, 50) + '...' : 'N/A',
