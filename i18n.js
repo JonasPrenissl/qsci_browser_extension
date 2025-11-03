@@ -9,7 +9,7 @@
     de: {
       // Header
       'header.title': 'Qualitätsprüfung',
-      'header.subtitle': 'Wissenschaftliche Publikationen',
+      'header.subtitle': 'für wissenschaftliche Publikationen',
       
       // Authentication
       'auth.loginRequired': 'Anmeldung erforderlich',
