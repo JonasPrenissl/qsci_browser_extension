@@ -45,8 +45,120 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
   // Timeout for API requests (in milliseconds)
-  // Prevents the request from hanging indefinitely if the API doesn't respond
-  const API_TIMEOUT_MS = 60000; // 60 seconds
+  // Reduced from 60s to 30s to align with 20s target + buffer
+  // This ensures faster feedback for users while allowing time for API response
+  const API_TIMEOUT_MS = 30000; // 30 seconds
+
+  // Maximum text length to send to the API (in characters)
+  // Optimized to balance analysis quality with response time (<20 seconds)
+  // ~15,000 chars = ~3,750 tokens, which provides sufficient context while
+  // keeping API processing time under target
+  const MAX_TEXT_LENGTH = 15000;
+
+  /**
+   * Intelligently truncate text to fit within token limits while preserving
+   * the most important sections for quality analysis. Prioritizes sections
+   * in order: Abstract > Methods > Results > Discussion/Conclusion > Introduction.
+   * 
+   * @param {string} text - The full paper text
+   * @returns {string} Truncated text optimized for analysis
+   */
+  function truncateTextIntelligently(text) {
+    if (!text || text.length <= MAX_TEXT_LENGTH) {
+      return text;
+    }
+
+    console.log(`Q‑SCI LLM Evaluator: Text length ${text.length} exceeds limit, applying intelligent truncation...`);
+
+    // Section markers to identify key parts (case-insensitive)
+    const sectionPatterns = {
+      abstract: /\b(abstract|summary)\b/i,
+      methods: /\b(methods?|methodology|materials? and methods?|study design|participants?|procedures?)\b/i,
+      results: /\b(results?|findings?|outcomes?)\b/i,
+      discussion: /\b(discussion|conclusion|conclusions?|interpretation)\b/i,
+      introduction: /\b(introduction|background)\b/i
+    };
+
+    // Try to extract sections by finding section headers
+    const lines = text.split('\n');
+    const sections = {
+      abstract: [],
+      methods: [],
+      results: [],
+      discussion: [],
+      introduction: [],
+      other: []
+    };
+    
+    let currentSection = 'other';
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Check if this line is a section header
+      let foundSection = false;
+      for (const [sectionName, pattern] of Object.entries(sectionPatterns)) {
+        if (pattern.test(trimmedLine) && trimmedLine.length < 100) {
+          // Short lines matching section patterns are likely headers
+          currentSection = sectionName;
+          foundSection = true;
+          break;
+        }
+      }
+      
+      if (!foundSection && trimmedLine.length > 0) {
+        sections[currentSection].push(line);
+      }
+    }
+
+    // Build truncated text by prioritizing sections
+    // Allocation strategy: Abstract (30%), Methods (25%), Results (25%), Discussion (15%), Intro (5%)
+    const allocations = {
+      abstract: Math.floor(MAX_TEXT_LENGTH * 0.30),
+      methods: Math.floor(MAX_TEXT_LENGTH * 0.25),
+      results: Math.floor(MAX_TEXT_LENGTH * 0.25),
+      discussion: Math.floor(MAX_TEXT_LENGTH * 0.15),
+      introduction: Math.floor(MAX_TEXT_LENGTH * 0.05)
+    };
+
+    let truncatedText = '';
+    
+    // Add sections in priority order
+    for (const [sectionName, allocation] of Object.entries(allocations)) {
+      if (sections[sectionName].length > 0) {
+        const sectionText = sections[sectionName].join('\n');
+        const label = sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
+        
+        if (sectionText.length > allocation) {
+          // Take beginning of section up to allocation
+          truncatedText += `\n[${label}]\n${sectionText.substring(0, allocation)}...\n`;
+        } else {
+          truncatedText += `\n[${label}]\n${sectionText}\n`;
+        }
+      }
+    }
+
+    // If we still have room and collected "other" content, add some of it
+    if (truncatedText.length < MAX_TEXT_LENGTH && sections.other.length > 0) {
+      const remainingSpace = MAX_TEXT_LENGTH - truncatedText.length;
+      const otherText = sections.other.join('\n');
+      if (otherText.length > remainingSpace) {
+        truncatedText += '\n[Additional Content]\n' + otherText.substring(0, remainingSpace) + '...';
+      } else {
+        truncatedText += '\n[Additional Content]\n' + otherText;
+      }
+    }
+
+    // Fallback: if section extraction didn't work well (very short result), 
+    // just take the beginning of the text
+    if (truncatedText.length < MAX_TEXT_LENGTH * 0.5) {
+      console.log('Q‑SCI LLM Evaluator: Section extraction yielded limited content, using simple truncation');
+      truncatedText = text.substring(0, MAX_TEXT_LENGTH) + '\n[... content truncated for length ...]';
+    }
+
+    console.log(`Q‑SCI LLM Evaluator: Text truncated from ${text.length} to ${truncatedText.length} characters`);
+    return truncatedText;
+  }
 
   /**
    * Build the prompt for the OpenAI model.  The system message
@@ -61,8 +173,12 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
    * @returns {Array} messages suitable for OpenAI chat completion API
    */
   function buildMessages(title, sourceUrl, text) {
+    // Apply intelligent truncation to keep analysis time under 20 seconds
+    const truncatedText = truncateTextIntelligently(text);
+    
     const system = `You are Q‑SCI, an expert scientific publication quality evaluator.\n\n` +
-      `When given the full text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. ` +
+      `When given the text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. ` +
+      `Note: For very long papers, the text may be intelligently truncated to include the most relevant sections (Abstract, Methods, Results, Discussion). ` +
       `Focus on the actual paper content only — ignore the reference list and citations. ` +
       `Identify study design features (e.g. randomized controlled trial, crossover, meta‑analysis, observational study), sample size and clear reporting practices. ` +
       `Consider whether the study is blinded, placebo controlled or non‑inferiority, whether it follows reporting guidelines (e.g. CONSORT for trials, PRISMA for reviews, STROBE for observational studies), and whether sample sizes are adequate. ` +
@@ -83,7 +199,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
 
     const user = `Paper Title: ${title || 'Unknown Title'}\n` +
       `Source URL: ${sourceUrl || 'N/A'}\n\n` +
-      `Paper Content (trimmed):\n${text || ''}`;
+      `Paper Content:\n${truncatedText || ''}`;
 
     return [
       { role: 'system', content: system },
@@ -150,6 +266,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
    */
   async function evaluate(text, title, sourceUrl) {
     console.log('Q‑SCI LLM Evaluator: Starting evaluation...');
+    console.log('Q‑SCI LLM Evaluator: Input text length:', text?.length || 0, 'characters');
     
     if (!text || text.trim().length < 50) {
       throw new Error('Insufficient text provided for analysis');
