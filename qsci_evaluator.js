@@ -163,7 +163,10 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
     // just take the beginning of the text
     if (truncatedText.length < MAX_TEXT_LENGTH * SECTION_EXTRACTION_THRESHOLD) {
       console.log('Q‑SCI LLM Evaluator: Section extraction yielded limited content, using simple truncation');
-      truncatedText = text.substring(0, MAX_TEXT_LENGTH) + '\n[... content truncated for length ...]';
+      // Reserve space for the truncation message to ensure we don't exceed MAX_TEXT_LENGTH
+      const truncationMessage = '\n[... content truncated for length ...]';
+      const reservedLength = MAX_TEXT_LENGTH - truncationMessage.length;
+      truncatedText = text.substring(0, reservedLength) + truncationMessage;
     }
 
     console.log(`Q‑SCI LLM Evaluator: Text truncated from ${text.length} to ${truncatedText.length} characters`);
@@ -185,11 +188,17 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   function buildMessages(title, sourceUrl, text) {
     // Apply intelligent truncation to keep analysis time under 20 seconds
     const truncatedText = truncateTextIntelligently(text);
+    const wasTruncated = text.length > MAX_TEXT_LENGTH;
     
-    const system = `You are Q‑SCI, an expert scientific publication quality evaluator.\n\n` +
-      `When given the text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. ` +
-      `Note: For very long papers, the text may be intelligently truncated to include the most relevant sections (Abstract, Methods, Results, Discussion). ` +
-      `Focus on the actual paper content only — ignore the reference list and citations. ` +
+    // Build system prompt - only mention truncation if it actually occurred
+    let systemPrompt = `You are Q‑SCI, an expert scientific publication quality evaluator.\n\n` +
+      `When given the text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. `;
+    
+    if (wasTruncated) {
+      systemPrompt += `Note: This paper's text was intelligently truncated to include the most relevant sections (Abstract, Methods, Results, Discussion) to optimize processing time. `;
+    }
+    
+    systemPrompt += `Focus on the actual paper content only — ignore the reference list and citations. ` +
       `Identify study design features (e.g. randomized controlled trial, crossover, meta‑analysis, observational study), sample size and clear reporting practices. ` +
       `Consider whether the study is blinded, placebo controlled or non‑inferiority, whether it follows reporting guidelines (e.g. CONSORT for trials, PRISMA for reviews, STROBE for observational studies), and whether sample sizes are adequate. ` +
       `Assign a quality score between 0 and 100. 90–100 = 🟢 Green, 70–89 = 🟡 Amber, below 70 = 🔴 Red. ` +
@@ -212,7 +221,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Paper Content:\n${truncatedText || ''}`;
 
     return [
-      { role: 'system', content: system },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: user }
     ];
   }
