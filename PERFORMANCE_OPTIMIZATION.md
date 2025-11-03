@@ -86,11 +86,16 @@ The intelligent truncation preserves quality by:
 ## Testing
 
 ### Unit Tests
-Created `/tmp/test_truncation.js` to verify:
+The truncation function was tested with a standalone test script to verify:
 - ✅ Short text remains unchanged
 - ✅ Long text with sections is properly truncated and labeled
 - ✅ Text without clear sections uses fallback truncation
 - ✅ Final length stays under 15,000 characters
+
+Test scenarios covered:
+1. Short text (< 15K chars): No truncation applied
+2. Long structured text with clear section headers: Intelligent extraction and prioritization
+3. Long unstructured text: Simple truncation fallback
 
 ### Manual Testing Checklist
 To verify the optimization works correctly:

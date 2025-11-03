@@ -55,6 +55,14 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   // keeping API processing time under target
   const MAX_TEXT_LENGTH = 15000;
 
+  // Maximum length for a line to be considered a section header
+  // Longer lines are likely paragraph text, not headers
+  const MAX_SECTION_HEADER_LENGTH = 100;
+
+  // Minimum proportion of text that should be extracted by section detection
+  // If less than this proportion is extracted, fall back to simple truncation
+  const SECTION_EXTRACTION_THRESHOLD = 0.5;
+
   /**
    * Intelligently truncate text to fit within token limits while preserving
    * the most important sections for quality analysis. Prioritizes sections
@@ -71,12 +79,14 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
     console.log(`Q‑SCI LLM Evaluator: Text length ${text.length} exceeds limit, applying intelligent truncation...`);
 
     // Section markers to identify key parts (case-insensitive)
+    // Patterns are designed to match section headers, not inline text
+    // They require word boundaries and typically short lines to avoid false positives
     const sectionPatterns = {
-      abstract: /\b(abstract|summary)\b/i,
-      methods: /\b(methods?|methodology|materials? and methods?|study design|participants?|procedures?)\b/i,
-      results: /\b(results?|findings?|outcomes?)\b/i,
-      discussion: /\b(discussion|conclusion|conclusions?|interpretation)\b/i,
-      introduction: /\b(introduction|background)\b/i
+      abstract: /^\s*(abstract|summary)\s*$/i,
+      methods: /^\s*(methods?|methodology|materials? and methods?|study design|participants?|procedures?)\s*$/i,
+      results: /^\s*(results?|findings?|outcomes?)\s*$/i,
+      discussion: /^\s*(discussion|conclusion|conclusions?|interpretation)\s*$/i,
+      introduction: /^\s*(introduction|background)\s*$/i
     };
 
     // Try to extract sections by finding section headers
@@ -98,7 +108,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       // Check if this line is a section header
       let foundSection = false;
       for (const [sectionName, pattern] of Object.entries(sectionPatterns)) {
-        if (pattern.test(trimmedLine) && trimmedLine.length < 100) {
+        if (pattern.test(trimmedLine) && trimmedLine.length < MAX_SECTION_HEADER_LENGTH) {
           // Short lines matching section patterns are likely headers
           currentSection = sectionName;
           foundSection = true;
@@ -151,7 +161,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
 
     // Fallback: if section extraction didn't work well (very short result), 
     // just take the beginning of the text
-    if (truncatedText.length < MAX_TEXT_LENGTH * 0.5) {
+    if (truncatedText.length < MAX_TEXT_LENGTH * SECTION_EXTRACTION_THRESHOLD) {
       console.log('Q‑SCI LLM Evaluator: Section extraction yielded limited content, using simple truncation');
       truncatedText = text.substring(0, MAX_TEXT_LENGTH) + '\n[... content truncated for length ...]';
     }
