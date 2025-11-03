@@ -605,11 +605,13 @@
     }
     
     // PMC full text selectors
+    // Prioritize main and article tags as they contain the complete content including abstract
     const pmcContentSelectors = [
+      'main', // Main content - prioritized as it contains full article
+      'article', // Article tag - contains full article
       '.article-body', // PMC article body
       '.article-content', // PMC article content
       '.full-text', // PMC full text
-      'main', // Main content
       '.content' // Generic content
     ];
     
@@ -668,13 +670,9 @@
     abstract = stripReferences(abstract);
     fullText = stripReferences(fullText);
 
-    // Combine text for analysis (prefer abstract, fallback to full text, then title)
-    let analysisText = abstract || fullText || title;
-
-    // If we have both abstract and some full text, combine them
-    if (abstract && fullText && fullText !== abstract) {
-      analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
-    }
+    // Combine text for analysis (prefer full text which includes abstract, fallback to abstract, then title)
+    // fullText from main/article already contains the abstract, so prioritize it to avoid duplication
+    let analysisText = fullText || abstract || title;
 
     return {
       title: title,
@@ -866,8 +864,13 @@
     }
     
     // Lancet full text selectors - enhanced for modern frameworks
-    // The Lancet uses section.article-body for main content
+    // Prioritize main and article tags as they contain the complete content including abstract
     const lancetContentSelectors = [
+      'main', // Generic main - prioritized as it contains full article
+      '[role="main"]', // Semantic main
+      'article', // Article tag - contains full article
+      'main.main-content', // Main content
+      '.main-content', // Main content class
       'section.article-body', // Lancet main article body
       '.article-body', // Alternative article body
       '[data-component="article-body"]', // Data component body
@@ -875,11 +878,6 @@
       'article.article-content', // Article content
       '.article-content', // Article content class
       '[data-component="article-content"]', // Data component content
-      'main.main-content', // Main content
-      '.main-content', // Main content class
-      'main', // Generic main
-      '[role="main"]', // Semantic main
-      'article', // Article tag
       '.article', // Article class
       '[itemprop="articleBody"]', // Schema.org article body
       '[class*="article-body"]', // Pattern matching
@@ -1019,13 +1017,9 @@
     abstract = cleanExtractedText(abstract);
     fullText = cleanExtractedText(fullText);
     
-    // Combine text for analysis (prefer abstract, fallback to full text, then title)
-    let analysisText = abstract || fullText || title;
-    
-    // If we have both abstract and some full text, combine them
-    if (abstract && fullText && fullText !== abstract) {
-      analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
-    }
+    // Combine text for analysis (prefer full text which includes abstract, fallback to abstract, then title)
+    // fullText from main/article already contains the abstract, so prioritize it to avoid duplication
+    let analysisText = fullText || abstract || title;
     
     // Check if the extracted text is just a loading placeholder
     if (isLoadingPlaceholder(analysisText)) {
@@ -1185,7 +1179,13 @@
     }
     
     // Extract full text content for analysis with comprehensive selectors including modern patterns
+    // Prioritize main and article tags as they contain the complete content including abstract
     const contentSelectors = [
+      'main', // Generic main tag - prioritized as it contains full article
+      '[role="main"]', // Semantic main
+      'article', // Article tag - contains full article
+      'main.main-content', // Main tag with content class
+      '.main-content', // Main content
       'section.article-body', // Lancet and others
       '.article-body', // Common article body
       '[data-component="article-body"]', // Data component body
@@ -1194,16 +1194,11 @@
       '.article-content', // Common article content
       'article.article-content', // Article tag with content class
       '[data-component="article-content"]', // Data component content
-      '.main-content', // Main content
-      'main.main-content', // Main tag with content class
       '.content', // Generic content
       '.full-text', // Full text class
       '.fulltext-view', // Full text view
-      'main', // Generic main tag
-      '[role="main"]', // Semantic main
       '.paper-content', // Paper content
       '.article', // Generic article
-      'article', // Article tag
       '[class*="article-body"]', // Pattern matching
       '[class*="ArticleBody"]', // CamelCase variants
       '[class*="articleBody"]', // camelCase variants
@@ -1337,13 +1332,9 @@
     abstract = cleanExtractedText(abstract);
     fullText = cleanExtractedText(fullText);
 
-    // Combine text for analysis (prefer abstract, fallback to full text, then title)
-    let analysisText = abstract || fullText || title;
-
-    // If we have both abstract and some full text, combine them
-    if (abstract && fullText && fullText !== abstract) {
-      analysisText = abstract + '\n\n' + fullText.substring(0, MAX_FULLTEXT_LENGTH); // Limit full text
-    }
+    // Combine text for analysis (prefer full text which includes abstract, fallback to abstract, then title)
+    // fullText from main/article already contains the abstract, so prioritize it to avoid duplication
+    let analysisText = fullText || abstract || title;
     
     // Check if the extracted text is just a loading placeholder
     if (isLoadingPlaceholder(analysisText)) {
