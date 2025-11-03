@@ -478,7 +478,7 @@ async function updatePageStatus() {
     console.log('Q-SCI Debug Popup: Site supported:', isSupported, 'URL:', currentTab.url);
     
     if (isSupported) {
-      // Check for PDF availability using content script if possible
+      // Check page status using content script if possible
       try {
         let pageData = null;
         
@@ -641,7 +641,7 @@ async function analyzePage() {
     try {
       // First, try to use the content script's message-based extraction
       // This is preferred because it includes sophisticated features like:
-      // - 7 second delay for Lancet dynamic content
+      // - 7-second delay (LANCET_CONTENT_DELAY = 7000ms) for Lancet dynamic content
       // - Meta tag fallback for pages that haven't finished rendering
       // - Loading placeholder detection
       // - Site-specific extraction logic
