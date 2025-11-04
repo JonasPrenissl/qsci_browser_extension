@@ -54,6 +54,7 @@
         <h3 data-i18n="detailed.title">Detaillierte Analyse</h3>
         <div id="journal-info" style="margin-bottom: 12px;">
           <div><strong data-i18n="detailed.journal">Journal:</strong> <span id="journal-name"></span></div>
+          <div id="journal-impact-factor" style="display: none;"><strong data-i18n="detailed.impactFactor">Impact Factor:</strong> <span id="impact-factor-value"></span></div>
           <div id="journal-category"></div>
           <div><strong data-i18n="detailed.quality">Qualität:</strong> <span id="detailed-quality-percentage"></span></div>
           <div id="detailed-quality-circle"></div>
@@ -73,6 +74,27 @@
           <div id="source-text-display" style="display: none; margin-top: 8px;">
             <!-- Citation text displayed in italic style with quotation marks to indicate it's a direct quote from the paper -->
             <div id="source-content" style="font-style: italic;"></div>
+          </div>
+          <!-- Explanation section for the clicked aspect -->
+          <div id="explanation-display" style="display: none; margin-top: 12px; padding: 12px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+            <div style="font-size: 12px; font-weight: 600; color: #1e40af; margin-bottom: 6px;" data-i18n="detailed.explanation">Erklärung:</div>
+            <div id="explanation-content" style="font-size: 13px; line-height: 1.6; color: #1e3a8a;"></div>
+          </div>
+        </div>
+
+        <!-- Q&A Chat Section -->
+        <h4 style="margin-top: 20px; margin-bottom: 12px;" data-i18n="detailed.askQuestions">Fragen zur Publikation</h4>
+        <div id="chat-container" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
+          <!-- Chat messages display -->
+          <div id="chat-messages" style="max-height: 300px; overflow-y: auto; margin-bottom: 12px; padding: 8px; background: white; border-radius: 6px; min-height: 100px;">
+            <div style="font-size: 12px; color: #6b7280; text-align: center; padding: 20px;" data-i18n="detailed.chatWelcome">
+              Stellen Sie Fragen zur Publikation, und die KI wird diese basierend auf dem analysierten Inhalt beantworten.
+            </div>
+          </div>
+          <!-- Chat input -->
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="chat-input" placeholder="Frage eingeben..." data-i18n-placeholder="detailed.chatPlaceholder" style="flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px;" />
+            <button id="chat-send-btn" class="btn btn-primary" style="padding: 8px 16px; white-space: nowrap;" data-i18n="detailed.send">Senden</button>
           </div>
         </div>
       </div>
