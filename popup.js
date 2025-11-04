@@ -1116,16 +1116,13 @@ function displayAnalysisResults(analysis) {
   chatHistory = [];
   paperContextForChat = null;
   if (elements.chatMessages) {
-    // Clear previous messages and show welcome message
+    // Clear previous messages and show welcome message using i18n
+    const welcomeText = window.QSCIi18n ? window.QSCIi18n.t('detailed.chatWelcome') : 'Ask questions about the publication, and the AI will answer them based on the analyzed content.';
     elements.chatMessages.innerHTML = `
-      <div style="font-size: 12px; color: #6b7280; text-align: center; padding: 20px;" data-i18n="detailed.chatWelcome">
-        Stellen Sie Fragen zur Publikation, und die KI wird diese basierend auf dem analysierten Inhalt beantworten.
+      <div style="font-size: 12px; color: #6b7280; text-align: center; padding: 20px;">
+        ${welcomeText}
       </div>
     `;
-    // Re-translate the welcome message
-    if (window.QSCIi18n) {
-      window.QSCIi18n.translatePage();
-    }
   }
   
   // Update quality score and background color
@@ -1528,6 +1525,8 @@ let paperContextForChat = null;
 // Chat configuration constants
 const CHAT_MAX_TOKENS = 500;
 const CHAT_TEMPERATURE = 0.7;
+const CHAT_HISTORY_LIMIT = 10; // Keep last 5 exchanges (10 messages)
+const CHAT_FALLBACK_MODEL = 'gpt-4o-mini'; // Fallback if window.QSCI_MODEL_NAME not available
 
 // Handle sending a chat message
 async function handleChatSend() {
@@ -1611,7 +1610,7 @@ async function handleChatSend() {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: window.QSCI_MODEL_NAME || 'gpt-4o-mini',
+        model: window.QSCI_MODEL_NAME || CHAT_FALLBACK_MODEL,
         messages: messages,
         temperature: CHAT_TEMPERATURE,
         max_tokens: CHAT_MAX_TOKENS
@@ -1667,7 +1666,7 @@ Be concise, clear, and helpful in your responses. Base your answers on the paper
   }
   
   // Add chat history for context (last 5 exchanges = 10 messages)
-  const recentHistory = chatHistory.slice(-10); // Last 5 exchanges (10 messages)
+  const recentHistory = chatHistory.slice(-CHAT_HISTORY_LIMIT);
   messages.push(...recentHistory);
   
   // Add current user message
