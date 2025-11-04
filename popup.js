@@ -1112,6 +1112,22 @@ function displayAnalysisResults(analysis) {
     return;
   }
   
+  // Clear chat history for new analysis
+  chatHistory = [];
+  paperContextForChat = null;
+  if (elements.chatMessages) {
+    // Clear previous messages and show welcome message
+    elements.chatMessages.innerHTML = `
+      <div style="font-size: 12px; color: #6b7280; text-align: center; padding: 20px;" data-i18n="detailed.chatWelcome">
+        Stellen Sie Fragen zur Publikation, und die KI wird diese basierend auf dem analysierten Inhalt beantworten.
+      </div>
+    `;
+    // Re-translate the welcome message
+    if (window.QSCIi18n) {
+      window.QSCIi18n.translatePage();
+    }
+  }
+  
   // Update quality score and background color
   if (elements.qualityScore && elements.qualityStatItem) {
     const score = analysis.quality_percentage || analysis.score || 0;
