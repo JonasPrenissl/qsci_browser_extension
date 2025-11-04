@@ -45,8 +45,194 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
   // Timeout for API requests (in milliseconds)
-  // Prevents the request from hanging indefinitely if the API doesn't respond
-  const API_TIMEOUT_MS = 60000; // 60 seconds
+  // Reduced from 60s to 30s to align with 20s target + buffer
+  // This ensures faster feedback for users while allowing time for API response
+  const API_TIMEOUT_MS = 30000; // 30 seconds
+
+  // Maximum text length to send to the API (in characters)
+  // Optimized to balance analysis quality with response time (<20 seconds)
+  // ~15,000 chars = ~3,750 tokens, which provides sufficient context while
+  // keeping API processing time under target
+  const MAX_TEXT_LENGTH = 15000;
+
+  // Maximum length for a line to be considered a section header
+  // Longer lines are likely paragraph text, not headers
+  const MAX_SECTION_HEADER_LENGTH = 100;
+
+  // Minimum proportion of text that should be extracted by section detection
+  // If less than this proportion is extracted, fall back to simple truncation
+  const SECTION_EXTRACTION_THRESHOLD = 0.5;
+
+  /**
+   * Intelligently truncate text to fit within token limits while preserving
+   * the most important sections for quality analysis.
+   * 
+   * Priority and allocation:
+   * - Methods: 100% (NEVER truncated - crucial for quality assessment)
+   * - Abstract: 35% (Important study summary)
+   * - Results: 10% (Beginning of results section)
+   * - Discussion: 5% (Only limitations and advantages paragraphs)
+   * - Introduction: Last paragraph only (where hypotheses are typically stated)
+   * 
+   * @param {string} text - The full paper text
+   * @returns {string} Truncated text optimized for analysis
+   */
+  function truncateTextIntelligently(text) {
+    if (!text || text.length <= MAX_TEXT_LENGTH) {
+      return text;
+    }
+
+    console.log(`Q‑SCI LLM Evaluator: Text length ${text.length} exceeds limit, applying intelligent truncation...`);
+
+    // Section markers to identify key parts (case-insensitive)
+    // Patterns are designed to match section headers, not inline text
+    // They require word boundaries and typically short lines to avoid false positives
+    const sectionPatterns = {
+      abstract: /^\s*(abstract|summary)\s*$/i,
+      methods: /^\s*(methods?|methodology|materials? and methods?|study design|participants?|procedures?)\s*$/i,
+      results: /^\s*(results?|findings?|outcomes?)\s*$/i,
+      discussion: /^\s*(discussion|conclusion|conclusions?|interpretation)\s*$/i,
+      introduction: /^\s*(introduction|background)\s*$/i
+    };
+
+    // Try to extract sections by finding section headers
+    const lines = text.split('\n');
+    const sections = {
+      abstract: [],
+      methods: [],
+      results: [],
+      discussion: [],
+      introduction: [],
+      other: []
+    };
+    
+    let currentSection = 'other';
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Check if this line is a section header
+      let foundSection = false;
+      for (const [sectionName, pattern] of Object.entries(sectionPatterns)) {
+        if (pattern.test(trimmedLine) && trimmedLine.length < MAX_SECTION_HEADER_LENGTH) {
+          // Short lines matching section patterns are likely headers
+          currentSection = sectionName;
+          foundSection = true;
+          break;
+        }
+      }
+      
+      if (!foundSection && trimmedLine.length > 0) {
+        sections[currentSection].push(line);
+      }
+    }
+
+    // Build truncated text by prioritizing sections
+    // Updated allocation strategy based on quality analysis importance:
+    // - Methods: 100% (CRUCIAL - never truncate, most important for quality)
+    // - Abstract: 35% (Important summary of the study)
+    // - Results: 10% (Less important for quality analysis)
+    // - Discussion: 5% (Only limitations/advantages paragraphs)
+    // - Introduction: Last paragraph only (hypotheses location)
+    
+    let truncatedText = '';
+    
+    // 1. Abstract - important summary (35% = 5,250 chars)
+    if (sections.abstract.length > 0) {
+      const sectionText = sections.abstract.join('\n');
+      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.35);
+      const label = 'Abstract';
+      
+      if (sectionText.length > allocation) {
+        truncatedText += `\n[${label}]\n${sectionText.substring(0, allocation)}...\n`;
+      } else {
+        truncatedText += `\n[${label}]\n${sectionText}\n`;
+      }
+    }
+    
+    // 2. Methods - CRITICAL, include 100% without truncation
+    // This is the most important section for quality analysis
+    if (sections.methods.length > 0) {
+      const sectionText = sections.methods.join('\n');
+      truncatedText += `\n[Methods]\n${sectionText}\n`;
+    }
+    
+    // 3. Results - reduced importance (10% = 1,500 chars)
+    if (sections.results.length > 0) {
+      const sectionText = sections.results.join('\n');
+      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.10);
+      const label = 'Results';
+      
+      if (sectionText.length > allocation) {
+        truncatedText += `\n[${label}]\n${sectionText.substring(0, allocation)}...\n`;
+      } else {
+        truncatedText += `\n[${label}]\n${sectionText}\n`;
+      }
+    }
+    
+    // 4. Discussion - only limitations and advantages (5% = 750 chars)
+    // Focus on the most relevant parts for quality assessment
+    if (sections.discussion.length > 0) {
+      const sectionText = sections.discussion.join('\n');
+      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.05);
+      
+      // Try to extract paragraphs mentioning limitations or advantages
+      const paragraphs = sectionText.split(/\n\s*\n/);
+      let discussionText = '';
+      const limitationKeywords = /\b(limitation|drawback|weakness|constraint|disadvantage|caveat)\b/i;
+      const advantageKeywords = /\b(advantage|strength|benefit|robust|reliable|novel|innovative)\b/i;
+      
+      for (const para of paragraphs) {
+        if (limitationKeywords.test(para) || advantageKeywords.test(para)) {
+          discussionText += para + '\n\n';
+          if (discussionText.length > allocation) break;
+        }
+      }
+      
+      // If we didn't find specific paragraphs, take beginning
+      if (discussionText.trim().length === 0) {
+        discussionText = sectionText.substring(0, allocation);
+      }
+      
+      truncatedText += `\n[Discussion]\n${discussionText.substring(0, allocation)}...\n`;
+    }
+    
+    // 5. Introduction - only last paragraph (where hypotheses are usually mentioned)
+    if (sections.introduction.length > 0) {
+      const sectionText = sections.introduction.join('\n');
+      const paragraphs = sectionText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+      
+      if (paragraphs.length > 0) {
+        // Take the last paragraph (usually contains hypotheses)
+        const lastParagraph = paragraphs[paragraphs.length - 1];
+        truncatedText += `\n[Introduction - Hypotheses]\n${lastParagraph}\n`;
+      }
+    }
+
+    // If we still have room and collected "other" content, add some of it
+    if (truncatedText.length < MAX_TEXT_LENGTH && sections.other.length > 0) {
+      const remainingSpace = MAX_TEXT_LENGTH - truncatedText.length;
+      const otherText = sections.other.join('\n');
+      if (otherText.length > remainingSpace) {
+        truncatedText += '\n[Additional Content]\n' + otherText.substring(0, remainingSpace) + '...';
+      } else {
+        truncatedText += '\n[Additional Content]\n' + otherText;
+      }
+    }
+
+    // Fallback: if section extraction didn't work well (very short result), 
+    // just take the beginning of the text
+    if (truncatedText.length < MAX_TEXT_LENGTH * SECTION_EXTRACTION_THRESHOLD) {
+      console.log('Q‑SCI LLM Evaluator: Section extraction yielded limited content, using simple truncation');
+      // Reserve space for the truncation message to ensure we don't exceed MAX_TEXT_LENGTH
+      const truncationMessage = '\n[... content truncated for length ...]';
+      const reservedLength = MAX_TEXT_LENGTH - truncationMessage.length;
+      truncatedText = text.substring(0, reservedLength) + truncationMessage;
+    }
+
+    console.log(`Q‑SCI LLM Evaluator: Text truncated from ${text.length} to ${truncatedText.length} characters`);
+    return truncatedText;
+  }
 
   /**
    * Build the prompt for the OpenAI model.  The system message
@@ -61,9 +247,19 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
    * @returns {Array} messages suitable for OpenAI chat completion API
    */
   function buildMessages(title, sourceUrl, text) {
-    const system = `You are Q‑SCI, an expert scientific publication quality evaluator.\n\n` +
-      `When given the full text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. ` +
-      `Focus on the actual paper content only — ignore the reference list and citations. ` +
+    // Apply intelligent truncation to keep analysis time under 20 seconds
+    const truncatedText = truncateTextIntelligently(text);
+    const wasTruncated = text.length > MAX_TEXT_LENGTH;
+    
+    // Build system prompt - only mention truncation if it actually occurred
+    let systemPrompt = `You are Q‑SCI, an expert scientific publication quality evaluator.\n\n` +
+      `When given the text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. `;
+    
+    if (wasTruncated) {
+      systemPrompt += `Note: This paper's text was intelligently truncated to include the most relevant sections (Abstract, Methods, Results, Discussion) to optimize processing time. `;
+    }
+    
+    systemPrompt += `Focus on the actual paper content only — ignore the reference list and citations. ` +
       `Identify study design features (e.g. randomized controlled trial, crossover, meta‑analysis, observational study), sample size and clear reporting practices. ` +
       `Consider whether the study is blinded, placebo controlled or non‑inferiority, whether it follows reporting guidelines (e.g. CONSORT for trials, PRISMA for reviews, STROBE for observational studies), and whether sample sizes are adequate. ` +
       `Assign a quality score between 0 and 100. 90–100 = 🟢 Green, 70–89 = 🟡 Amber, below 70 = 🔴 Red. ` +
@@ -83,10 +279,10 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
 
     const user = `Paper Title: ${title || 'Unknown Title'}\n` +
       `Source URL: ${sourceUrl || 'N/A'}\n\n` +
-      `Paper Content (trimmed):\n${text || ''}`;
+      `Paper Content:\n${truncatedText || ''}`;
 
     return [
-      { role: 'system', content: system },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: user }
     ];
   }
@@ -150,6 +346,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
    */
   async function evaluate(text, title, sourceUrl) {
     console.log('Q‑SCI LLM Evaluator: Starting evaluation...');
+    console.log('Q‑SCI LLM Evaluator: Input text length:', text?.length || 0, 'characters');
     
     if (!text || text.trim().length < 50) {
       throw new Error('Insufficient text provided for analysis');
