@@ -65,8 +65,14 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
 
   /**
    * Intelligently truncate text to fit within token limits while preserving
-   * the most important sections for quality analysis. Prioritizes sections
-   * in order: Abstract > Methods > Results > Discussion/Conclusion > Introduction.
+   * the most important sections for quality analysis.
+   * 
+   * Priority and allocation:
+   * - Methods: 100% (NEVER truncated - crucial for quality assessment)
+   * - Abstract: 35% (Important study summary)
+   * - Results: 10% (Beginning of results section)
+   * - Discussion: 5% (Only limitations and advantages paragraphs)
+   * - Introduction: Last paragraph only (where hypotheses are typically stated)
    * 
    * @param {string} text - The full paper text
    * @returns {string} Truncated text optimized for analysis
@@ -122,29 +128,84 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
     }
 
     // Build truncated text by prioritizing sections
-    // Allocation strategy: Abstract (30%), Methods (25%), Results (25%), Discussion (15%), Intro (5%)
-    const allocations = {
-      abstract: Math.floor(MAX_TEXT_LENGTH * 0.30),
-      methods: Math.floor(MAX_TEXT_LENGTH * 0.25),
-      results: Math.floor(MAX_TEXT_LENGTH * 0.25),
-      discussion: Math.floor(MAX_TEXT_LENGTH * 0.15),
-      introduction: Math.floor(MAX_TEXT_LENGTH * 0.05)
-    };
-
+    // Updated allocation strategy based on quality analysis importance:
+    // - Methods: 100% (CRUCIAL - never truncate, most important for quality)
+    // - Abstract: 35% (Important summary of the study)
+    // - Results: 10% (Less important for quality analysis)
+    // - Discussion: 5% (Only limitations/advantages paragraphs)
+    // - Introduction: Last paragraph only (hypotheses location)
+    
     let truncatedText = '';
     
-    // Add sections in priority order
-    for (const [sectionName, allocation] of Object.entries(allocations)) {
-      if (sections[sectionName].length > 0) {
-        const sectionText = sections[sectionName].join('\n');
-        const label = sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
-        
-        if (sectionText.length > allocation) {
-          // Take beginning of section up to allocation
-          truncatedText += `\n[${label}]\n${sectionText.substring(0, allocation)}...\n`;
-        } else {
-          truncatedText += `\n[${label}]\n${sectionText}\n`;
+    // 1. Abstract - important summary (35% = 5,250 chars)
+    if (sections.abstract.length > 0) {
+      const sectionText = sections.abstract.join('\n');
+      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.35);
+      const label = 'Abstract';
+      
+      if (sectionText.length > allocation) {
+        truncatedText += `\n[${label}]\n${sectionText.substring(0, allocation)}...\n`;
+      } else {
+        truncatedText += `\n[${label}]\n${sectionText}\n`;
+      }
+    }
+    
+    // 2. Methods - CRITICAL, include 100% without truncation
+    // This is the most important section for quality analysis
+    if (sections.methods.length > 0) {
+      const sectionText = sections.methods.join('\n');
+      truncatedText += `\n[Methods]\n${sectionText}\n`;
+    }
+    
+    // 3. Results - reduced importance (10% = 1,500 chars)
+    if (sections.results.length > 0) {
+      const sectionText = sections.results.join('\n');
+      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.10);
+      const label = 'Results';
+      
+      if (sectionText.length > allocation) {
+        truncatedText += `\n[${label}]\n${sectionText.substring(0, allocation)}...\n`;
+      } else {
+        truncatedText += `\n[${label}]\n${sectionText}\n`;
+      }
+    }
+    
+    // 4. Discussion - only limitations and advantages (5% = 750 chars)
+    // Focus on the most relevant parts for quality assessment
+    if (sections.discussion.length > 0) {
+      const sectionText = sections.discussion.join('\n');
+      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.05);
+      
+      // Try to extract paragraphs mentioning limitations or advantages
+      const paragraphs = sectionText.split(/\n\s*\n/);
+      let discussionText = '';
+      const limitationKeywords = /\b(limitation|drawback|weakness|constraint|disadvantage|caveat)\b/i;
+      const advantageKeywords = /\b(advantage|strength|benefit|robust|reliable|novel|innovative)\b/i;
+      
+      for (const para of paragraphs) {
+        if (limitationKeywords.test(para) || advantageKeywords.test(para)) {
+          discussionText += para + '\n\n';
+          if (discussionText.length > allocation) break;
         }
+      }
+      
+      // If we didn't find specific paragraphs, take beginning
+      if (discussionText.trim().length === 0) {
+        discussionText = sectionText.substring(0, allocation);
+      }
+      
+      truncatedText += `\n[Discussion]\n${discussionText.substring(0, allocation)}...\n`;
+    }
+    
+    // 5. Introduction - only last paragraph (where hypotheses are usually mentioned)
+    if (sections.introduction.length > 0) {
+      const sectionText = sections.introduction.join('\n');
+      const paragraphs = sectionText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+      
+      if (paragraphs.length > 0) {
+        // Take the last paragraph (usually contains hypotheses)
+        const lastParagraph = paragraphs[paragraphs.length - 1];
+        truncatedText += `\n[Introduction - Hypotheses]\n${lastParagraph}\n`;
       }
     }
 

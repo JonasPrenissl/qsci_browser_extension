@@ -14,14 +14,16 @@ Analysis was taking too long (>20 seconds) when full text of a publication was a
 ### 1. Intelligent Text Truncation
 Added `truncateTextIntelligently()` function in `qsci_evaluator.js` that:
 - Identifies paper sections using regex patterns (Abstract, Methods, Results, Discussion, Introduction)
-- Prioritizes sections for quality analysis:
-  - **Abstract: 30%** (4,500 chars) - Most critical for quality assessment
-  - **Methods: 25%** (3,750 chars) - Essential for understanding study design
-  - **Results: 25%** (3,750 chars) - Key findings and outcomes
-  - **Discussion: 15%** (2,250 chars) - Interpretation and conclusions
-  - **Introduction: 5%** (750 chars) - Background context
+- Prioritizes sections for quality analysis based on their importance:
+  - **Methods: 100%** (NEVER truncated) - CRUCIAL for quality assessment, includes full methodology
+  - **Abstract: 35%** (5,250 chars) - Important study summary and overview
+  - **Results: 10%** (1,500 chars) - Beginning of results section (less critical for quality)
+  - **Discussion: 5%** (750 chars) - Only limitations and advantages paragraphs (most relevant for quality)
+  - **Introduction: Last paragraph only** - Where hypotheses are typically stated
 - Falls back to simple truncation if section detection fails
 - Maximum text length: **15,000 characters** (~3,750 tokens)
+
+**Key Insight**: Methods section is the most critical for quality assessment as it contains study design, sample size, blinding, randomization, and other key quality indicators. Therefore, it is never truncated.
 
 ### 2. API Timeout Reduction
 - **Before**: 60 seconds timeout
@@ -67,21 +69,32 @@ This represents approximately:
 The intelligent truncation preserves quality by:
 1. **Section-aware extraction**: Identifies and prioritizes scientifically important sections
 2. **No blind truncation**: Doesn't simply cut off at character limit
-3. **Comprehensive coverage**: Ensures all key sections are represented
-4. **Fallback mechanism**: Uses simple truncation only when section detection fails
+3. **Methods preservation**: NEVER truncates the Methods section (most critical for quality)
+4. **Targeted extraction**: Extracts only relevant paragraphs from Discussion (limitations/advantages) and Introduction (hypotheses)
+5. **Fallback mechanism**: Uses simple truncation only when section detection fails
 
 ### What's Preserved
-- ✅ Study design features (from Methods)
-- ✅ Sample size and population (from Methods/Results)
-- ✅ Key findings (from Results)
-- ✅ Quality indicators (from all sections)
-- ✅ Reporting standards (from Abstract/Methods)
+- ✅ **Complete Methods section** (100% preserved - NEVER truncated)
+- ✅ Study design features, randomization, blinding (from Methods)
+- ✅ Sample size and population details (from Methods)
+- ✅ Statistical analysis approach (from Methods)
+- ✅ Study summary and objectives (from Abstract)
+- ✅ Key hypotheses (from last paragraph of Introduction)
+- ✅ Study limitations and advantages (from Discussion)
+- ✅ Beginning of results for context (from Results)
 
-### What's Potentially Lost
-- ⚠️ Detailed statistical analyses (may be truncated in Results)
-- ⚠️ Extended discussion points (Discussion is only 15%)
-- ⚠️ Complete reference list (already stripped by content script)
-- ⚠️ Supplementary information (typically not in main text)
+### What's Potentially Lost or Reduced
+- ⚠️ **Detailed results tables and figures** (Results reduced to 10%, only beginning included)
+- ⚠️ **Extended discussion points** (Discussion reduced to 5%, only limitations/advantages)
+- ⚠️ **Early introduction paragraphs** (Only last paragraph with hypotheses preserved)
+- ⚠️ **Complete reference list** (Already stripped by content script)
+- ⚠️ **Supplementary information** (Typically not in main text)
+
+**Important**: These reductions do not significantly impact quality assessment because:
+- Methods (most critical) is 100% preserved
+- Results data tables aren't needed for quality scoring
+- Extended discussion isn't as relevant as limitations/advantages
+- Early introduction is background context, not quality indicators
 
 ## Testing
 
@@ -127,15 +140,20 @@ Key constants in `qsci_evaluator.js`:
 const API_TIMEOUT_MS = 30000; // 30 seconds
 const MAX_TEXT_LENGTH = 15000; // 15,000 characters
 
-// Section allocations
-const allocations = {
-  abstract: Math.floor(MAX_TEXT_LENGTH * 0.30),    // 4,500 chars
-  methods: Math.floor(MAX_TEXT_LENGTH * 0.25),     // 3,750 chars
-  results: Math.floor(MAX_TEXT_LENGTH * 0.25),     // 3,750 chars
-  discussion: Math.floor(MAX_TEXT_LENGTH * 0.15),  // 2,250 chars
-  introduction: Math.floor(MAX_TEXT_LENGTH * 0.05) // 750 chars
-};
+// Section allocation strategy (updated for quality optimization):
+// Methods: 100% - NEVER truncated (most critical)
+// Abstract: 35% (~5,250 chars)
+// Results: 10% (~1,500 chars)
+// Discussion: 5% (~750 chars) - limitations/advantages only
+// Introduction: Last paragraph only - where hypotheses are stated
 ```
+
+**Why these allocations?**
+- **Methods at 100%**: Contains all quality indicators (study design, sample size, blinding, randomization, statistical methods)
+- **Abstract reduced but still substantial**: Provides overview and context
+- **Results minimized**: Detailed results tables not needed for quality scoring
+- **Discussion targeted**: Only limitations and advantages matter for quality
+- **Introduction minimal**: Only hypotheses paragraph needed, not background
 
 ## Future Enhancements
 
