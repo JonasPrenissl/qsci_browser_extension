@@ -72,6 +72,11 @@
       'detailed.chatPlaceholder': 'Frage eingeben...',
       'detailed.send': 'Senden',
       
+      // Chat messages
+      'chat.you': 'Sie',
+      'chat.loginRequired': 'Bitte melden Sie sich an, um die Chat-Funktion zu nutzen.',
+      'chat.analyzeFirst': 'Bitte analysieren Sie zuerst ein Paper, bevor Sie Fragen stellen.',
+      
       // Messages
       'message.analyzing': 'Analysiere...',
       'message.error': 'Ein Fehler ist aufgetreten.',
@@ -174,6 +179,11 @@
       'detailed.chatWelcome': 'Ask questions about the publication, and the AI will answer them based on the analyzed content.',
       'detailed.chatPlaceholder': 'Enter your question...',
       'detailed.send': 'Send',
+      
+      // Chat messages
+      'chat.you': 'You',
+      'chat.loginRequired': 'Please login to use the chat feature.',
+      'chat.analyzeFirst': 'Please analyze a paper first before asking questions.',
       
       // Messages
       'message.analyzing': 'Analyzing...',

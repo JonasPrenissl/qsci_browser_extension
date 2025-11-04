@@ -1525,6 +1525,10 @@ function showSuccess(message) {
 let chatHistory = [];
 let paperContextForChat = null;
 
+// Chat configuration constants
+const CHAT_MAX_TOKENS = 500;
+const CHAT_TEMPERATURE = 0.7;
+
 // Handle sending a chat message
 async function handleChatSend() {
   console.log('Q-SCI Debug Popup: Handling chat send...');
@@ -1542,13 +1546,15 @@ async function handleChatSend() {
   
   // Check if user is logged in
   if (!currentUser) {
-    showError('Please login to use the chat feature.');
+    const loginMsg = window.QSCIi18n ? window.QSCIi18n.t('chat.loginRequired') : 'Please login to use the chat feature.';
+    showError(loginMsg);
     return;
   }
   
   // Check if analysis exists
   if (!currentAnalysis) {
-    showError('Please analyze a paper first before asking questions.');
+    const analysisMsg = window.QSCIi18n ? window.QSCIi18n.t('chat.analyzeFirst') : 'Please analyze a paper first before asking questions.';
+    showError(analysisMsg);
     return;
   }
   
@@ -1605,10 +1611,10 @@ async function handleChatSend() {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: window.QSCI_MODEL_NAME || 'gpt-4o-mini',
         messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
+        temperature: CHAT_TEMPERATURE,
+        max_tokens: CHAT_MAX_TOKENS
       })
     });
     
@@ -1660,7 +1666,7 @@ Be concise, clear, and helpful in your responses. Base your answers on the paper
     messages.push({ role: 'system', content: contextMessage });
   }
   
-  // Add chat history for context (last 5 exchanges)
+  // Add chat history for context (last 5 exchanges = 10 messages)
   const recentHistory = chatHistory.slice(-10); // Last 5 exchanges (10 messages)
   messages.push(...recentHistory);
   
@@ -1685,7 +1691,8 @@ function addChatMessage(type, message) {
     messageDiv.style.background = '#e0e7ff';
     messageDiv.style.color = '#3730a3';
     messageDiv.style.textAlign = 'right';
-    messageDiv.innerHTML = `<strong>Sie:</strong> ${escapeHtml(message)}`;
+    const youLabel = window.QSCIi18n ? window.QSCIi18n.t('chat.you') : 'Sie';
+    messageDiv.innerHTML = `<strong>${youLabel}:</strong> ${escapeHtml(message)}`;
   } else if (type === 'ai') {
     messageDiv.style.background = '#f0f9ff';
     messageDiv.style.color = '#0c4a6e';
