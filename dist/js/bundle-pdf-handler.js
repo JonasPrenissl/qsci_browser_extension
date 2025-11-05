@@ -48,10 +48,7 @@
           throw new Error(response.error || "Failed to download PDF");
         }
         const binary = atob(response.data);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
         const arrayBuffer = bytes.buffer;
         console.log("Q-SCI PDF Handler: PDF downloaded successfully, size:", arrayBuffer.byteLength, "bytes");
         return arrayBuffer;

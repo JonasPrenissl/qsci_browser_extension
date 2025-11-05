@@ -38,10 +38,8 @@
 
       // Convert base64 back to ArrayBuffer
       const binary = atob(response.data);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
+      // Use Uint8Array.from with mapping function for better performance
+      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
       const arrayBuffer = bytes.buffer;
 
       console.log('Q-SCI PDF Handler: PDF downloaded successfully, size:', arrayBuffer.byteLength, 'bytes');

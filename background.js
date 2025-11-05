@@ -199,7 +199,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     downloadPDFInBackground(message.url).then(arrayBuffer => {
       // Convert ArrayBuffer to base64 for message passing
       const bytes = new Uint8Array(arrayBuffer);
-      const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), '');
+      // Use Array.from with map for better performance than reduce with string concatenation
+      const binary = String.fromCharCode.apply(null, Array.from(bytes));
       const base64 = btoa(binary);
       sendResponse({ success: true, data: base64, size: arrayBuffer.byteLength });
     }).catch(error => {
