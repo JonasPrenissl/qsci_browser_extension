@@ -325,7 +325,9 @@ async function loadSavedAnalysis() {
           // Extract domain from URL for display
           try {
             const url = new URL(state.sourceUrl);
-            loadingMessage = `${loadingMessage}\nAnalyzing: ${state.title || url.hostname}`;
+            const siteName = state.title || url.hostname;
+            // Use HTML line break for proper display
+            loadingMessage = `${loadingMessage}<br><small style="color: #9ca3af;">Analyzing: ${siteName}</small>`;
           } catch (e) {
             // Invalid URL, just show the message
           }
@@ -905,7 +907,8 @@ async function analyzePage() {
       currentTab = tab;
       console.log('Q-SCI Debug Popup: Current tab set in analyzePage:', currentTab.url);
     } else {
-      // Lock the tab being analyzed (create immutable copy)
+      // Lock the tab being analyzed (create a shallow copy to preserve current state)
+      // This prevents the reference from being affected by subsequent updates to currentTab
       analyzedTab = { ...currentTab };
     }
     
@@ -1530,7 +1533,8 @@ function showLoading(stage = '', progress = 0) {
     // Update stage text if provided
     const stageElement = elements.loadingMessage.querySelector('.loading-stage');
     if (stageElement && stage) {
-      stageElement.textContent = stage;
+      // Use innerHTML to support HTML formatting like <br> and <small>
+      stageElement.innerHTML = stage;
     }
     
     // Update progress bar if provided
