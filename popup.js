@@ -35,6 +35,10 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   initializeElements();
   setupEventListeners();
+  
+  // Load saved analysis before initializing auth
+  await loadSavedAnalysis();
+  
   initializeAuth();
 });
 
@@ -261,6 +265,51 @@ async function initializeAuth() {
   } catch (error) {
     console.error('Q-SCI Debug Popup: Auth initialization error:', error);
     showLoginForm();
+  }
+}
+
+// Load saved analysis from chrome.storage.local
+async function loadSavedAnalysis() {
+  console.log('Q-SCI Debug Popup: Loading saved analysis...');
+  
+  try {
+    const result = await chrome.storage.local.get(['qsci_current_analysis']);
+    
+    if (result.qsci_current_analysis) {
+      console.log('Q-SCI Debug Popup: Found saved analysis');
+      currentAnalysis = result.qsci_current_analysis;
+      
+      // Display the saved analysis
+      displayAnalysisResults(currentAnalysis);
+    } else {
+      console.log('Q-SCI Debug Popup: No saved analysis found');
+    }
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error loading saved analysis:', error);
+  }
+}
+
+// Save analysis to chrome.storage.local
+async function saveAnalysis(analysis) {
+  console.log('Q-SCI Debug Popup: Saving analysis...');
+  
+  try {
+    await chrome.storage.local.set({ qsci_current_analysis: analysis });
+    console.log('Q-SCI Debug Popup: Analysis saved successfully');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error saving analysis:', error);
+  }
+}
+
+// Clear saved analysis from chrome.storage.local
+async function clearSavedAnalysis() {
+  console.log('Q-SCI Debug Popup: Clearing saved analysis...');
+  
+  try {
+    await chrome.storage.local.remove('qsci_current_analysis');
+    console.log('Q-SCI Debug Popup: Saved analysis cleared');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error clearing saved analysis:', error);
   }
 }
 
@@ -601,6 +650,10 @@ async function analyzePage() {
   console.log('Q-SCI Debug Popup: window.QSCIAuth available:', typeof window.QSCIAuth !== 'undefined');
   console.log('Q-SCI Debug Popup: window.QSCIUsage available:', typeof window.QSCIUsage !== 'undefined');
   
+  // Clear any previously saved analysis when starting a new analysis
+  await clearSavedAnalysis();
+  currentAnalysis = null;
+  
   // Check if user is logged in
   if (!currentUser) {
     console.error('Q-SCI Debug Popup: No current user, showing error');
@@ -841,6 +894,9 @@ async function analyzePage() {
     currentAnalysis = evaluation;
     console.log('Q-SCI Debug Popup: Displaying analysis results...');
     displayAnalysisResults(evaluation);
+    
+    // Save the analysis to chrome.storage.local for persistence
+    await saveAnalysis(evaluation);
     
     // Increment usage after successful analysis
     try {
@@ -1146,7 +1202,77 @@ function displayAnalysisResults(analysis) {
   // Display reasoning/justification if available
   if (elements.scoreReasoningSection && elements.scoreReasoningText) {
     if (analysis.reasoning || analysis.justification) {
-      elements.scoreReasoningText.textContent = analysis.reasoning || analysis.justification;
+      const reasoningText = analysis.reasoning || analysis.justification;
+      
+      // Format the reasoning into paragraphs
+      // Split on double line breaks first (if present), then on single line breaks, then on sentences
+      let paragraphs = [];
+      
+      // Try splitting on double line breaks first
+      if (reasoningText.includes('\n\n')) {
+        paragraphs = reasoningText.split('\n\n').filter(p => p.trim().length > 0);
+      } 
+      // Try splitting on single line breaks if we don't have enough paragraphs
+      else if (reasoningText.includes('\n')) {
+        paragraphs = reasoningText.split('\n').filter(p => p.trim().length > 0);
+      }
+      // If no line breaks, try to split into sentences and group them
+      else {
+        // Split on sentence boundaries (., !, ?) followed by space
+        const sentences = reasoningText.split(/([.!?])\s+/).filter(s => s.trim().length > 0);
+        
+        // Reconstruct sentences (merge punctuation with preceding text)
+        const fullSentences = [];
+        for (let i = 0; i < sentences.length; i++) {
+          if (sentences[i].match(/^[.!?]$/)) {
+            // This is punctuation, merge with previous
+            if (fullSentences.length > 0) {
+              fullSentences[fullSentences.length - 1] += sentences[i];
+            }
+          } else {
+            fullSentences.push(sentences[i]);
+          }
+        }
+        
+        // Group sentences into 2-3 paragraphs
+        const sentencesPerParagraph = Math.ceil(fullSentences.length / 3);
+        for (let i = 0; i < fullSentences.length; i += sentencesPerParagraph) {
+          const paragraphSentences = fullSentences.slice(i, i + sentencesPerParagraph);
+          paragraphs.push(paragraphSentences.join(' '));
+        }
+      }
+      
+      // If we still only have one paragraph and it's very long (>200 chars), try to split it
+      if (paragraphs.length === 1 && paragraphs[0].length > 200) {
+        const text = paragraphs[0];
+        const sentences = text.split(/([.!?])\s+/).filter(s => s.trim().length > 0);
+        
+        // Reconstruct sentences
+        const fullSentences = [];
+        for (let i = 0; i < sentences.length; i++) {
+          if (sentences[i].match(/^[.!?]$/)) {
+            if (fullSentences.length > 0) {
+              fullSentences[fullSentences.length - 1] += sentences[i];
+            }
+          } else {
+            fullSentences.push(sentences[i]);
+          }
+        }
+        
+        // Split into 2-3 paragraphs
+        if (fullSentences.length > 1) {
+          paragraphs = [];
+          const sentencesPerParagraph = Math.ceil(fullSentences.length / 3);
+          for (let i = 0; i < fullSentences.length; i += sentencesPerParagraph) {
+            const paragraphSentences = fullSentences.slice(i, i + sentencesPerParagraph);
+            paragraphs.push(paragraphSentences.join(' '));
+          }
+        }
+      }
+      
+      // Create HTML with paragraph tags, escaping the text to prevent XSS
+      const paragraphsHtml = paragraphs.map(p => `<p style="margin-bottom: 8px;">${escapeHtml(p.trim())}</p>`).join('');
+      elements.scoreReasoningText.innerHTML = paragraphsHtml;
       elements.scoreReasoningSection.style.display = 'block';
     } else {
       // Hide reasoning section if not available
