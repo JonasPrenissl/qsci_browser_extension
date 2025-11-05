@@ -280,7 +280,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Assign a quality score between 0 and 100. 90–100 = 🟢 Green, 70–89 = 🟡 Amber, below 70 = 🔴 Red. ` +
       `\n\n` +
       `ASPECT COUNT REQUIREMENTS - Adjust the number of aspects based on the quality score:\n` +
-      `- For scores ≥85%: Provide at least 6 positive aspects and around 3 negative aspects\n` +
+      `- For scores ≥85%: Provide at least 6 positive aspects and 3-4 negative aspects\n` +
       `- For scores 70-84%: Provide 4-5 positive aspects and 4-5 negative aspects\n` +
       `- For scores 50-69%: Provide 3-4 positive aspects and 5-6 negative aspects\n` +
       `- For scores <50%: Provide at least 3 positive aspects and at least 6 negative aspects\n` +
