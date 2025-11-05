@@ -328,7 +328,9 @@ async function loadSavedAnalysis() {
             const url = new URL(state.sourceUrl);
             analyzingInfo = state.title || url.hostname;
           } catch (e) {
-            // Invalid URL, ignore
+            // Invalid URL format - this can happen if sourceUrl is malformed
+            // Safe to ignore as we simply won't show the analyzing info
+            console.log('Q-SCI Debug Popup: Failed to parse sourceUrl for display:', e.message);
           }
         }
         
@@ -908,6 +910,8 @@ async function analyzePage() {
     } else {
       // Lock the tab being analyzed (create a shallow copy to preserve current state)
       // This prevents the reference from being affected by subsequent updates to currentTab
+      // Note: Chrome Tab objects contain only primitive values (id, url, title, etc.)
+      // so a shallow copy is sufficient
       analyzedTab = { ...currentTab };
     }
     
