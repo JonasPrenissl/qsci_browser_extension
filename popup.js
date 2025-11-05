@@ -1270,8 +1270,8 @@ function displayAnalysisResults(analysis) {
         }
       }
       
-      // Create HTML with paragraph tags
-      const paragraphsHtml = paragraphs.map(p => `<p style="margin-bottom: 8px;">${p.trim()}</p>`).join('');
+      // Create HTML with paragraph tags, escaping the text to prevent XSS
+      const paragraphsHtml = paragraphs.map(p => `<p style="margin-bottom: 8px;">${escapeHtml(p.trim())}</p>`).join('');
       elements.scoreReasoningText.innerHTML = paragraphsHtml;
       elements.scoreReasoningSection.style.display = 'block';
     } else {
