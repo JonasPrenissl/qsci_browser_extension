@@ -21,8 +21,60 @@ if (typeof importScripts === "function") {
   }
 }
 
-// Storage keys for analysis state
+// Storage keys for analysis state and auth
 const ANALYSIS_STATE_KEY = 'qsci_current_analysis_state';
+const AUTH_TOKEN_KEY = 'qsci_auth_token';
+const API_BASE_URL = 'https://www.q-sci.org/api';
+
+// Helper function to get auth token from storage
+async function getAuthToken() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([AUTH_TOKEN_KEY], (result) => {
+      resolve(result[AUTH_TOKEN_KEY] || null);
+    });
+  });
+}
+
+// Helper function to fetch OpenAI API key from backend
+async function getOpenAIApiKey() {
+  console.log('Q-SCI Background: Fetching OpenAI API key...');
+  
+  const token = await getAuthToken();
+  if (!token) {
+    throw new Error('No authentication token found. Please login first.');
+  }
+  
+  const response = await fetch(`${API_BASE_URL}/extension-auth?operation=openai-key`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Q-SCI Background: Failed to fetch API key:', response.status, errorText);
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Your session may have expired. Please log in again.');
+    } else if (response.status === 404) {
+      throw new Error('Backend endpoint not found. Please ensure the backend is properly configured.');
+    } else if (response.status === 500) {
+      throw new Error('Backend server error. Please try again later.');
+    } else {
+      throw new Error(`Backend returned error ${response.status}. Please try again.`);
+    }
+  }
+  
+  const data = await response.json();
+  if (!data.api_key) {
+    throw new Error('Backend did not return an API key.');
+  }
+  
+  console.log('Q-SCI Background: API key fetched successfully');
+  return data.api_key;
+}
 
 // Extension installation and update handling
 chrome.runtime.onInstalled.addListener((details) => {
@@ -92,16 +144,43 @@ async function handleStartAnalysis(data) {
     await updateAnalysisState({
       status: 'running',
       progress: 10,
-      message: 'Analyzing paper...',
+      message: 'Preparing analysis...',
       startTime: Date.now()
     });
     
     // Check if qsciEvaluatePaper is available
-    if (typeof qsciEvaluatePaper === 'undefined') {
+    if (typeof qsciEvaluatePaper === 'undefined' && typeof self.qsciEvaluatePaper === 'undefined') {
       throw new Error('qsciEvaluatePaper function is not available in background worker');
     }
     
-    console.log('Q-SCI Background: Calling qsciEvaluatePaper...');
+    // Get the evaluation function (works in both window and self context)
+    const evaluateFunc = typeof qsciEvaluatePaper !== 'undefined' ? qsciEvaluatePaper : self.qsciEvaluatePaper;
+    
+    console.log('Q-SCI Background: Fetching API key...');
+    await updateAnalysisState({
+      status: 'running',
+      progress: 20,
+      message: 'Authenticating...'
+    });
+    
+    // Fetch API key (needed for evaluation)
+    const apiKey = await getOpenAIApiKey();
+    
+    // Store API key temporarily in a way the evaluator can access it
+    // The evaluator will try to call window.QSCIAuth.getOpenAIApiKey(), but in service worker
+    // we need to provide it differently. We'll inject it into the evaluator's context
+    // by creating a mock QSCIAuth object
+    if (typeof self !== 'undefined') {
+      self.QSCIAuth = {
+        getOpenAIApiKey: async () => apiKey
+      };
+      // Also mock i18n for language support
+      self.QSCIi18n = {
+        getLanguage: () => 'de' // Default to German, could be enhanced later
+      };
+    }
+    
+    console.log('Q-SCI Background: Calling evaluator...');
     await updateAnalysisState({
       status: 'running',
       progress: 30,
@@ -109,7 +188,7 @@ async function handleStartAnalysis(data) {
     });
     
     // Perform the evaluation - this can take time but will continue even if popup closes
-    const evaluation = await qsciEvaluatePaper(
+    const evaluation = await evaluateFunc(
       data.text,
       data.title,
       data.sourceUrl
