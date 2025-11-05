@@ -8,6 +8,10 @@ let currentAnalysis = null;
 let currentUser = null;
 let currentPdfUrl = null;
 
+// Constants for polling and timeouts
+const POLL_INTERVAL_MS = 500; // Poll every 500ms for analysis status
+const MAX_POLL_ATTEMPTS = 240; // 240 * 500ms = 2 minutes max polling time
+
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
   console.error('Q-SCI Debug Popup: Unhandled promise rejection:', event.reason);
@@ -366,10 +370,9 @@ async function pollForAnalysisCompletion() {
   console.log('Q-SCI Debug Popup: Starting to poll for analysis completion...');
   
   let pollAttempts = 0;
-  const maxPollAttempts = 240; // 240 * 500ms = 2 minutes max
   
-  while (pollAttempts < maxPollAttempts) {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Poll every 500ms
+  while (pollAttempts < MAX_POLL_ATTEMPTS) {
+    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
     pollAttempts++;
     
     try {
@@ -1047,10 +1050,9 @@ async function analyzePage() {
     // This allows the user to close the popup and come back later
     let evaluation = null;
     let pollAttempts = 0;
-    const maxPollAttempts = 240; // 240 * 500ms = 2 minutes max
     
-    while (!evaluation && pollAttempts < maxPollAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 500)); // Poll every 500ms
+    while (!evaluation && pollAttempts < MAX_POLL_ATTEMPTS) {
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
       pollAttempts++;
       
       // Check analysis state

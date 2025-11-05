@@ -25,6 +25,17 @@ if (typeof importScripts === "function") {
 const ANALYSIS_STATE_KEY = 'qsci_current_analysis_state';
 const AUTH_TOKEN_KEY = 'qsci_auth_token';
 const API_BASE_URL = 'https://www.q-sci.org/api';
+const LANGUAGE_KEY = 'qsci_language';
+const DEFAULT_LANGUAGE = 'de'; // Default to German, can be overridden by user preference
+
+// Helper function to get user's preferred language from storage
+async function getUserLanguage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([LANGUAGE_KEY], (result) => {
+      resolve(result[LANGUAGE_KEY] || DEFAULT_LANGUAGE);
+    });
+  });
+}
 
 // Helper function to get auth token from storage
 async function getAuthToken() {
@@ -148,13 +159,11 @@ async function handleStartAnalysis(data) {
       startTime: Date.now()
     });
     
-    // Check if qsciEvaluatePaper is available
-    if (typeof qsciEvaluatePaper === 'undefined' && typeof self.qsciEvaluatePaper === 'undefined') {
+    // Check if qsciEvaluatePaper is available in service worker context
+    // In service worker, only self.qsciEvaluatePaper should exist
+    if (typeof self.qsciEvaluatePaper === 'undefined') {
       throw new Error('qsciEvaluatePaper function is not available in background worker');
     }
-    
-    // Get the evaluation function (works in both window and self context)
-    const evaluateFunc = typeof qsciEvaluatePaper !== 'undefined' ? qsciEvaluatePaper : self.qsciEvaluatePaper;
     
     console.log('Q-SCI Background: Fetching API key...');
     await updateAnalysisState({
@@ -166,19 +175,21 @@ async function handleStartAnalysis(data) {
     // Fetch API key (needed for evaluation)
     const apiKey = await getOpenAIApiKey();
     
+    // Get user's preferred language
+    const userLanguage = await getUserLanguage();
+    console.log('Q-SCI Background: Using language:', userLanguage);
+    
     // Store API key temporarily in a way the evaluator can access it
-    // The evaluator will try to call window.QSCIAuth.getOpenAIApiKey(), but in service worker
+    // The evaluator will try to call QSCIAuth.getOpenAIApiKey(), but in service worker
     // we need to provide it differently. We'll inject it into the evaluator's context
     // by creating a mock QSCIAuth object
-    if (typeof self !== 'undefined') {
-      self.QSCIAuth = {
-        getOpenAIApiKey: async () => apiKey
-      };
-      // Also mock i18n for language support
-      self.QSCIi18n = {
-        getLanguage: () => 'de' // Default to German, could be enhanced later
-      };
-    }
+    self.QSCIAuth = {
+      getOpenAIApiKey: async () => apiKey
+    };
+    // Also mock i18n for language support
+    self.QSCIi18n = {
+      getLanguage: () => userLanguage
+    };
     
     console.log('Q-SCI Background: Calling evaluator...');
     await updateAnalysisState({
@@ -188,7 +199,8 @@ async function handleStartAnalysis(data) {
     });
     
     // Perform the evaluation - this can take time but will continue even if popup closes
-    const evaluation = await evaluateFunc(
+    // Use self.qsciEvaluatePaper in service worker context
+    const evaluation = await self.qsciEvaluatePaper(
       data.text,
       data.title,
       data.sourceUrl
