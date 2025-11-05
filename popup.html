@@ -159,9 +159,16 @@
       </div>
     </div>
 
-    <!-- Loading overlay -->
-    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.85); align-items: center; justify-content: center; font-size: 18px; z-index: 1000;" data-i18n="message.analyzing">
-      Analysiere...
+    <!-- Loading overlay with progress indicator -->
+    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.95); align-items: center; justify-content: center; z-index: 1000;">
+      <div style="text-align: center; padding: 20px;">
+        <div class="loading-spinner" style="margin: 0 auto 16px; width: 48px; height: 48px; border: 4px solid #e5e7eb; border-top-color: #667eea; border-radius: 50%;"></div>
+        <div class="loading-text" style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 8px;" data-i18n="message.analyzing">Analysiere...</div>
+        <div class="loading-stage" style="font-size: 13px; color: #6b7280; min-height: 20px;"></div>
+        <div class="loading-progress-bar" style="width: 280px; height: 6px; background: #e5e7eb; border-radius: 3px; margin: 12px auto 0; overflow: hidden;">
+          <div class="loading-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Error message -->

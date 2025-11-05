@@ -690,14 +690,15 @@ async function analyzePage() {
     return;
   }
   
-  // Show loading immediately
+  // Show loading immediately with initial stage
   console.log('Q-SCI Debug Popup: Showing loading indicator...');
-  showLoading();
+  showLoading('Preparing analysis...', 5);
   
   try {
     // Get current tab if not already set
     if (!currentTab) {
       console.log('Q-SCI Debug Popup: Current tab not set, querying...');
+      updateLoadingProgress('Detecting page...', 10);
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
       if (!tab || !tab.url) {
@@ -714,6 +715,7 @@ async function analyzePage() {
     // Extract page content using content script message-based extraction
     // This uses the sophisticated extraction logic in content-script.js with delays and meta tag fallbacks
     console.log('Q-SCI Debug Popup: Requesting page data extraction from content script...');
+    updateLoadingProgress('Extracting content from page...', 15);
     
     let pageData = null;
     
@@ -732,6 +734,7 @@ async function analyzePage() {
       
       if (response && response.success && response.data) {
         pageData = response.data;
+        updateLoadingProgress('Content extracted successfully', 35);
         console.log('Q-SCI Debug Popup: Successfully extracted page data via content script');
       } else {
         console.warn('Q-SCI Debug Popup: Content script extraction failed:', response?.error);
@@ -740,6 +743,7 @@ async function analyzePage() {
     } catch (messageError) {
       console.warn('Q-SCI Debug Popup: Failed to communicate with content script:', messageError.message);
       console.log('Q-SCI Debug Popup: Falling back to inline extraction function...');
+      updateLoadingProgress('Using fallback extraction...', 25);
       
       // Fallback: inject the extraction function directly
       // This is less sophisticated but works when content script is not loaded
@@ -755,6 +759,7 @@ async function analyzePage() {
       }
       
       pageData = results[0].result;
+      updateLoadingProgress('Content extracted successfully', 35);
       console.log('Q-SCI Debug Popup: Extracted page data via fallback method');
     }
     
@@ -776,32 +781,20 @@ async function analyzePage() {
       pdfAnalysisAttempted = true;
       
       // Show a status message to the user
-      if (elements.loadingMessage) {
-        const loadingText = elements.loadingMessage.querySelector('.loading-text');
-        if (loadingText) {
-          loadingText.textContent = 'Downloading PDF for analysis...';
-        }
-      }
+      updateLoadingProgress('Downloading PDF...', 40);
       
       try {
         const pdfResult = await window.QSCIPDFHandler.tryDownloadAndExtractPDF(pageData.pdfUrls);
         
         if (pdfResult.success && pdfResult.text && pdfResult.text.length >= 50) {
           console.log('Q-SCI Debug Popup: PDF text extracted successfully:', pdfResult.text.length, 'characters');
+          updateLoadingProgress('PDF extracted successfully', 50);
           requestData = {
             text: pdfResult.text,
             title: pageData.title || 'Unknown Title',
             source_url: pdfResult.pdfUrl || currentTab.url,
             source_type: 'PDF'
           };
-          
-          // Update loading message
-          if (elements.loadingMessage) {
-            const loadingText = elements.loadingMessage.querySelector('.loading-text');
-            if (loadingText) {
-              loadingText.textContent = 'Analyzing PDF content...';
-            }
-          }
         } else {
           console.warn('Q-SCI Debug Popup: PDF extraction failed or insufficient text:', pdfResult.error);
           // Fall back to HTML text analysis
@@ -815,14 +808,7 @@ async function analyzePage() {
     // Fall back to HTML text if PDF analysis wasn't attempted or failed
     if (!requestData) {
       console.log('Q-SCI Debug Popup: Using HTML text analysis', pdfAnalysisAttempted ? '(PDF analysis failed)' : '(no PDF URLs)');
-      
-      // Update loading message
-      if (elements.loadingMessage) {
-        const loadingText = elements.loadingMessage.querySelector('.loading-text');
-        if (loadingText) {
-          loadingText.textContent = 'Analyzing page content...';
-        }
-      }
+      updateLoadingProgress('Preparing text for analysis...', 45);
       
       if (!pageData.text || pageData.text.length < 50) {
         let errorMsg = 'Insufficient content found on the page (less than 50 characters).';
@@ -851,6 +837,7 @@ async function analyzePage() {
         source_url: currentTab.url,
         source_type: 'HTML'
       };
+      updateLoadingProgress('Text prepared successfully', 50);
     }
     
     console.log('Q-SCI Debug Popup: Request data prepared:', {
@@ -864,6 +851,7 @@ async function analyzePage() {
     // from the backend and calls OpenAI API
     console.log('Q-SCI Debug Popup: About to call window.qsciEvaluatePaper');
     console.log('Q-SCI Debug Popup: Function type:', typeof window.qsciEvaluatePaper);
+    updateLoadingProgress('Sending to AI for analysis...', 60);
     
     const textToEvaluate = requestData.text || '';
     console.log('Q-SCI Debug Popup: Text length to evaluate:', textToEvaluate.length);
@@ -872,12 +860,14 @@ async function analyzePage() {
     
     // Call the evaluator function which always returns a promise
     console.log('Q-SCI Debug Popup: Calling qsciEvaluatePaper...');
+    updateLoadingProgress('AI analyzing paper quality...', 70);
     const evaluation = await window.qsciEvaluatePaper(
       textToEvaluate,
       requestData.title || 'Unknown Title',
       requestData.source_url || currentTab.url || ''
     );
     console.log('Q-SCI Debug Popup: Promise resolved successfully');
+    updateLoadingProgress('Processing results...', 90);
     
     console.log('Q-SCI Debug Popup: Evaluation result received:', {
       hasResult: !!evaluation,
@@ -893,6 +883,7 @@ async function analyzePage() {
     
     currentAnalysis = evaluation;
     console.log('Q-SCI Debug Popup: Displaying analysis results...');
+    updateLoadingProgress('Displaying results...', 95);
     displayAnalysisResults(evaluation);
     
     // Save the analysis to chrome.storage.local for persistence
@@ -909,6 +900,7 @@ async function analyzePage() {
       // Don't throw here, as the analysis was successful
     }
     
+    updateLoadingProgress('Complete!', 100);
     console.log('Q-SCI Debug Popup: Analysis completed successfully!');
     showSuccess('Analysis completed successfully!');
   } catch (error) {
@@ -1295,11 +1287,23 @@ function displayAnalysisResults(analysis) {
 // openDetailedAnalysis function removed (no longer needed)
 
 // UI Helper Functions
-function showLoading() {
-  console.log('Q-SCI Debug Popup: Showing loading...');
+function showLoading(stage = '', progress = 0) {
+  console.log('Q-SCI Debug Popup: Showing loading...', stage, progress);
   
   if (elements.loadingMessage) {
     elements.loadingMessage.style.display = 'flex';
+    
+    // Update stage text if provided
+    const stageElement = elements.loadingMessage.querySelector('.loading-stage');
+    if (stageElement && stage) {
+      stageElement.textContent = stage;
+    }
+    
+    // Update progress bar if provided
+    const progressFill = elements.loadingMessage.querySelector('.loading-progress-fill');
+    if (progressFill && progress > 0) {
+      progressFill.style.width = progress + '%';
+    }
   }
   
   if (elements.analyzeBtn) {
@@ -1310,11 +1314,38 @@ function showLoading() {
   }
 }
 
+function updateLoadingProgress(stage, progress) {
+  console.log('Q-SCI Debug Popup: Updating loading progress...', stage, progress);
+  
+  if (elements.loadingMessage) {
+    const stageElement = elements.loadingMessage.querySelector('.loading-stage');
+    if (stageElement) {
+      stageElement.textContent = stage;
+    }
+    
+    const progressFill = elements.loadingMessage.querySelector('.loading-progress-fill');
+    if (progressFill) {
+      progressFill.style.width = progress + '%';
+    }
+  }
+}
+
 function hideLoading() {
   console.log('Q-SCI Debug Popup: Hiding loading...');
   
   if (elements.loadingMessage) {
     elements.loadingMessage.style.display = 'none';
+    
+    // Reset progress
+    const stageElement = elements.loadingMessage.querySelector('.loading-stage');
+    if (stageElement) {
+      stageElement.textContent = '';
+    }
+    
+    const progressFill = elements.loadingMessage.querySelector('.loading-progress-fill');
+    if (progressFill) {
+      progressFill.style.width = '0%';
+    }
   }
   
   if (elements.analyzeBtn) {

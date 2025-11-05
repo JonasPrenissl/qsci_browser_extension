@@ -1009,4 +1009,13 @@ body {
   min-width: 80px;
 }
 
+/* Loading animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
 
