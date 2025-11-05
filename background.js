@@ -15,10 +15,13 @@ try {
     }
   };
   ws.onerror = () => {
-    // Silently ignore - dev server not running
+    // Silently ignore - dev server not running (no console output to reduce noise)
+  };
+  ws.onclose = () => {
+    // Silently ignore - dev server stopped (no console output to reduce noise)
   };
 } catch (e) {
-  // Silently ignore - WebSocket not available or connection failed
+  // Silently ignore - WebSocket not available or connection failed (no console output to reduce noise)
 }
 
 console.log('Q-SCI Background: Service worker starting...');
@@ -100,6 +103,52 @@ async function getOpenAIApiKey() {
   return data.api_key;
 }
 
+/**
+ * Download a PDF from a URL and return it as an ArrayBuffer
+ * This runs in the background service worker, which has broader permissions than extension pages
+ * @param {string} pdfUrl - URL of the PDF to download
+ * @returns {Promise<ArrayBuffer>} - Promise that resolves to the PDF data
+ */
+async function downloadPDFInBackground(pdfUrl) {
+  console.log('Q-SCI Background: Downloading PDF from:', pdfUrl);
+
+  // Skip file:// URLs as they violate CSP and cannot be fetched
+  if (pdfUrl.startsWith('file://')) {
+    console.warn('Q-SCI Background: Skipping file:// URL (not supported):', pdfUrl);
+    throw new Error('Local file URLs (file://) are not supported for security reasons');
+  }
+
+  try {
+    const response = await fetch(pdfUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/pdf'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    console.log('Q-SCI Background: Content-Type:', contentType);
+
+    // Check if the response is actually a PDF
+    if (contentType && !contentType.includes('application/pdf') && !contentType.includes('application/octet-stream')) {
+      console.warn('Q-SCI Background: Response is not a PDF (Content-Type:', contentType + ')');
+      // Still try to parse it as it might be a PDF despite incorrect content-type
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    console.log('Q-SCI Background: PDF downloaded successfully, size:', arrayBuffer.byteLength, 'bytes');
+
+    return arrayBuffer;
+  } catch (error) {
+    console.error('Q-SCI Background: Error downloading PDF:', error);
+    throw new Error(`Failed to download PDF: ${error.message}`);
+  }
+}
+
 // Extension installation and update handling
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('Q-SCI Background: Extension installed/updated, reason:', details.reason);
@@ -142,6 +191,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
     });
     return true;
+  }
+  
+  // Handle DOWNLOAD_PDF message
+  if (message.type === 'DOWNLOAD_PDF') {
+    console.log('Q-SCI Background: Downloading PDF:', message.url);
+    downloadPDFInBackground(message.url).then(arrayBuffer => {
+      // Convert ArrayBuffer to base64 for message passing
+      const bytes = new Uint8Array(arrayBuffer);
+      // Use Array.from with map for better performance than reduce with string concatenation
+      const binary = String.fromCharCode.apply(null, Array.from(bytes));
+      const base64 = btoa(binary);
+      sendResponse({ success: true, data: base64, size: arrayBuffer.byteLength });
+    }).catch(error => {
+      console.error('Q-SCI Background: PDF download error:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true; // Keep message channel open for async response
   }
   
   // Acknowledge other messages
