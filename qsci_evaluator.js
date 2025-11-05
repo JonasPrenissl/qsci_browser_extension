@@ -389,9 +389,11 @@
     }
 
     // Get current language from i18n service
+    // Use self for service worker context, window for browser context
+    const globalContext = typeof window !== 'undefined' ? window : self;
     let currentLanguage = 'de'; // Default to German
-    if (typeof window !== 'undefined' && window.QSCIi18n && typeof window.QSCIi18n.getLanguage === 'function') {
-      currentLanguage = window.QSCIi18n.getLanguage();
+    if (globalContext.QSCIi18n && typeof globalContext.QSCIi18n.getLanguage === 'function') {
+      currentLanguage = globalContext.QSCIi18n.getLanguage();
       console.log('Q‑SCI LLM Evaluator: Using language:', currentLanguage);
     } else {
       console.log('Q‑SCI LLM Evaluator: i18n service not available, using default language:', currentLanguage);
@@ -402,18 +404,18 @@
     let apiKey;
     try {
       console.log('Q‑SCI LLM Evaluator: Fetching API key from backend...');
-      console.log('Q‑SCI LLM Evaluator: window.QSCIAuth available:', typeof window.QSCIAuth !== 'undefined');
-      console.log('Q‑SCI LLM Evaluator: getOpenAIApiKey function available:', typeof window.QSCIAuth?.getOpenAIApiKey === 'function');
+      console.log('Q‑SCI LLM Evaluator: QSCIAuth available:', typeof globalContext.QSCIAuth !== 'undefined');
+      console.log('Q‑SCI LLM Evaluator: getOpenAIApiKey function available:', typeof globalContext.QSCIAuth?.getOpenAIApiKey === 'function');
       
       // Check if QSCIAuth is available (it should be loaded before this script)
-      if (typeof window.QSCIAuth === 'undefined' || typeof window.QSCIAuth.getOpenAIApiKey !== 'function') {
+      if (typeof globalContext.QSCIAuth === 'undefined' || typeof globalContext.QSCIAuth.getOpenAIApiKey !== 'function') {
         const errorMsg = 'Authentication module not available. Please ensure you are logged in and the extension is properly loaded. Try reloading the extension at chrome://extensions/';
         console.error('Q‑SCI LLM Evaluator:', errorMsg);
         throw new Error(errorMsg);
       }
       
       console.log('Q‑SCI LLM Evaluator: Calling getOpenAIApiKey()...');
-      apiKey = await window.QSCIAuth.getOpenAIApiKey();
+      apiKey = await globalContext.QSCIAuth.getOpenAIApiKey();
       
       if (!apiKey) {
         const errorMsg = 'Failed to retrieve API key from backend. The backend may not be properly configured. Please ensure the /api/extension-auth endpoint is deployed and the OPENAI_API_KEY environment variable is set.';

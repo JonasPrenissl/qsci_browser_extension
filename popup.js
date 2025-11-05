@@ -318,7 +318,20 @@ async function loadSavedAnalysis() {
       if (state.status === 'running') {
         // Analysis is still running, show loading
         console.log('Q-SCI Debug Popup: Analysis is running in background, showing loading...');
-        showLoading(state.message || 'Analysis in progress...', state.progress || 50);
+        
+        // Show which URL is being analyzed
+        let loadingMessage = state.message || 'Analysis in progress...';
+        if (state.sourceUrl) {
+          // Extract domain from URL for display
+          try {
+            const url = new URL(state.sourceUrl);
+            loadingMessage = `${loadingMessage}\nAnalyzing: ${state.title || url.hostname}`;
+          } catch (e) {
+            // Invalid URL, just show the message
+          }
+        }
+        
+        showLoading(loadingMessage, state.progress || 50);
         
         // Continue polling for completion
         pollForAnalysisCompletion();
@@ -876,7 +889,9 @@ async function analyzePage() {
   showLoading('Preparing analysis...', 5);
   
   try {
-    // Get current tab if not already set
+    // IMPORTANT: Capture and lock the tab information at the very start of analysis
+    // This ensures the URL being analyzed doesn't change if the user switches tabs mid-analysis
+    let analyzedTab;
     if (!currentTab) {
       console.log('Q-SCI Debug Popup: Current tab not set, querying...');
       updateLoadingProgress('Detecting page...', 10);
@@ -886,12 +901,17 @@ async function analyzePage() {
         throw new Error('No active tab found. Please ensure you are on a webpage.');
       }
       
+      analyzedTab = tab;
       currentTab = tab;
       console.log('Q-SCI Debug Popup: Current tab set in analyzePage:', currentTab.url);
+    } else {
+      // Lock the tab being analyzed (create immutable copy)
+      analyzedTab = { ...currentTab };
     }
     
-    console.log('Q-SCI Debug Popup: Using tab:', currentTab.url);
-    console.log('Q-SCI Debug Popup: Tab ID:', currentTab.id);
+    // Use analyzedTab for all subsequent operations to prevent confusion if user switches tabs
+    console.log('Q-SCI Debug Popup: Locked analyzed tab:', analyzedTab.url);
+    console.log('Q-SCI Debug Popup: Locked tab ID:', analyzedTab.id);
     
     // Extract page content using content script message-based extraction
     // This uses the sophisticated extraction logic in content-script.js with delays and meta tag fallbacks
@@ -907,7 +927,7 @@ async function analyzePage() {
       // - Meta tag fallback for pages that haven't finished rendering
       // - Loading placeholder detection
       // - Site-specific extraction logic
-      const response = await chrome.tabs.sendMessage(currentTab.id, { 
+      const response = await chrome.tabs.sendMessage(analyzedTab.id, { 
         type: 'EXTRACT_PAGE_DATA' 
       });
       
@@ -929,7 +949,7 @@ async function analyzePage() {
       // Fallback: inject the extraction function directly
       // This is less sophisticated but works when content script is not loaded
       const results = await chrome.scripting.executeScript({
-        target: { tabId: currentTab.id },
+        target: { tabId: analyzedTab.id },
         function: extractPageContent
       });
       
@@ -973,7 +993,7 @@ async function analyzePage() {
           requestData = {
             text: pdfResult.text,
             title: pageData.title || 'Unknown Title',
-            source_url: pdfResult.pdfUrl || currentTab.url,
+            source_url: pdfResult.pdfUrl || analyzedTab.url,
             source_type: 'PDF'
           };
           // Store PDF URL for download functionality
@@ -1018,7 +1038,7 @@ async function analyzePage() {
       requestData = {
         text: pageData.text,
         title: pageData.title || 'Unknown Title',
-        source_url: currentTab.url,
+        source_url: analyzedTab.url,
         source_type: 'HTML'
       };
       updateLoadingProgress('Text prepared successfully', 50);
@@ -1039,7 +1059,7 @@ async function analyzePage() {
     const analysisData = {
       text: requestData.text || '',
       title: requestData.title || 'Unknown Title',
-      sourceUrl: requestData.source_url || currentTab.url || '',
+      sourceUrl: requestData.source_url || analyzedTab.url || '',
       sourceType: requestData.source_type,
       pdfUrl: currentPdfUrl
     };
