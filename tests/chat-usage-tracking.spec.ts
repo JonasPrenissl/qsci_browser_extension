@@ -39,9 +39,25 @@ test.describe('Q&A Chat Usage Tracking', () => {
     const incrementPattern = /Increment usage after successful chat response/;
     expect(popupJsContent).toMatch(incrementPattern);
     
-    // Extract the handleChatSend function
+    // Extract the handleChatSend function by finding matching braces
     const functionStartIndex = popupJsContent.indexOf('async function handleChatSend()');
-    const functionEndIndex = popupJsContent.indexOf('\n}', functionStartIndex + 1000); // Look ahead for closing brace
+    let braceCount = 0;
+    let functionEndIndex = functionStartIndex;
+    let foundFirstBrace = false;
+    
+    for (let i = functionStartIndex; i < popupJsContent.length; i++) {
+      if (popupJsContent[i] === '{') {
+        braceCount++;
+        foundFirstBrace = true;
+      } else if (popupJsContent[i] === '}') {
+        braceCount--;
+        if (foundFirstBrace && braceCount === 0) {
+          functionEndIndex = i + 1;
+          break;
+        }
+      }
+    }
+    
     const handleChatSendFunction = popupJsContent.substring(functionStartIndex, functionEndIndex);
     
     // Verify increment happens in handleChatSend function
