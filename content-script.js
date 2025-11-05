@@ -37,7 +37,14 @@
       console.log('Q-SCI Content Script: Received message:', request.type);
       
       if (request.type === 'EXTRACT_PAGE_DATA') {
-        handleExtractPageData(sendResponse);
+        // Call async handler and ensure we keep the channel open
+        handleExtractPageData(sendResponse).catch(error => {
+          console.error('Q-SCI Content Script: Handler error:', error);
+          sendResponse({ 
+            success: false, 
+            error: error.message || 'Failed to extract page content' 
+          });
+        });
         return true; // Keep message channel open for async response
       }
       
