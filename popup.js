@@ -6,6 +6,7 @@ let elements = {};
 let currentTab = null;
 let currentAnalysis = null;
 let currentUser = null;
+let currentPdfUrl = null;
 
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
@@ -77,6 +78,7 @@ function initializeElements() {
     explanationDisplay: document.getElementById('explanation-display'),
     explanationContent: document.getElementById('explanation-content'),
     exportAnalysisBtn: document.getElementById('export-analysis-btn'),
+    downloadPdfBtn: document.getElementById('download-pdf-btn'),
     // Chat elements
     chatContainer: document.getElementById('chat-container'),
     chatMessages: document.getElementById('chat-messages'),
@@ -131,6 +133,13 @@ function setupEventListeners() {
     elements.exportAnalysisBtn.addEventListener('click', function() {
       console.log('Q-SCI Debug Popup: Export analysis button clicked');
       exportAnalysis();
+    });
+  }
+
+  if (elements.downloadPdfBtn) {
+    elements.downloadPdfBtn.addEventListener('click', function() {
+      console.log('Q-SCI Debug Popup: Download PDF button clicked');
+      downloadPdf();
     });
   }
 
@@ -273,11 +282,12 @@ async function loadSavedAnalysis() {
   console.log('Q-SCI Debug Popup: Loading saved analysis...');
   
   try {
-    const result = await chrome.storage.local.get(['qsci_current_analysis']);
+    const result = await chrome.storage.local.get(['qsci_current_analysis', 'qsci_current_pdf_url']);
     
     if (result.qsci_current_analysis) {
       console.log('Q-SCI Debug Popup: Found saved analysis');
       currentAnalysis = result.qsci_current_analysis;
+      currentPdfUrl = result.qsci_current_pdf_url || null;
       
       // Display the saved analysis
       displayAnalysisResults(currentAnalysis);
@@ -294,7 +304,10 @@ async function saveAnalysis(analysis) {
   console.log('Q-SCI Debug Popup: Saving analysis...');
   
   try {
-    await chrome.storage.local.set({ qsci_current_analysis: analysis });
+    await chrome.storage.local.set({ 
+      qsci_current_analysis: analysis,
+      qsci_current_pdf_url: currentPdfUrl
+    });
     console.log('Q-SCI Debug Popup: Analysis saved successfully');
   } catch (error) {
     console.error('Q-SCI Debug Popup: Error saving analysis:', error);
@@ -306,7 +319,7 @@ async function clearSavedAnalysis() {
   console.log('Q-SCI Debug Popup: Clearing saved analysis...');
   
   try {
-    await chrome.storage.local.remove('qsci_current_analysis');
+    await chrome.storage.local.remove(['qsci_current_analysis', 'qsci_current_pdf_url']);
     console.log('Q-SCI Debug Popup: Saved analysis cleared');
   } catch (error) {
     console.error('Q-SCI Debug Popup: Error clearing saved analysis:', error);
@@ -650,9 +663,10 @@ async function analyzePage() {
   console.log('Q-SCI Debug Popup: window.QSCIAuth available:', typeof window.QSCIAuth !== 'undefined');
   console.log('Q-SCI Debug Popup: window.QSCIUsage available:', typeof window.QSCIUsage !== 'undefined');
   
-  // Clear any previously saved analysis when starting a new analysis
+  // Clear any previously saved analysis and PDF URL when starting a new analysis
   await clearSavedAnalysis();
   currentAnalysis = null;
+  currentPdfUrl = null;
   
   // Check if user is logged in
   if (!currentUser) {
@@ -795,6 +809,9 @@ async function analyzePage() {
             source_url: pdfResult.pdfUrl || currentTab.url,
             source_type: 'PDF'
           };
+          // Store PDF URL for download functionality
+          currentPdfUrl = pdfResult.pdfUrl || null;
+          console.log('Q-SCI Debug Popup: Stored PDF URL for download:', currentPdfUrl);
         } else {
           console.warn('Q-SCI Debug Popup: PDF extraction failed or insufficient text:', pdfResult.error);
           // Fall back to HTML text analysis
@@ -1277,6 +1294,17 @@ function displayAnalysisResults(analysis) {
     elements.statsSection.style.display = 'block';
   }
 
+  // Show/hide download PDF button based on whether PDF URL is available
+  if (elements.downloadPdfBtn) {
+    if (currentPdfUrl) {
+      elements.downloadPdfBtn.style.display = 'inline-block';
+      console.log('Q-SCI Debug Popup: Download PDF button shown');
+    } else {
+      elements.downloadPdfBtn.style.display = 'none';
+      console.log('Q-SCI Debug Popup: Download PDF button hidden (no PDF URL)');
+    }
+  }
+
   // Automatically show detailed analysis after displaying the quality score
   console.log('Q-SCI Debug Popup: Auto-showing detailed analysis');
   showDetailedAnalysis();
@@ -1582,6 +1610,73 @@ function exportAnalysis() {
   } catch (error) {
     console.error('Q-SCI Debug Popup: PDF export error:', error);
     showError('Failed to export PDF: ' + error.message);
+  }
+}
+
+// Download the PDF of the publication
+async function downloadPdf() {
+  console.log('Q-SCI Debug Popup: Downloading publication PDF...');
+  
+  if (!currentPdfUrl) {
+    showError('No PDF available to download. The analysis may not have been performed on a PDF.');
+    return;
+  }
+  
+  try {
+    // Validate the PDF URL format
+    let validUrl;
+    try {
+      validUrl = new URL(currentPdfUrl);
+      // Ensure it's HTTP or HTTPS
+      if (!validUrl.protocol.startsWith('http')) {
+        throw new Error('Invalid URL protocol. Only HTTP and HTTPS are supported.');
+      }
+    } catch (urlValidationError) {
+      console.error('Q-SCI Debug Popup: Invalid PDF URL:', currentPdfUrl, urlValidationError);
+      showError('Invalid PDF URL. Cannot download the file.');
+      return;
+    }
+    
+    // Use Chrome's downloads API to download the PDF
+    console.log('Q-SCI Debug Popup: Initiating download for:', currentPdfUrl);
+    
+    // Extract a filename from the URL or use a default
+    let filename = 'publication.pdf';
+    try {
+      const pathParts = validUrl.pathname.split('/');
+      const lastPart = pathParts[pathParts.length - 1];
+      if (lastPart && lastPart.endsWith('.pdf')) {
+        filename = lastPart;
+      } else if (currentAnalysis && currentAnalysis.journal_info && 
+                 (currentAnalysis.journal_info.journal_name || currentAnalysis.journal_info.name)) {
+        // Create a filename from journal name if available
+        const journalName = currentAnalysis.journal_info.journal_name || currentAnalysis.journal_info.name;
+        const sanitizedName = journalName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        filename = `${sanitizedName}_${Date.now()}.pdf`;
+      }
+    } catch (filenameError) {
+      console.warn('Q-SCI Debug Popup: Error generating filename:', filenameError);
+      // Keep the default filename
+    }
+    
+    // Trigger the download using Chrome's downloads API
+    chrome.downloads.download({
+      url: currentPdfUrl,
+      filename: filename,
+      saveAs: true // Prompt user for save location
+    }, function(downloadId) {
+      if (chrome.runtime.lastError) {
+        console.error('Q-SCI Debug Popup: Download error:', chrome.runtime.lastError);
+        showError('Failed to download PDF: ' + chrome.runtime.lastError.message);
+      } else {
+        console.log('Q-SCI Debug Popup: Download started with ID:', downloadId);
+        showSuccess('PDF download started!');
+      }
+    });
+    
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: PDF download error:', error);
+    showError('Failed to download PDF: ' + error.message);
   }
 }
 

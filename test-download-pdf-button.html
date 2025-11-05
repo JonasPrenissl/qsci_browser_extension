@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Download PDF Button</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="qsci_ui_badges.css">
+  <style>
+    body {
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f7fafc;
+    }
+    .test-section {
+      max-width: 400px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #2d3748;
+    }
+    h2 {
+      font-size: 18px;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      color: #4a5568;
+    }
+    .button-group {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+    }
+    .note {
+      margin-top: 15px;
+      padding: 12px;
+      background: #e6fffa;
+      border-left: 4px solid #38b2ac;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #234e52;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-section">
+    <h1>Download PDF Button Test</h1>
+    
+    <h2>Scenario 1: Both buttons visible (PDF available)</h2>
+    <div class="button-group">
+      <button class="btn btn-outline" id="export-analysis-btn">📥 Export Analysis</button>
+      <button class="btn btn-outline" id="download-pdf-btn">📄 Download PDF</button>
+    </div>
+    <div class="note">
+      ✅ Both buttons should be visible and clickable when a PDF was used for analysis.
+    </div>
+
+    <h2>Scenario 2: Only Export button (No PDF)</h2>
+    <div class="button-group">
+      <button class="btn btn-outline" id="export-analysis-btn-2">📥 Export Analysis</button>
+      <button class="btn btn-outline" id="download-pdf-btn-2" style="display: none;">📄 Download PDF</button>
+    </div>
+    <div class="note">
+      ✅ Only the Export Analysis button should be visible when analysis was done on HTML content without PDF.
+    </div>
+
+    <h2>Scenario 3: Mobile view (narrow width)</h2>
+    <div class="button-group" style="max-width: 300px;">
+      <button class="btn btn-outline" style="font-size: 12px; padding: 10px 12px;">📥 Export</button>
+      <button class="btn btn-outline" style="font-size: 12px; padding: 10px 12px;">📄 PDF</button>
+    </div>
+    <div class="note">
+      ℹ️ On narrow screens, buttons should wrap or have shorter text. Flex layout handles this automatically.
+    </div>
+
+    <h2>Button Interactions</h2>
+    <div class="button-group">
+      <button class="btn btn-outline" id="test-export">📥 Hover me</button>
+      <button class="btn btn-outline" id="test-download">📄 Click me</button>
+    </div>
+    <div class="note" id="interaction-note">
+      👆 Hover and click the buttons to test interactions
+    </div>
+  </div>
+
+  <script>
+    // Test button interactions
+    document.getElementById('test-export').addEventListener('mouseenter', function() {
+      document.getElementById('interaction-note').textContent = '✨ Export button hover effect working!';
+    });
+    
+    document.getElementById('test-export').addEventListener('mouseleave', function() {
+      document.getElementById('interaction-note').textContent = '👆 Hover and click the buttons to test interactions';
+    });
+    
+    document.getElementById('test-download').addEventListener('click', function() {
+      document.getElementById('interaction-note').textContent = '✅ Download button clicked! In the extension, this would trigger a PDF download.';
+      setTimeout(() => {
+        document.getElementById('interaction-note').textContent = '👆 Hover and click the buttons to test interactions';
+      }, 2000);
+    });
+  </script>
+</body>
+</html>
