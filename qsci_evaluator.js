@@ -15,13 +15,20 @@
 // Define a fallback evaluator early.  If this script fails to initialize due
 // to a syntax error (e.g. mis‑formatted API key), the popup will still
 // find a qsciEvaluatePaper function and report a meaningful error rather
-// than "window.qsciEvaluatePaper is not a function".  The fallback
+// than "qsciEvaluatePaper is not a function".  The fallback
 // returns a rejected promise with an error.
-if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefined') {
-  window.qsciEvaluatePaper = function() {
+(function() {
+  const fallbackError = function() {
     return Promise.reject(new Error('Q‑SCI LLM evaluator is not initialized. Please ensure the extension has loaded correctly and that your OpenAI API key is set via the extension settings.'));
   };
-}
+  
+  if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefined') {
+    window.qsciEvaluatePaper = fallbackError;
+  }
+  if (typeof self !== 'undefined' && typeof self.qsciEvaluatePaper === 'undefined') {
+    self.qsciEvaluatePaper = fallbackError;
+  }
+})();
 
 (() => {
   // ---------------------------------------------------------------------------
@@ -54,9 +61,9 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
   // Timeout for API requests (in milliseconds)
-  // Reduced from 60s to 30s to align with 20s target + buffer
-  // This ensures faster feedback for users while allowing time for API response
-  const API_TIMEOUT_MS = 30000; // 30 seconds
+  // Increased to 120 seconds to handle longer PDF extractions and complex analyses
+  // This allows sufficient time for PDF processing and complex papers like The Lancet
+  const API_TIMEOUT_MS = 120000; // 120 seconds (2 minutes)
 
   // Maximum text length to send to the API (in characters)
   // Optimized to balance analysis quality with response time (<20 seconds)
@@ -512,9 +519,14 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
     }
   }
 
-  // Expose the evaluator on the window object.  The popup script will
-  // call window.qsciEvaluatePaper() just like with the heuristics
-  // evaluator.  Note that this function returns a promise, so the
-  // popup code must handle asynchronous evaluation.
-  window.qsciEvaluatePaper = evaluate;
+  // Expose the evaluator on the window object for popup context
+  // and on self for service worker context
+  // The popup script or background worker will call qsciEvaluatePaper()
+  // Note that this function returns a promise, so the caller must handle asynchronous evaluation.
+  if (typeof window !== 'undefined') {
+    window.qsciEvaluatePaper = evaluate;
+  }
+  if (typeof self !== 'undefined') {
+    self.qsciEvaluatePaper = evaluate;
+  }
 })();
