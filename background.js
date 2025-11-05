@@ -160,7 +160,8 @@ async function handleStartAnalysis(data) {
     });
     
     // Check if qsciEvaluatePaper is available in service worker context
-    // In service worker, only self.qsciEvaluatePaper should exist
+    // Note: The evaluator exposes the function to both window and self contexts,
+    // but in service worker context, only self.qsciEvaluatePaper is available (window doesn't exist)
     if (typeof self.qsciEvaluatePaper === 'undefined') {
       throw new Error('qsciEvaluatePaper function is not available in background worker');
     }

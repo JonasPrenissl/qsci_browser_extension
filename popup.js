@@ -366,7 +366,8 @@ async function loadSavedAnalysis() {
 }
 
 // Poll for analysis completion when analysis is running in background
-async function pollForAnalysisCompletion() {
+// Returns the analysis result or throws an error
+async function pollForAnalysisResult() {
   console.log('Q-SCI Debug Popup: Starting to poll for analysis completion...');
   
   let pollAttempts = 0;
@@ -391,51 +392,69 @@ async function pollForAnalysisCompletion() {
         // Check if complete
         if (state.status === 'complete' && state.result) {
           console.log('Q-SCI Debug Popup: Analysis completed during polling');
-          currentAnalysis = state.result;
           currentPdfUrl = state.pdfUrl || null;
-          
-          hideLoading();
-          displayAnalysisResults(state.result);
-          
-          // Save to regular storage
-          await saveAnalysis(state.result);
           
           // Clear background state
           await chrome.runtime.sendMessage({ type: 'CLEAR_ANALYSIS_STATE' });
           
-          // Increment usage after successful analysis
-          try {
-            await window.QSCIUsage.incrementUsage();
-            await updateUsageDisplay();
-          } catch (usageError) {
-            console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
-          }
-          
-          showSuccess('Analysis completed successfully!');
-          return;
+          return state.result;
         }
         
         // Check if error
         if (state.status === 'error') {
           console.error('Q-SCI Debug Popup: Analysis failed during polling:', state.error);
-          hideLoading();
-          showError(state.error || 'Analysis failed');
           
           // Clear background state
           await chrome.runtime.sendMessage({ type: 'CLEAR_ANALYSIS_STATE' });
-          return;
+          
+          throw new Error(state.error || 'Analysis failed in background');
         }
       }
     } catch (error) {
+      // If it's an analysis error, rethrow it
+      if (error.message && error.message.includes('Analysis failed')) {
+        throw error;
+      }
+      // Otherwise it's a polling error, continue
       console.error('Q-SCI Debug Popup: Error during polling:', error);
-      // Continue polling
     }
   }
   
   // Timeout
   console.warn('Q-SCI Debug Popup: Polling timed out');
-  hideLoading();
-  showError('Analysis is taking longer than expected. Please try again later.');
+  throw new Error('Analysis timed out or did not complete');
+}
+
+// Poll for analysis completion when analysis is running in background
+// Handles all UI updates (used when restoring analysis on popup open)
+async function pollForAnalysisCompletion() {
+  console.log('Q-SCI Debug Popup: Starting to poll for analysis completion...');
+  
+  try {
+    const result = await pollForAnalysisResult();
+    
+    // Analysis completed successfully
+    currentAnalysis = result;
+    
+    hideLoading();
+    displayAnalysisResults(result);
+    
+    // Save to regular storage
+    await saveAnalysis(result);
+    
+    // Increment usage after successful analysis
+    try {
+      await window.QSCIUsage.incrementUsage();
+      await updateUsageDisplay();
+    } catch (usageError) {
+      console.error('Q-SCI Debug Popup: Failed to increment usage:', usageError);
+    }
+    
+    showSuccess('Analysis completed successfully!');
+  } catch (error) {
+    hideLoading();
+    showError(error.message || 'Analysis failed');
+  }
 }
 
 // Save analysis to chrome.storage.local
@@ -1046,45 +1065,9 @@ async function analyzePage() {
     console.log('Q-SCI Debug Popup: Background analysis started successfully');
     updateLoadingProgress('Analysis running in background...', 70);
     
-    // Poll for analysis completion
+    // Poll for analysis completion using the reusable function
     // This allows the user to close the popup and come back later
-    let evaluation = null;
-    let pollAttempts = 0;
-    
-    while (!evaluation && pollAttempts < MAX_POLL_ATTEMPTS) {
-      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-      pollAttempts++;
-      
-      // Check analysis state
-      const stateResponse = await chrome.runtime.sendMessage({
-        type: 'GET_ANALYSIS_STATE'
-      });
-      
-      if (stateResponse && stateResponse.state) {
-        const state = stateResponse.state;
-        
-        // Update progress if available
-        if (state.progress) {
-          updateLoadingProgress(state.message || 'Analyzing...', state.progress);
-        }
-        
-        // Check if complete
-        if (state.status === 'complete' && state.result) {
-          evaluation = state.result;
-          console.log('Q-SCI Debug Popup: Analysis complete, result received');
-          break;
-        }
-        
-        // Check if error
-        if (state.status === 'error') {
-          throw new Error(state.error || 'Analysis failed in background');
-        }
-      }
-    }
-    
-    if (!evaluation) {
-      throw new Error('Analysis timed out or did not complete');
-    }
+    const evaluation = await pollForAnalysisResult();
     
     console.log('Q-SCI Debug Popup: Analysis completed successfully');
     updateLoadingProgress('Processing results...', 90);
