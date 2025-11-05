@@ -151,12 +151,18 @@ async function handleStartAnalysis(data) {
   });
   
   try {
-    // Update state to 'running'
+    // Capture the analyzed URL at analysis start to prevent confusion if user switches tabs
+    const analyzedUrl = data.sourceUrl;
+    const analyzedTitle = data.title;
+    
+    // Update state to 'running' with locked URL
     await updateAnalysisState({
       status: 'running',
       progress: 10,
       message: 'Preparing analysis...',
-      startTime: Date.now()
+      startTime: Date.now(),
+      sourceUrl: analyzedUrl,
+      title: analyzedTitle
     });
     
     // Check if qsciEvaluatePaper is available in service worker context
@@ -218,13 +224,15 @@ async function handleStartAnalysis(data) {
       message: 'Processing results...'
     });
     
-    // Store the completed analysis
+    // Store the completed analysis with locked URL
     const completeState = {
       status: 'complete',
       progress: 100,
       message: 'Analysis complete!',
       result: evaluation,
       sourceType: data.sourceType,
+      sourceUrl: data.sourceUrl,
+      title: data.title,
       pdfUrl: data.pdfUrl || null,
       completedTime: Date.now()
     };

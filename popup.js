@@ -318,7 +318,23 @@ async function loadSavedAnalysis() {
       if (state.status === 'running') {
         // Analysis is still running, show loading
         console.log('Q-SCI Debug Popup: Analysis is running in background, showing loading...');
-        showLoading(state.message || 'Analysis in progress...', state.progress || 50);
+        
+        // Show which URL is being analyzed
+        const loadingMessage = state.message || 'Analysis in progress...';
+        let analyzingInfo = null;
+        if (state.sourceUrl) {
+          // Extract domain from URL for display
+          try {
+            const url = new URL(state.sourceUrl);
+            analyzingInfo = state.title || url.hostname;
+          } catch (e) {
+            // Invalid URL format - this can happen if sourceUrl is malformed
+            // Safe to ignore as we simply won't show the analyzing info
+            console.log('Q-SCI Debug Popup: Failed to parse sourceUrl for display:', e.message);
+          }
+        }
+        
+        showLoading(loadingMessage, state.progress || 50, analyzingInfo);
         
         // Continue polling for completion
         pollForAnalysisCompletion();
@@ -876,7 +892,9 @@ async function analyzePage() {
   showLoading('Preparing analysis...', 5);
   
   try {
-    // Get current tab if not already set
+    // IMPORTANT: Capture and lock the tab information at the very start of analysis
+    // This ensures the URL being analyzed doesn't change if the user switches tabs mid-analysis
+    let analyzedTab;
     if (!currentTab) {
       console.log('Q-SCI Debug Popup: Current tab not set, querying...');
       updateLoadingProgress('Detecting page...', 10);
@@ -886,12 +904,20 @@ async function analyzePage() {
         throw new Error('No active tab found. Please ensure you are on a webpage.');
       }
       
+      analyzedTab = tab;
       currentTab = tab;
       console.log('Q-SCI Debug Popup: Current tab set in analyzePage:', currentTab.url);
+    } else {
+      // Lock the tab being analyzed (create a shallow copy to preserve current state)
+      // This prevents the reference from being affected by subsequent updates to currentTab
+      // Note: Chrome Tab objects contain only primitive values (id, url, title, etc.)
+      // so a shallow copy is sufficient
+      analyzedTab = { ...currentTab };
     }
     
-    console.log('Q-SCI Debug Popup: Using tab:', currentTab.url);
-    console.log('Q-SCI Debug Popup: Tab ID:', currentTab.id);
+    // Use analyzedTab for all subsequent operations to prevent confusion if user switches tabs
+    console.log('Q-SCI Debug Popup: Locked analyzed tab:', analyzedTab.url);
+    console.log('Q-SCI Debug Popup: Locked tab ID:', analyzedTab.id);
     
     // Extract page content using content script message-based extraction
     // This uses the sophisticated extraction logic in content-script.js with delays and meta tag fallbacks
@@ -907,7 +933,7 @@ async function analyzePage() {
       // - Meta tag fallback for pages that haven't finished rendering
       // - Loading placeholder detection
       // - Site-specific extraction logic
-      const response = await chrome.tabs.sendMessage(currentTab.id, { 
+      const response = await chrome.tabs.sendMessage(analyzedTab.id, { 
         type: 'EXTRACT_PAGE_DATA' 
       });
       
@@ -929,7 +955,7 @@ async function analyzePage() {
       // Fallback: inject the extraction function directly
       // This is less sophisticated but works when content script is not loaded
       const results = await chrome.scripting.executeScript({
-        target: { tabId: currentTab.id },
+        target: { tabId: analyzedTab.id },
         function: extractPageContent
       });
       
@@ -973,7 +999,7 @@ async function analyzePage() {
           requestData = {
             text: pdfResult.text,
             title: pageData.title || 'Unknown Title',
-            source_url: pdfResult.pdfUrl || currentTab.url,
+            source_url: pdfResult.pdfUrl || analyzedTab.url,
             source_type: 'PDF'
           };
           // Store PDF URL for download functionality
@@ -1018,7 +1044,7 @@ async function analyzePage() {
       requestData = {
         text: pageData.text,
         title: pageData.title || 'Unknown Title',
-        source_url: currentTab.url,
+        source_url: analyzedTab.url,
         source_type: 'HTML'
       };
       updateLoadingProgress('Text prepared successfully', 50);
@@ -1039,7 +1065,7 @@ async function analyzePage() {
     const analysisData = {
       text: requestData.text || '',
       title: requestData.title || 'Unknown Title',
-      sourceUrl: requestData.source_url || currentTab.url || '',
+      sourceUrl: requestData.source_url || analyzedTab.url || '',
       sourceType: requestData.source_type,
       pdfUrl: currentPdfUrl
     };
@@ -1501,16 +1527,34 @@ function displayAnalysisResults(analysis) {
 // openDetailedAnalysis function removed (no longer needed)
 
 // UI Helper Functions
-function showLoading(stage = '', progress = 0) {
+function showLoading(stage = '', progress = 0, analyzingInfo = null) {
   console.log('Q-SCI Debug Popup: Showing loading...', stage, progress);
   
   if (elements.loadingMessage) {
     elements.loadingMessage.style.display = 'flex';
     
-    // Update stage text if provided
+    // Update stage text if provided - use safe DOM manipulation
     const stageElement = elements.loadingMessage.querySelector('.loading-stage');
-    if (stageElement && stage) {
-      stageElement.textContent = stage;
+    if (stageElement) {
+      // Clear previous content
+      stageElement.textContent = '';
+      
+      if (stage) {
+        // Create main message text node
+        const messageNode = document.createTextNode(stage);
+        stageElement.appendChild(messageNode);
+        
+        // Add analyzing info if provided (prevents XSS by using textContent)
+        if (analyzingInfo) {
+          const br = document.createElement('br');
+          stageElement.appendChild(br);
+          
+          const small = document.createElement('small');
+          small.style.color = '#9ca3af';
+          small.textContent = `Analyzing: ${analyzingInfo}`;
+          stageElement.appendChild(small);
+        }
+      }
     }
     
     // Update progress bar if provided
