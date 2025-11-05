@@ -71,6 +71,8 @@
       'detailed.chatWelcome': 'Stellen Sie Fragen zur Publikation, und die KI wird diese basierend auf dem analysierten Inhalt beantworten.',
       'detailed.chatPlaceholder': 'Frage eingeben...',
       'detailed.send': 'Senden',
+      'detailed.exportAnalysis': 'Analyse exportieren',
+      'detailed.downloadPdf': 'PDF herunterladen',
       
       // Chat messages
       'chat.you': 'Sie',
@@ -179,6 +181,8 @@
       'detailed.chatWelcome': 'Ask questions about the publication, and the AI will answer them based on the analyzed content.',
       'detailed.chatPlaceholder': 'Enter your question...',
       'detailed.send': 'Send',
+      'detailed.exportAnalysis': 'Export Analysis',
+      'detailed.downloadPdf': 'Download PDF',
       
       // Chat messages
       'chat.you': 'You',
