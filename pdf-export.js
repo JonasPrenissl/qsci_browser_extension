@@ -3,9 +3,8 @@
  * Exports analysis results to a beautifully styled PDF matching the extension design
  */
 
-// Import jsPDF and autoTable plugin
+// Import jsPDF
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 
 // Q-SCI Brand Colors (matching the extension design)
 const COLORS = {
@@ -194,41 +193,34 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...COLORS.text);
       doc.text('Journal-Information', margin, yPosition);
-      yPosition += 7;
+      yPosition += 10;
 
-      // Create table for journal info
-      const journalData = [
-        ['Journal', jName],
-        ['Impact Factor', jInfo.impact_factor || 'N/A'],
-        ['Quartile', jInfo.quartile || 'N/A'],
-        ['Prestige Tier', jInfo.prestige_tier || 'N/A']
+      // Draw journal info as styled boxes instead of table
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      
+      const journalInfo = [
+        { label: 'Journal', value: jName },
+        { label: 'Impact Factor', value: jInfo.impact_factor || 'N/A' },
+        { label: 'Quartile', value: jInfo.quartile || 'N/A' },
+        { label: 'Prestige Tier', value: jInfo.prestige_tier || 'N/A' }
       ];
 
-      doc.autoTable({
-        startY: yPosition,
-        head: [],
-        body: journalData,
-        theme: 'plain',
-        margin: { left: margin, right: margin },
-        styles: {
-          fontSize: 10,
-          cellPadding: 4,
-          textColor: COLORS.text
-        },
-        columnStyles: {
-          0: { fontStyle: 'bold', cellWidth: 40 },
-          1: { cellWidth: 'auto' }
-        },
-        didDrawCell: (data) => {
-          // Add subtle borders
-          if (data.section === 'body') {
-            doc.setDrawColor(...COLORS.border);
-            doc.setLineWidth(0.1);
-          }
-        }
+      journalInfo.forEach(info => {
+        doc.setFillColor(...COLORS.background);
+        doc.rect(margin, yPosition, pageWidth - 2 * margin, 8, 'F');
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...COLORS.text);
+        doc.text(info.label + ':', margin + 3, yPosition + 5);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text(info.value, margin + 50, yPosition + 5);
+        
+        yPosition += 9;
       });
 
-      yPosition = doc.lastAutoTable.finalY + 10;
+      yPosition += 5;
     }
   }
 
