@@ -33893,7 +33893,9 @@
         doc.addPage();
         yPosition = margin;
       }
-      doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2);
+      doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2, "F");
+      doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2, "S");
+      doc.setFillColor(...COLORS.primary);
       doc.rect(margin, yPosition, 2, reasoningHeight, "F");
       doc.text(reasoningLines, margin + 7, yPosition + 7);
       yPosition += reasoningHeight + 10;

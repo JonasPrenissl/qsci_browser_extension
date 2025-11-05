@@ -167,7 +167,12 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
       yPosition = margin;
     }
     
-    doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2);
+    // Draw background first
+    doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2, 'F');
+    // Then draw the border
+    doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2, 'S');
+    // Finally add the colored left border on top
+    doc.setFillColor(...COLORS.primary);
     doc.rect(margin, yPosition, 2, reasoningHeight, 'F'); // Left colored border
     
     doc.text(reasoningLines, margin + 7, yPosition + 7);
