@@ -320,20 +320,19 @@ async function loadSavedAnalysis() {
         console.log('Q-SCI Debug Popup: Analysis is running in background, showing loading...');
         
         // Show which URL is being analyzed
-        let loadingMessage = state.message || 'Analysis in progress...';
+        const loadingMessage = state.message || 'Analysis in progress...';
+        let analyzingInfo = null;
         if (state.sourceUrl) {
           // Extract domain from URL for display
           try {
             const url = new URL(state.sourceUrl);
-            const siteName = state.title || url.hostname;
-            // Use HTML line break for proper display
-            loadingMessage = `${loadingMessage}<br><small style="color: #9ca3af;">Analyzing: ${siteName}</small>`;
+            analyzingInfo = state.title || url.hostname;
           } catch (e) {
-            // Invalid URL, just show the message
+            // Invalid URL, ignore
           }
         }
         
-        showLoading(loadingMessage, state.progress || 50);
+        showLoading(loadingMessage, state.progress || 50, analyzingInfo);
         
         // Continue polling for completion
         pollForAnalysisCompletion();
@@ -1524,17 +1523,34 @@ function displayAnalysisResults(analysis) {
 // openDetailedAnalysis function removed (no longer needed)
 
 // UI Helper Functions
-function showLoading(stage = '', progress = 0) {
+function showLoading(stage = '', progress = 0, analyzingInfo = null) {
   console.log('Q-SCI Debug Popup: Showing loading...', stage, progress);
   
   if (elements.loadingMessage) {
     elements.loadingMessage.style.display = 'flex';
     
-    // Update stage text if provided
+    // Update stage text if provided - use safe DOM manipulation
     const stageElement = elements.loadingMessage.querySelector('.loading-stage');
-    if (stageElement && stage) {
-      // Use innerHTML to support HTML formatting like <br> and <small>
-      stageElement.innerHTML = stage;
+    if (stageElement) {
+      // Clear previous content
+      stageElement.textContent = '';
+      
+      if (stage) {
+        // Create main message text node
+        const messageNode = document.createTextNode(stage);
+        stageElement.appendChild(messageNode);
+        
+        // Add analyzing info if provided (prevents XSS by using textContent)
+        if (analyzingInfo) {
+          const br = document.createElement('br');
+          stageElement.appendChild(br);
+          
+          const small = document.createElement('small');
+          small.style.color = '#9ca3af';
+          small.textContent = `Analyzing: ${analyzingInfo}`;
+          stageElement.appendChild(small);
+        }
+      }
     }
     
     // Update progress bar if provided
