@@ -1623,25 +1623,40 @@ async function downloadPdf() {
   }
   
   try {
+    // Validate the PDF URL format
+    let validUrl;
+    try {
+      validUrl = new URL(currentPdfUrl);
+      // Ensure it's HTTP or HTTPS
+      if (!validUrl.protocol.startsWith('http')) {
+        throw new Error('Invalid URL protocol. Only HTTP and HTTPS are supported.');
+      }
+    } catch (urlValidationError) {
+      console.error('Q-SCI Debug Popup: Invalid PDF URL:', currentPdfUrl, urlValidationError);
+      showError('Invalid PDF URL. Cannot download the file.');
+      return;
+    }
+    
     // Use Chrome's downloads API to download the PDF
     console.log('Q-SCI Debug Popup: Initiating download for:', currentPdfUrl);
     
     // Extract a filename from the URL or use a default
     let filename = 'publication.pdf';
     try {
-      const url = new URL(currentPdfUrl);
-      const pathParts = url.pathname.split('/');
+      const pathParts = validUrl.pathname.split('/');
       const lastPart = pathParts[pathParts.length - 1];
       if (lastPart && lastPart.endsWith('.pdf')) {
         filename = lastPart;
-      } else if (currentAnalysis && currentAnalysis.journal_info) {
+      } else if (currentAnalysis && currentAnalysis.journal_info && 
+                 (currentAnalysis.journal_info.journal_name || currentAnalysis.journal_info.name)) {
         // Create a filename from journal name if available
-        const journalName = currentAnalysis.journal_info.journal_name || currentAnalysis.journal_info.name || 'publication';
+        const journalName = currentAnalysis.journal_info.journal_name || currentAnalysis.journal_info.name;
         const sanitizedName = journalName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         filename = `${sanitizedName}_${Date.now()}.pdf`;
       }
-    } catch (urlError) {
-      console.warn('Q-SCI Debug Popup: Error parsing URL for filename:', urlError);
+    } catch (filenameError) {
+      console.warn('Q-SCI Debug Popup: Error generating filename:', filenameError);
+      // Keep the default filename
     }
     
     // Trigger the download using Chrome's downloads API
