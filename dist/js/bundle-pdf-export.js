@@ -33799,6 +33799,7 @@
     border: [226, 232, 240]
     // #e2e8f0 - Border gray
   };
+  var TEXT_VERTICAL_OFFSET = 6;
   function exportAnalysisToPDF(analysis, chatHistory = []) {
     console.log("Q-SCI PDF Export: Starting PDF generation...");
     if (!analysis) {
@@ -33973,7 +33974,7 @@
         doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, boxHeight, 2, 2, "FD");
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.text);
-        const textStartY = yPosition + 6;
+        const textStartY = yPosition + TEXT_VERTICAL_OFFSET;
         doc.text(`${index2 + 1}. ${aspectText}`, margin + 5, textStartY, {
           maxWidth: pageWidth - 2 * margin - 15
         });
@@ -34048,7 +34049,7 @@
         doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, boxHeight, 2, 2, "FD");
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.text);
-        const textStartY = yPosition + 6;
+        const textStartY = yPosition + TEXT_VERTICAL_OFFSET;
         doc.text(`${index2 + 1}. ${aspectText}`, margin + 5, textStartY, {
           maxWidth: pageWidth - 2 * margin - 15
         });

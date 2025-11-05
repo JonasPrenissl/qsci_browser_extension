@@ -20,6 +20,9 @@ const COLORS = {
   border: [226, 232, 240]        // #e2e8f0 - Border gray
 };
 
+// Layout constants for consistent spacing
+const TEXT_VERTICAL_OFFSET = 6; // mm from top of box for better vertical centering
+
 /**
  * Export analysis to PDF
  * @param {Object} analysis - The analysis data to export
@@ -130,7 +133,7 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
   doc.setFont('helvetica', 'bold');
   doc.text(`${Math.round(qualityScore)}%`, margin + 5, yPosition + 20);
 
-  // Traffic light assessment removed as per user request
+  // Traffic light assessment removed due to emoji rendering issues in PDF
 
   yPosition += scoreBoxHeight + 10;
 
@@ -276,7 +279,7 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
       // Add aspect text (centered vertically in the main text area)
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...COLORS.text);
-      const textStartY = yPosition + 6; // Better vertical centering
+      const textStartY = yPosition + TEXT_VERTICAL_OFFSET;
       doc.text(`${index + 1}. ${aspectText}`, margin + 5, textStartY, {
         maxWidth: pageWidth - 2 * margin - 15
       });
@@ -375,7 +378,7 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
       // Add aspect text (centered vertically in the main text area)
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...COLORS.text);
-      const textStartY = yPosition + 6; // Better vertical centering
+      const textStartY = yPosition + TEXT_VERTICAL_OFFSET;
       doc.text(`${index + 1}. ${aspectText}`, margin + 5, textStartY, {
         maxWidth: pageWidth - 2 * margin - 15
       });
