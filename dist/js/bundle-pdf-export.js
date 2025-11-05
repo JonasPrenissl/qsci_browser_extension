@@ -33799,6 +33799,7 @@
     border: [226, 232, 240]
     // #e2e8f0 - Border gray
   };
+  var TEXT_VERTICAL_OFFSET = 6;
   function exportAnalysisToPDF(analysis, chatHistory = []) {
     console.log("Q-SCI PDF Export: Starting PDF generation...");
     if (!analysis) {
@@ -33872,12 +33873,6 @@
     doc.setFontSize(28);
     doc.setFont("helvetica", "bold");
     doc.text(`${Math.round(qualityScore)}%`, margin + 5, yPosition + 20);
-    if (analysis.traffic_light) {
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      const trafficText = `Bewertung: ${analysis.traffic_light}`;
-      doc.text(trafficText, pageWidth - margin - 5, yPosition + 13, { align: "right" });
-    }
     yPosition += scoreBoxHeight + 10;
     if (analysis.reasoning || analysis.justification) {
       const reasoningText = analysis.reasoning || analysis.justification;
@@ -33945,7 +33940,7 @@
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...COLORS.text);
-      doc.text("\u2705 Positive Aspekte", margin, yPosition);
+      doc.text("Positive Aspekte", margin, yPosition);
       yPosition += 7;
       analysis.positive_aspects.forEach((aspect, index2) => {
         let aspectText, aspectSource, aspectExplanation;
@@ -33979,10 +33974,11 @@
         doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, boxHeight, 2, 2, "FD");
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.text);
-        doc.text(`${index2 + 1}. ${aspectText}`, margin + 5, yPosition + 5, {
+        const textStartY = yPosition + TEXT_VERTICAL_OFFSET;
+        doc.text(`${index2 + 1}. ${aspectText}`, margin + 5, textStartY, {
           maxWidth: pageWidth - 2 * margin - 15
         });
-        let currentY = yPosition + 5 + aspectLines.length * 5;
+        let currentY = textStartY + aspectLines.length * 5;
         if (aspectSource && aspectSource.trim() !== "") {
           doc.setFont("helvetica", "italic");
           doc.setFontSize(9);
@@ -34019,7 +34015,7 @@
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...COLORS.text);
-      doc.text("\u26A0\uFE0F Verbesserungsbereiche", margin, yPosition);
+      doc.text("Verbesserungsbereiche", margin, yPosition);
       yPosition += 7;
       analysis.negative_aspects.forEach((aspect, index2) => {
         let aspectText, aspectSource, aspectExplanation;
@@ -34053,10 +34049,11 @@
         doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, boxHeight, 2, 2, "FD");
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.text);
-        doc.text(`${index2 + 1}. ${aspectText}`, margin + 5, yPosition + 5, {
+        const textStartY = yPosition + TEXT_VERTICAL_OFFSET;
+        doc.text(`${index2 + 1}. ${aspectText}`, margin + 5, textStartY, {
           maxWidth: pageWidth - 2 * margin - 15
         });
-        let currentY = yPosition + 5 + aspectLines.length * 5;
+        let currentY = textStartY + aspectLines.length * 5;
         if (aspectSource && aspectSource.trim() !== "") {
           doc.setFont("helvetica", "italic");
           doc.setFontSize(9);

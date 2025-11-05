@@ -20,6 +20,9 @@ const COLORS = {
   border: [226, 232, 240]        // #e2e8f0 - Border gray
 };
 
+// Layout constants for consistent spacing
+const TEXT_VERTICAL_OFFSET = 6; // mm from top of box for better vertical centering
+
 /**
  * Export analysis to PDF
  * @param {Object} analysis - The analysis data to export
@@ -130,13 +133,7 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
   doc.setFont('helvetica', 'bold');
   doc.text(`${Math.round(qualityScore)}%`, margin + 5, yPosition + 20);
 
-  // Add traffic light assessment on the right side
-  if (analysis.traffic_light) {
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const trafficText = `Bewertung: ${analysis.traffic_light}`;
-    doc.text(trafficText, pageWidth - margin - 5, yPosition + 13, { align: 'right' });
-  }
+  // Traffic light assessment removed due to emoji rendering issues in PDF
 
   yPosition += scoreBoxHeight + 10;
 
@@ -235,7 +232,7 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...COLORS.text);
-    doc.text('✅ Positive Aspekte', margin, yPosition);
+    doc.text('Positive Aspekte', margin, yPosition);
     yPosition += 7;
 
     analysis.positive_aspects.forEach((aspect, index) => {
@@ -279,14 +276,15 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
 
       doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, boxHeight, 2, 2, 'FD');
 
-      // Add aspect text
+      // Add aspect text (centered vertically in the main text area)
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...COLORS.text);
-      doc.text(`${index + 1}. ${aspectText}`, margin + 5, yPosition + 5, {
+      const textStartY = yPosition + TEXT_VERTICAL_OFFSET;
+      doc.text(`${index + 1}. ${aspectText}`, margin + 5, textStartY, {
         maxWidth: pageWidth - 2 * margin - 15
       });
       
-      let currentY = yPosition + 5 + aspectLines.length * 5;
+      let currentY = textStartY + aspectLines.length * 5;
 
       // Add source if available
       if (aspectSource && aspectSource.trim() !== '') {
@@ -333,7 +331,7 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...COLORS.text);
-    doc.text('⚠️ Verbesserungsbereiche', margin, yPosition);
+    doc.text('Verbesserungsbereiche', margin, yPosition);
     yPosition += 7;
 
     analysis.negative_aspects.forEach((aspect, index) => {
@@ -377,14 +375,15 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
 
       doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, boxHeight, 2, 2, 'FD');
 
-      // Add aspect text
+      // Add aspect text (centered vertically in the main text area)
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...COLORS.text);
-      doc.text(`${index + 1}. ${aspectText}`, margin + 5, yPosition + 5, {
+      const textStartY = yPosition + TEXT_VERTICAL_OFFSET;
+      doc.text(`${index + 1}. ${aspectText}`, margin + 5, textStartY, {
         maxWidth: pageWidth - 2 * margin - 15
       });
       
-      let currentY = yPosition + 5 + aspectLines.length * 5;
+      let currentY = textStartY + aspectLines.length * 5;
 
       // Add source if available
       if (aspectSource && aspectSource.trim() !== '') {
