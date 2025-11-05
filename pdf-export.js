@@ -148,11 +148,6 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
     doc.text('Begründung', margin, yPosition);
     yPosition += 7;
 
-    // Add reasoning box
-    doc.setFillColor(...COLORS.background);
-    doc.setDrawColor(...COLORS.primary);
-    doc.setLineWidth(0.5);
-    
     // Split reasoning into paragraphs
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -168,8 +163,11 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
     }
     
     // Draw background first
+    doc.setFillColor(...COLORS.background);
     doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2, 'F');
     // Then draw the border
+    doc.setDrawColor(...COLORS.primary);
+    doc.setLineWidth(0.5);
     doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2, 'S');
     // Finally add the colored left border on top
     doc.setFillColor(...COLORS.primary);
