@@ -36,6 +36,11 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   // Model to use.  You can adjust this if you have access to
   // different models (e.g. 'gpt-4-turbo', 'gpt-3.5-turbo-0125').
   const MODEL_NAME = 'gpt-4o-mini';
+  
+  // Export MODEL_NAME for use in chat functionality
+  if (typeof window !== 'undefined') {
+    window.QSCI_MODEL_NAME = MODEL_NAME;
+  }
 
   // Temperature setting for the model.  Lower values make the output
   // more deterministic.
@@ -266,15 +271,18 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Then provide between 3 and 7 positive aspects and between 3 and 7 negative aspects. Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
       `For each aspect, set the 'aspect' field to a complete, clear sentence that stands alone and communicates the evaluation point in plain language (e.g., "The study objective is stated clearly" or "The sample size is small"). ` +
       `CRITICAL REQUIREMENT FOR SOURCE_TEXT: You MUST copy the exact text word-for-word from the paper content provided below. This is a CITATION that will be shown to users in quotation marks. DO NOT write any new text, DO NOT paraphrase, DO NOT summarize, and DO NOT generate explanatory text. Simply copy and paste the relevant sentence(s) from the paper that support each aspect. The 'source_text' must be a verbatim substring that appears exactly as written in the provided paper content. If an aspect is based on reasoning regarding multiple parts of the publication where no single exact citation can be extracted, set 'source_text' to an empty string (""). Every non-empty 'source_text' value will be displayed as a direct quotation from the paper. ` +
+      `EXPLANATION REQUIREMENT: For each aspect (positive and negative), you must also provide an 'explanation' field that explains in 2-3 sentences why this aspect is significant for the quality assessment. This explanation helps users understand the importance and implications of each finding. ` +
       `Do not invent content: every source text snippet must be present in the provided paper text. ` +
       `Ignore the reference list entirely when choosing aspects and source text. ` +
-      `Also provide a 'reasoning' field that explains in 2-3 sentences why you assigned this specific quality score, referencing the key strengths and weaknesses you identified. ` +
+      `REASONING REQUIREMENT: Provide a 'reasoning' field with 2-3 paragraphs (NOT sentences - paragraphs with 3-5 sentences each) that thoroughly explains why you assigned this specific quality score. Include: (1) an overview of the study's strengths, (2) a discussion of its weaknesses or limitations, and (3) a concluding statement on the overall quality assessment. This reasoning should be comprehensive and detailed. ` +
+      `JOURNAL INFORMATION: If you can identify the journal name from the provided source URL or paper content, research and provide the journal's impact factor. Include this in a 'journal_info' object with keys 'journal_name' (string) and 'impact_factor' (string, if available, otherwise "Not available"). If you cannot determine the journal, omit this field. ` +
       `Return your answer strictly as a JSON object with the following keys:\n\n` +
       `quality_percentage (number),\n` +
       `traffic_light (string, one of \"🟢 Green\", \"🟡 Amber\", \"🔴 Red\"),\n` +
-      `reasoning (string, 2-3 sentences explaining the quality score),\n` +
-      `positive_aspects (array of 3-7 objects with keys 'aspect' and 'source_text'),\n` +
-      `negative_aspects (array of 3-7 objects with keys 'aspect' and 'source_text')\n\n` +
+      `reasoning (string, 2-3 paragraphs explaining the quality score in detail),\n` +
+      `positive_aspects (array of 3-7 objects with keys 'aspect', 'source_text', and 'explanation'),\n` +
+      `negative_aspects (array of 3-7 objects with keys 'aspect', 'source_text', and 'explanation'),\n` +
+      `journal_info (optional object with keys 'journal_name' and 'impact_factor')\n\n` +
       `Do not include any code block formatting, backticks or additional commentary.  Only output a single valid JSON object.`;
 
     const user = `Paper Title: ${title || 'Unknown Title'}\n` +
@@ -404,9 +412,10 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       model: MODEL_NAME,
       messages: messages,
       temperature: TEMPERATURE,
-      // Provide a max_tokens to cap the response length.  700 tokens is
-      // enough for our JSON structure and some additional content.
-      max_tokens: 700
+      // Provide a max_tokens to cap the response length. Increased to 1500 tokens
+      // to accommodate longer reasoning (2-3 paragraphs), explanations for each aspect,
+      // and journal information.
+      max_tokens: 1500
     });
 
     const headers = {

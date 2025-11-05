@@ -65,6 +65,17 @@
       'detailed.negativeAspects': '⚠️ Verbesserungsbereiche',
       'detailed.source': 'Quelle',
       'detailed.noExactCitation': 'Aspekt aus Argumentation bezüglich mehrerer Teile der Publikation extrahiert',
+      'detailed.explanation': 'Erklärung',
+      'detailed.impactFactor': 'Impact Factor',
+      'detailed.askQuestions': 'Fragen zur Publikation',
+      'detailed.chatWelcome': 'Stellen Sie Fragen zur Publikation, und die KI wird diese basierend auf dem analysierten Inhalt beantworten.',
+      'detailed.chatPlaceholder': 'Frage eingeben...',
+      'detailed.send': 'Senden',
+      
+      // Chat messages
+      'chat.you': 'Sie',
+      'chat.loginRequired': 'Bitte melden Sie sich an, um die Chat-Funktion zu nutzen.',
+      'chat.analyzeFirst': 'Bitte analysieren Sie zuerst ein Paper, bevor Sie Fragen stellen.',
       
       // Messages
       'message.analyzing': 'Analysiere...',
@@ -162,6 +173,17 @@
       'detailed.negativeAspects': '⚠️ Areas for Improvement',
       'detailed.source': 'Source',
       'detailed.noExactCitation': 'aspect extracted from reasoning regarding multiple parts of the publication',
+      'detailed.explanation': 'Explanation',
+      'detailed.impactFactor': 'Impact Factor',
+      'detailed.askQuestions': 'Questions about the Publication',
+      'detailed.chatWelcome': 'Ask questions about the publication, and the AI will answer them based on the analyzed content.',
+      'detailed.chatPlaceholder': 'Enter your question...',
+      'detailed.send': 'Send',
+      
+      // Chat messages
+      'chat.you': 'You',
+      'chat.loginRequired': 'Please login to use the chat feature.',
+      'chat.analyzeFirst': 'Please analyze a paper first before asking questions.',
       
       // Messages
       'message.analyzing': 'Analyzing...',

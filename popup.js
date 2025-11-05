@@ -59,6 +59,8 @@ function initializeElements() {
     detailedSection: document.getElementById('detailed-section'),
     journalInfo: document.getElementById('journal-info'),
     journalName: document.getElementById('journal-name'),
+    journalImpactFactor: document.getElementById('journal-impact-factor'),
+    impactFactorValue: document.getElementById('impact-factor-value'),
     journalCategory: document.getElementById('journal-category'),
     detailedQualityCircle: document.getElementById('detailed-quality-circle'),
     detailedQualityPercentage: document.getElementById('detailed-quality-percentage'),
@@ -68,7 +70,14 @@ function initializeElements() {
     sourceCitationsSection: document.getElementById('source-citations-section'),
     sourceTextDisplay: document.getElementById('source-text-display'),
     sourceContent: document.getElementById('source-content'),
+    explanationDisplay: document.getElementById('explanation-display'),
+    explanationContent: document.getElementById('explanation-content'),
     exportAnalysisBtn: document.getElementById('export-analysis-btn'),
+    // Chat elements
+    chatContainer: document.getElementById('chat-container'),
+    chatMessages: document.getElementById('chat-messages'),
+    chatInput: document.getElementById('chat-input'),
+    chatSendBtn: document.getElementById('chat-send-btn'),
     // Settings elements
     settingsBtn: document.getElementById('settings-btn'),
     // Auth elements
@@ -173,6 +182,23 @@ function setupEventListeners() {
     elements.refreshSubscriptionBtn.addEventListener('click', function() {
       console.log('Q-SCI Debug Popup: Refresh subscription button clicked');
       handleRefreshSubscription();
+    });
+  }
+
+  // Chat event listeners
+  if (elements.chatSendBtn) {
+    elements.chatSendBtn.addEventListener('click', function() {
+      console.log('Q-SCI Debug Popup: Chat send button clicked');
+      handleChatSend();
+    });
+  }
+
+  if (elements.chatInput) {
+    elements.chatInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        console.log('Q-SCI Debug Popup: Chat input Enter pressed');
+        handleChatSend();
+      }
     });
   }
 }
@@ -1086,6 +1112,19 @@ function displayAnalysisResults(analysis) {
     return;
   }
   
+  // Clear chat history for new analysis
+  chatHistory = [];
+  paperContextForChat = null;
+  if (elements.chatMessages) {
+    // Clear previous messages and show welcome message using i18n
+    const welcomeText = window.QSCIi18n ? window.QSCIi18n.t('detailed.chatWelcome') : 'Ask questions about the publication, and the AI will answer them based on the analyzed content.';
+    elements.chatMessages.innerHTML = `
+      <div style="font-size: 12px; color: #6b7280; text-align: center; padding: 20px;">
+        ${welcomeText}
+      </div>
+    `;
+  }
+  
   // Update quality score and background color
   if (elements.qualityScore && elements.qualityStatItem) {
     const score = analysis.quality_percentage || analysis.score || 0;
@@ -1196,6 +1235,16 @@ function populateDetailedAnalysis(analysis) {
       elements.journalName.textContent = analysis.journal_info.journal_name || analysis.journal_info.name;
     }
     
+    // Display impact factor if available
+    if (elements.journalImpactFactor && elements.impactFactorValue) {
+      if (analysis.journal_info.impact_factor && analysis.journal_info.impact_factor !== 'Not available') {
+        elements.impactFactorValue.textContent = analysis.journal_info.impact_factor;
+        elements.journalImpactFactor.style.display = 'block';
+      } else {
+        elements.journalImpactFactor.style.display = 'none';
+      }
+    }
+    
     if (elements.journalCategory) {
       // Show the prestige tier in the category field if present
       elements.journalCategory.textContent = analysis.journal_info.prestige_tier || analysis.journal_info.category || 'N/A';
@@ -1235,23 +1284,27 @@ function populateDetailedAnalysis(analysis) {
       aspectElement.className = 'analysis-item clickable';
       
       // Handle both string and object formats
-      // For LLM results, aspect objects have keys 'aspect' and 'source_text'.
+      // For LLM results, aspect objects have keys 'aspect', 'source_text', and 'explanation'.
       // For legacy heuristic results, use 'text' and 'source'.
       let aspectText;
       let aspectSource;
+      let aspectExplanation;
       if (typeof aspect === 'string') {
         aspectText = aspect;
         aspectSource = null;
+        aspectExplanation = null;
       } else if (typeof aspect === 'object') {
         aspectText = aspect.aspect || aspect.text || '';
         aspectSource = aspect.source_text || aspect.source || null;
+        aspectExplanation = aspect.explanation || null;
       } else {
         aspectText = String(aspect);
         aspectSource = null;
+        aspectExplanation = null;
       }
       
       aspectElement.textContent = aspectText;
-      aspectElement.addEventListener('click', () => showSourceText(aspectText, 'positive', index, aspectSource));
+      aspectElement.addEventListener('click', () => showSourceText(aspectText, 'positive', index, aspectSource, aspectExplanation));
       elements.positiveAspectsList.appendChild(aspectElement);
     });
   }
@@ -1267,19 +1320,23 @@ function populateDetailedAnalysis(analysis) {
       // Handle both string and object formats
       let aspectText;
       let aspectSource;
+      let aspectExplanation;
       if (typeof aspect === 'string') {
         aspectText = aspect;
         aspectSource = null;
+        aspectExplanation = null;
       } else if (typeof aspect === 'object') {
         aspectText = aspect.aspect || aspect.text || '';
         aspectSource = aspect.source_text || aspect.source || null;
+        aspectExplanation = aspect.explanation || null;
       } else {
         aspectText = String(aspect);
         aspectSource = null;
+        aspectExplanation = null;
       }
       
       aspectElement.textContent = aspectText;
-      aspectElement.addEventListener('click', () => showSourceText(aspectText, 'negative', index, aspectSource));
+      aspectElement.addEventListener('click', () => showSourceText(aspectText, 'negative', index, aspectSource, aspectExplanation));
       elements.negativeAspectsList.appendChild(aspectElement);
     });
   }
@@ -1303,7 +1360,7 @@ function populateDetailedAnalysis(analysis) {
 }
 
 // Show source text for clicked evaluation point
-function showSourceText(evaluationPoint, type, index, sourceText) {
+function showSourceText(evaluationPoint, type, index, sourceText, explanation) {
   console.log('Q-SCI Debug Popup: Showing source text for:', evaluationPoint);
   
   // Use actual source text from API if available, otherwise show fallback message
@@ -1323,6 +1380,21 @@ function showSourceText(evaluationPoint, type, index, sourceText) {
   
   if (elements.sourceTextDisplay) {
     elements.sourceTextDisplay.style.display = 'block';
+  }
+  
+  // Show explanation if available
+  if (explanation && explanation.trim() !== '') {
+    if (elements.explanationContent) {
+      elements.explanationContent.textContent = explanation;
+    }
+    if (elements.explanationDisplay) {
+      elements.explanationDisplay.style.display = 'block';
+    }
+  } else {
+    // Hide explanation if not available
+    if (elements.explanationDisplay) {
+      elements.explanationDisplay.style.display = 'none';
+    }
   }
   
   // Scroll to source text
@@ -1444,6 +1516,203 @@ function showSuccess(message) {
       }
     }, 3000);
   }
+}
+
+// Chat functionality
+let chatHistory = [];
+let paperContextForChat = null;
+
+// Chat configuration constants
+const CHAT_MAX_TOKENS = 500;
+const CHAT_TEMPERATURE = 0.7;
+const CHAT_HISTORY_LIMIT = 10; // Keep last 5 exchanges (10 messages)
+const CHAT_FALLBACK_MODEL = 'gpt-4o-mini'; // Fallback if window.QSCI_MODEL_NAME not available
+
+// Handle sending a chat message
+async function handleChatSend() {
+  console.log('Q-SCI Debug Popup: Handling chat send...');
+  
+  if (!elements.chatInput || !elements.chatMessages) {
+    console.error('Q-SCI Debug Popup: Chat elements not found');
+    return;
+  }
+  
+  const userMessage = elements.chatInput.value.trim();
+  if (!userMessage) {
+    console.log('Q-SCI Debug Popup: Empty message, ignoring');
+    return;
+  }
+  
+  // Check if user is logged in
+  if (!currentUser) {
+    const loginMsg = window.QSCIi18n ? window.QSCIi18n.t('chat.loginRequired') : 'Please login to use the chat feature.';
+    showError(loginMsg);
+    return;
+  }
+  
+  // Check if analysis exists
+  if (!currentAnalysis) {
+    const analysisMsg = window.QSCIi18n ? window.QSCIi18n.t('chat.analyzeFirst') : 'Please analyze a paper first before asking questions.';
+    showError(analysisMsg);
+    return;
+  }
+  
+  // Clear input
+  elements.chatInput.value = '';
+  
+  // Add user message to chat
+  addChatMessage('user', userMessage);
+  
+  // Disable send button and show loading
+  if (elements.chatSendBtn) {
+    elements.chatSendBtn.disabled = true;
+    elements.chatSendBtn.textContent = '...';
+  }
+  
+  try {
+    // Get the paper context if not already set
+    if (!paperContextForChat && currentTab && currentTab.url) {
+      // Try to get paper content from the last analyzed page
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: currentTab.id },
+          function: extractPageContent
+        });
+        
+        if (results && results[0] && results[0].result) {
+          const pageData = results[0].result;
+          paperContextForChat = {
+            title: pageData.title || 'Unknown Title',
+            text: pageData.text || '',
+            url: currentTab.url
+          };
+        }
+      } catch (error) {
+        console.warn('Q-SCI Debug Popup: Could not extract paper context:', error);
+      }
+    }
+    
+    // Build chat messages for OpenAI
+    const messages = buildChatMessages(userMessage);
+    
+    // Get OpenAI API key
+    const apiKey = await window.QSCIAuth.getOpenAIApiKey();
+    
+    if (!apiKey) {
+      throw new Error('Failed to retrieve API key from backend.');
+    }
+    
+    // Call OpenAI API
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: window.QSCI_MODEL_NAME || CHAT_FALLBACK_MODEL,
+        messages: messages,
+        temperature: CHAT_TEMPERATURE,
+        max_tokens: CHAT_MAX_TOKENS
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+    }
+    
+    const json = await response.json();
+    const aiResponse = json?.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
+    
+    // Add AI response to chat
+    addChatMessage('ai', aiResponse);
+    
+    // Add to chat history for context
+    chatHistory.push({ role: 'user', content: userMessage });
+    chatHistory.push({ role: 'assistant', content: aiResponse });
+    
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Chat error:', error);
+    addChatMessage('error', 'Error: ' + error.message);
+  } finally {
+    // Re-enable send button
+    if (elements.chatSendBtn) {
+      elements.chatSendBtn.disabled = false;
+      const sendText = window.QSCIi18n ? window.QSCIi18n.t('detailed.send') : 'Send';
+      elements.chatSendBtn.textContent = sendText;
+    }
+  }
+}
+
+// Build chat messages for OpenAI API
+function buildChatMessages(userMessage) {
+  const systemPrompt = `You are Q-SCI, an expert assistant helping users understand scientific publications. 
+You have access to the analysis results of a paper and can answer questions about it.
+Be concise, clear, and helpful in your responses. Base your answers on the paper's content and analysis.`;
+
+  const messages = [{ role: 'system', content: systemPrompt }];
+  
+  // Add paper context if available
+  if (paperContextForChat) {
+    const contextMessage = `Paper Title: ${paperContextForChat.title}\n` +
+      `URL: ${paperContextForChat.url}\n\n` +
+      `Analysis Summary:\n` +
+      `Quality Score: ${currentAnalysis.quality_percentage}%\n` +
+      `Assessment: ${currentAnalysis.traffic_light}\n` +
+      `Reasoning: ${currentAnalysis.reasoning || 'N/A'}\n\n`;
+    
+    messages.push({ role: 'system', content: contextMessage });
+  }
+  
+  // Add chat history for context (last 5 exchanges = 10 messages)
+  const recentHistory = chatHistory.slice(-CHAT_HISTORY_LIMIT);
+  messages.push(...recentHistory);
+  
+  // Add current user message
+  messages.push({ role: 'user', content: userMessage });
+  
+  return messages;
+}
+
+// Add a message to the chat display
+function addChatMessage(type, message) {
+  if (!elements.chatMessages) return;
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.style.marginBottom = '12px';
+  messageDiv.style.padding = '10px';
+  messageDiv.style.borderRadius = '6px';
+  messageDiv.style.fontSize = '13px';
+  messageDiv.style.lineHeight = '1.6';
+  
+  if (type === 'user') {
+    messageDiv.style.background = '#e0e7ff';
+    messageDiv.style.color = '#3730a3';
+    messageDiv.style.textAlign = 'right';
+    const youLabel = window.QSCIi18n ? window.QSCIi18n.t('chat.you') : 'Sie';
+    messageDiv.innerHTML = `<strong>${youLabel}:</strong> ${escapeHtml(message)}`;
+  } else if (type === 'ai') {
+    messageDiv.style.background = '#f0f9ff';
+    messageDiv.style.color = '#0c4a6e';
+    messageDiv.innerHTML = `<strong>Q-SCI:</strong> ${escapeHtml(message)}`;
+  } else if (type === 'error') {
+    messageDiv.style.background = '#fee2e2';
+    messageDiv.style.color = '#991b1b';
+    messageDiv.innerHTML = `<strong>Error:</strong> ${escapeHtml(message)}`;
+  }
+  
+  elements.chatMessages.appendChild(messageDiv);
+  
+  // Scroll to bottom
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 console.log('Q-SCI Debug Popup: Script initialization complete');
