@@ -154,7 +154,9 @@
         "dist/js/bundle-auth.js",
         "dist/js/bundle-auth.js.map",
         "dist/js/bundle-pdf-handler.js",
-        "dist/js/bundle-pdf-handler.js.map"
+        "dist/js/bundle-pdf-handler.js.map",
+        "dist/js/bundle-pdf-export.js",
+        "dist/js/bundle-pdf-export.js.map"
       ],
       "matches": ["<all_urls>"]
     }

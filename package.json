@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@clerk/clerk-js": "^5.0.0",
+    "jspdf": "^3.0.3",
     "pdfjs-dist": "^3.11.174"
   }
 }

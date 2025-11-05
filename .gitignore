@@ -1,7 +1,7 @@
 # Node modules (if any)
 node_modules/
 
-# Build artifacts (but allow dist/js/bundle-auth.js and bundle-pdf-handler.js)
+# Build artifacts (but allow dist/js/bundle-auth.js, bundle-pdf-handler.js, and bundle-pdf-export.js)
 dist/*
 !dist/js/
 dist/js/*
@@ -9,6 +9,8 @@ dist/js/*
 !dist/js/bundle-auth.js.map
 !dist/js/bundle-pdf-handler.js
 !dist/js/bundle-pdf-handler.js.map
+!dist/js/bundle-pdf-export.js
+!dist/js/bundle-pdf-export.js.map
 build/
 
 # IDE files

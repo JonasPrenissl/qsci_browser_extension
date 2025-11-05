@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q-SCI PDF Export Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f7fafc;
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 10px 5px;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    button:active {
+      transform: translateY(1px);
+    }
+    .result {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    .result.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    .result.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #ef4444;
+    }
+    pre {
+      background: #f3f4f6;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📄 Q-SCI PDF Export Test</h1>
+  <p>This page tests the PDF export functionality with sample analysis data.</p>
+
+  <div class="test-section">
+    <h2>Test 1: Basic Analysis Export</h2>
+    <p>Export a simple analysis with quality score and basic information.</p>
+    <button onclick="testBasicExport()">Test Basic Export</button>
+    <div id="result1" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 2: Complete Analysis with Sources</h2>
+    <p>Export a complete analysis including aspects with sources and explanations.</p>
+    <button onclick="testCompleteExport()">Test Complete Export</button>
+    <div id="result2" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 3: Analysis with Chat History</h2>
+    <p>Export analysis including user questions and AI responses.</p>
+    <button onclick="testExportWithChat()">Test Export with Chat</button>
+    <div id="result3" class="result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Sample Analysis Data</h2>
+    <pre id="sampleData"></pre>
+  </div>
+
+  <script src="dist/js/bundle-pdf-export.js"></script>
+  <script>
+    // Sample analysis data for testing
+    const sampleBasicAnalysis = {
+      quality_percentage: 85,
+      traffic_light: 'Green - High Quality',
+      reasoning: 'This paper demonstrates excellent methodological rigor with a well-designed randomized controlled trial. The sample size is adequate (n=245) and the statistical analysis is appropriate. The results are clearly presented with confidence intervals and p-values. However, the follow-up period could be longer to assess long-term outcomes.',
+      journal_info: {
+        journal_name: 'The Lancet',
+        impact_factor: '168.9',
+        quartile: 'Q1',
+        prestige_tier: 'Elite'
+      },
+      positive_aspects: [
+        'Rigorous study design with appropriate randomization',
+        'Large sample size (n=245) providing good statistical power',
+        'Clear presentation of results with confidence intervals'
+      ],
+      negative_aspects: [
+        'Limited follow-up period of only 6 months',
+        'Lack of diversity in the study population'
+      ]
+    };
+
+    const sampleCompleteAnalysis = {
+      quality_percentage: 72,
+      traffic_light: 'Yellow - Moderate Quality',
+      reasoning: 'The study presents interesting findings but has several methodological limitations. The observational design limits causal inference, and the sample size is relatively small. However, the research question is relevant and the statistical methods are generally appropriate. The discussion acknowledges the limitations well.',
+      journal_info: {
+        journal_name: 'PLoS ONE',
+        impact_factor: '3.7',
+        quartile: 'Q2',
+        prestige_tier: 'Reputable'
+      },
+      positive_aspects: [
+        {
+          aspect: 'Novel research question addressing a gap in the literature',
+          source_text: 'To our knowledge, this is the first study to examine the relationship between X and Y in this specific population.',
+          explanation: 'The authors clearly identify the research gap and explain why their study is important and timely.'
+        },
+        {
+          aspect: 'Appropriate statistical methods with sensitivity analyses',
+          source_text: 'We conducted multiple sensitivity analyses to test the robustness of our findings, including propensity score matching and instrumental variable analysis.',
+          explanation: 'The use of multiple statistical approaches strengthens confidence in the findings.'
+        },
+        {
+          aspect: 'Transparent reporting of limitations',
+          source_text: 'This study has several limitations. First, the observational design precludes causal inference. Second, unmeasured confounding may be present.',
+          explanation: 'The authors honestly discuss the limitations of their work, which is important for proper interpretation.'
+        }
+      ],
+      negative_aspects: [
+        {
+          aspect: 'Small sample size limiting statistical power',
+          source_text: 'The study included 87 participants from a single center.',
+          explanation: 'A larger, multi-center study would provide more robust evidence and better generalizability.'
+        },
+        {
+          aspect: 'Potential selection bias in participant recruitment',
+          source_text: 'Participants were recruited through convenience sampling from outpatient clinics.',
+          explanation: 'Convenience sampling can introduce selection bias, as the sample may not be representative of the broader population.'
+        }
+      ]
+    };
+
+    const sampleChatHistory = [
+      { role: 'user', content: 'What was the main finding of this study?' },
+      { role: 'assistant', content: 'The main finding was that treatment X resulted in a 35% reduction in the primary outcome compared to the control group, with a statistically significant p-value of 0.003.' },
+      { role: 'user', content: 'Were there any safety concerns reported?' },
+      { role: 'assistant', content: 'Yes, the study reported mild adverse events in 12% of participants in the treatment group, primarily consisting of headaches and nausea. No serious adverse events were attributed to the treatment.' },
+      { role: 'user', content: 'How does this compare to existing treatments?' },
+      { role: 'assistant', content: 'According to the discussion section, this treatment shows similar efficacy to the current standard of care but with a more favorable side effect profile. The authors suggest it could be a good alternative for patients who cannot tolerate existing treatments.' }
+    ];
+
+    // Display sample data
+    document.getElementById('sampleData').textContent = JSON.stringify(sampleCompleteAnalysis, null, 2);
+
+    function showResult(elementId, success, message) {
+      const resultDiv = document.getElementById(elementId);
+      resultDiv.className = 'result ' + (success ? 'success' : 'error');
+      resultDiv.textContent = message;
+      resultDiv.style.display = 'block';
+      
+      setTimeout(() => {
+        resultDiv.style.display = 'none';
+      }, 5000);
+    }
+
+    function testBasicExport() {
+      try {
+        if (typeof window.exportAnalysisToPDF !== 'function') {
+          throw new Error('PDF export function not loaded. Make sure dist/js/bundle-pdf-export.js is built.');
+        }
+        
+        window.exportAnalysisToPDF(sampleBasicAnalysis);
+        showResult('result1', true, '✓ Basic analysis PDF exported successfully! Check your downloads folder.');
+      } catch (error) {
+        console.error('Test 1 error:', error);
+        showResult('result1', false, '✗ Error: ' + error.message);
+      }
+    }
+
+    function testCompleteExport() {
+      try {
+        if (typeof window.exportAnalysisToPDF !== 'function') {
+          throw new Error('PDF export function not loaded. Make sure dist/js/bundle-pdf-export.js is built.');
+        }
+        
+        window.exportAnalysisToPDF(sampleCompleteAnalysis);
+        showResult('result2', true, '✓ Complete analysis PDF with sources exported successfully! Check your downloads folder.');
+      } catch (error) {
+        console.error('Test 2 error:', error);
+        showResult('result2', false, '✗ Error: ' + error.message);
+      }
+    }
+
+    function testExportWithChat() {
+      try {
+        if (typeof window.exportAnalysisToPDF !== 'function') {
+          throw new Error('PDF export function not loaded. Make sure dist/js/bundle-pdf-export.js is built.');
+        }
+        
+        window.exportAnalysisToPDF(sampleCompleteAnalysis, sampleChatHistory);
+        showResult('result3', true, '✓ Analysis with chat history exported successfully! Check your downloads folder.');
+      } catch (error) {
+        console.error('Test 3 error:', error);
+        showResult('result3', false, '✗ Error: ' + error.message);
+      }
+    }
+
+    // Check if PDF export is loaded
+    window.addEventListener('load', () => {
+      if (typeof window.exportAnalysisToPDF === 'function') {
+        console.log('✓ PDF export function loaded successfully');
+      } else {
+        console.error('✗ PDF export function not loaded');
+      }
+    });
+  </script>
+</body>
+</html>
