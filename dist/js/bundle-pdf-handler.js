@@ -35,22 +35,24 @@
     console.log("Q-SCI PDF Handler: Initializing...");
     async function downloadPDF(pdfUrl) {
       console.log("Q-SCI PDF Handler: Downloading PDF from:", pdfUrl);
+      if (pdfUrl.startsWith("file://")) {
+        console.warn("Q-SCI PDF Handler: Skipping file:// URL (not supported):", pdfUrl);
+        throw new Error("Local file URLs (file://) are not supported for security reasons");
+      }
       try {
-        const response = await fetch(pdfUrl, {
-          method: "GET",
-          headers: {
-            "Accept": "application/pdf"
-          }
+        const response = await chrome.runtime.sendMessage({
+          type: "DOWNLOAD_PDF",
+          url: pdfUrl
         });
-        if (!response.ok) {
-          throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
+        if (!response.success) {
+          throw new Error(response.error || "Failed to download PDF");
         }
-        const contentType = response.headers.get("content-type");
-        console.log("Q-SCI PDF Handler: Content-Type:", contentType);
-        if (contentType && !contentType.includes("application/pdf") && !contentType.includes("application/octet-stream")) {
-          console.warn("Q-SCI PDF Handler: Response is not a PDF (Content-Type:", contentType + ")");
+        const binary = atob(response.data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
         }
-        const arrayBuffer = await response.arrayBuffer();
+        const arrayBuffer = bytes.buffer;
         console.log("Q-SCI PDF Handler: PDF downloaded successfully, size:", arrayBuffer.byteLength, "bytes");
         return arrayBuffer;
       } catch (error) {
@@ -99,9 +101,27 @@
           error: "No PDF URLs found"
         };
       }
-      for (let i = 0; i < pdfUrls.length; i++) {
-        const pdfUrl = pdfUrls[i];
-        console.log(`Q-SCI PDF Handler: Trying PDF URL ${i + 1}/${pdfUrls.length}:`, pdfUrl);
+      const validUrls = pdfUrls.filter((url) => {
+        if (url.startsWith("file://")) {
+          console.warn("Q-SCI PDF Handler: Skipping file:// URL:", url);
+          return false;
+        }
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+          console.warn("Q-SCI PDF Handler: Skipping unsupported protocol:", url);
+          return false;
+        }
+        return true;
+      });
+      if (validUrls.length === 0) {
+        return {
+          success: false,
+          error: "No valid HTTP(S) PDF URLs found (file:// URLs are not supported)"
+        };
+      }
+      console.log("Q-SCI PDF Handler: Valid PDF URLs to try:", validUrls.length);
+      for (let i = 0; i < validUrls.length; i++) {
+        const pdfUrl = validUrls[i];
+        console.log(`Q-SCI PDF Handler: Trying PDF URL ${i + 1}/${validUrls.length}:`, pdfUrl);
         try {
           const pdfData = await downloadPDF(pdfUrl);
           const text = await extractTextFromPDF(pdfData);
