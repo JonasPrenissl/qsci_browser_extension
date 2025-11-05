@@ -54,9 +54,9 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
   // Timeout for API requests (in milliseconds)
-  // Reduced from 60s to 30s to align with 20s target + buffer
-  // This ensures faster feedback for users while allowing time for API response
-  const API_TIMEOUT_MS = 30000; // 30 seconds
+  // Increased to 120 seconds to handle longer PDF extractions and complex analyses
+  // This allows sufficient time for PDF processing and complex papers like The Lancet
+  const API_TIMEOUT_MS = 120000; // 120 seconds (2 minutes)
 
   // Maximum text length to send to the API (in characters)
   // Optimized to balance analysis quality with response time (<20 seconds)
