@@ -14,18 +14,17 @@
   window.qsciContentScriptLoaded = true;
   
   // Configuration
-  const EXTRACTION_DELAY = 2000; // Wait for page to fully load (increased from 1000ms)
+  const EXTRACTION_DELAY = 1000; // Initial quick check (reduced from 2000ms)
   const MAX_FULLTEXT_LENGTH = 100000; // Maximum characters to include from full text when combining with abstract (increased to capture full articles for quality analysis)
-  const PDF_EXTRACTION_DELAY = 3000; // Wait longer for PDF viewers to render text
-  // Dynamic content delay: increased to 7.0s for The Lancet and similar complex sites
-  // - Simple static sites: 1-2 seconds (don't use dynamic detection)
-  // - Standard React/Vue apps: 2-3 seconds
-  // - Complex sites like The Lancet with heavy content: 5-7 seconds required
-  // - We use 7.0s for Lancet specifically to handle slow networks and complex rendering
-  // - Trade-off: slightly longer wait vs. reliable extraction
-  // Future enhancement: Use MutationObserver for intelligent waiting or configurable site-specific delays
-  const DYNAMIC_CONTENT_DELAY = 5000; // Wait for dynamically loaded content (React, Vue, etc.)
-  const LANCET_CONTENT_DELAY = 7000; // Extra delay for The Lancet due to complex React rendering (TODO: make configurable)
+  const PDF_EXTRACTION_DELAY = 2000; // Wait for PDF viewers to render text (reduced from 3000ms)
+  // Optimized dynamic content delays - try extraction earlier, retry if needed
+  // - Simple static sites: immediate extraction (no wait)
+  // - Standard React/Vue apps: 1-2 seconds (reduced from 5s)
+  // - Complex sites like The Lancet: progressive retry up to 5 seconds (reduced from 7s)
+  // - Strategy: Try early, retry if insufficient, user sees results faster
+  const DYNAMIC_CONTENT_DELAY = 2000; // Reduced from 5000ms - try earlier
+  const LANCET_CONTENT_DELAY = 3000; // Reduced from 7000ms - initial check
+  const RETRY_DELAY = 2000; // Additional wait if first extraction yields insufficient content
   const MIN_SUBSTANTIVE_LENGTH = 200; // Minimum length for substantive scientific content
   const META_FALLBACK_THRESHOLD = 100; // Trigger meta tag fallback when extracted content is below this length
   
@@ -51,8 +50,8 @@
     console.log('Q-SCI Content Script: Initialized successfully');
   }
   
-  // Handle page data extraction request
-  function handleExtractPageData(sendResponse) {
+  // Handle page data extraction request with progressive retry strategy
+  async function handleExtractPageData(sendResponse) {
     console.log('Q-SCI Content Script: Extracting page data...');
     
     try {
@@ -63,50 +62,61 @@
       const hasDynamicContent = document.querySelector('[data-react-root], [data-reactroot], #root, #app, [ng-app], [data-vue-app]') !== null;
       
       // Check if this is The Lancet website (needs extra time for complex React rendering)
-      // TODO: Extract to configurable site-specific delay map for better maintainability
       const isLancet = window.location.hostname.toLowerCase().includes('thelancet.com');
       
       // Determine appropriate delay based on page characteristics
       // Priority: PDF > Lancet+Dynamic > Dynamic > Regular
-      let delay = EXTRACTION_DELAY;
+      let initialDelay = EXTRACTION_DELAY;
+      let retryDelay = 0;
+      
       if (isPdf) {
-        delay = PDF_EXTRACTION_DELAY;
+        initialDelay = PDF_EXTRACTION_DELAY;
       } else if (isLancet && hasDynamicContent) {
-        delay = LANCET_CONTENT_DELAY;
+        initialDelay = LANCET_CONTENT_DELAY;
+        retryDelay = RETRY_DELAY; // Will retry if needed
       } else if (hasDynamicContent) {
-        delay = DYNAMIC_CONTENT_DELAY;
+        initialDelay = DYNAMIC_CONTENT_DELAY;
+        retryDelay = RETRY_DELAY; // Will retry if needed
       }
       
-      console.log('Q-SCI Content Script: Using extraction delay:', delay, 'ms', 
+      console.log('Q-SCI Content Script: Using extraction strategy:', 
+        `initial delay ${initialDelay}ms`, 
+        retryDelay > 0 ? `with ${retryDelay}ms retry if needed` : 'no retry',
         isPdf ? '(PDF page)' : 
         (isLancet && hasDynamicContent ? '(Lancet dynamic content)' : 
         (hasDynamicContent ? '(dynamic content detected)' : '(regular page)')));
       
-      // Wait a moment for dynamic content to load
-      setTimeout(() => {
-        const pageData = extractPageData();
+      // First attempt - try extraction after initial delay
+      await new Promise(resolve => setTimeout(resolve, initialDelay));
+      let pageData = extractPageData();
+      
+      // If we got insufficient content and this is a dynamic page, retry after additional delay
+      if (retryDelay > 0 && (!pageData.text || pageData.text.length < MIN_SUBSTANTIVE_LENGTH)) {
+        console.log('Q-SCI Content Script: Initial extraction yielded insufficient content, retrying after additional delay...');
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        pageData = extractPageData();
+      }
+      
+      if (pageData.text && pageData.text.length > 50) {
+        console.log('Q-SCI Content Script: Page data extracted successfully');
+        sendResponse({ 
+          success: true, 
+          data: pageData 
+        });
+      } else {
+        console.warn('Q-SCI Content Script: Insufficient content extracted');
+        let errorMsg = 'Insufficient content found. Please ensure you are on a paper details page with abstract or content.';
         
-        if (pageData.text && pageData.text.length > 50) {
-          console.log('Q-SCI Content Script: Page data extracted successfully');
-          sendResponse({ 
-            success: true, 
-            data: pageData 
-          });
-        } else {
-          console.warn('Q-SCI Content Script: Insufficient content extracted');
-          let errorMsg = 'Insufficient content found. Please ensure you are on a paper details page with abstract or content.';
-          
-          // Provide specific guidance for PDF pages
-          if (pageData.isPdfViewer) {
-            errorMsg = 'Unable to extract text from this PDF viewer. Please try: (1) waiting a few more seconds and trying again, (2) using Manual Analysis by copying text from the PDF, or (3) visiting the article\'s abstract page instead.';
-          }
-          
-          sendResponse({ 
-            success: false, 
-            error: errorMsg
-          });
+        // Provide specific guidance for PDF pages
+        if (pageData.isPdfViewer) {
+          errorMsg = 'Unable to extract text from this PDF viewer. Please try: (1) waiting a few more seconds and trying again, (2) using Manual Analysis by copying text from the PDF, or (3) visiting the article\'s abstract page instead.';
         }
-      }, delay);
+        
+        sendResponse({ 
+          success: false, 
+          error: errorMsg
+        });
+      }
       
     } catch (error) {
       console.error('Q-SCI Content Script: Extraction error:', error);
