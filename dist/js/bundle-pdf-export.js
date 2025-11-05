@@ -34088,11 +34088,20 @@
     if (chatHistory && chatHistory.length > 0) {
       const userExchanges = [];
       for (let i3 = 0; i3 < chatHistory.length; i3++) {
-        if (chatHistory[i3].role === "user" && i3 + 1 < chatHistory.length && chatHistory[i3 + 1].role === "assistant") {
-          userExchanges.push({
-            question: chatHistory[i3].content,
-            answer: chatHistory[i3 + 1].content
-          });
+        if (chatHistory[i3].role === "user") {
+          let assistantResponse = null;
+          for (let j2 = i3 + 1; j2 < chatHistory.length; j2++) {
+            if (chatHistory[j2].role === "assistant") {
+              assistantResponse = chatHistory[j2].content;
+              break;
+            }
+          }
+          if (assistantResponse) {
+            userExchanges.push({
+              question: chatHistory[i3].content,
+              answer: assistantResponse
+            });
+          }
         }
       }
       if (userExchanges.length > 0) {

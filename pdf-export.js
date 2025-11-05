@@ -423,13 +423,26 @@ export function exportAnalysisToPDF(analysis, chatHistory = []) {
   // --- CHAT HISTORY / USER QUESTIONS ---
   if (chatHistory && chatHistory.length > 0) {
     // Filter to get only user-AI exchanges (skip system messages)
+    // More robust approach: find each user message and pair it with the next assistant response
     const userExchanges = [];
     for (let i = 0; i < chatHistory.length; i++) {
-      if (chatHistory[i].role === 'user' && i + 1 < chatHistory.length && chatHistory[i + 1].role === 'assistant') {
-        userExchanges.push({
-          question: chatHistory[i].content,
-          answer: chatHistory[i + 1].content
-        });
+      if (chatHistory[i].role === 'user') {
+        // Find the next assistant response
+        let assistantResponse = null;
+        for (let j = i + 1; j < chatHistory.length; j++) {
+          if (chatHistory[j].role === 'assistant') {
+            assistantResponse = chatHistory[j].content;
+            break;
+          }
+        }
+        
+        // Only add if we found a matching response
+        if (assistantResponse) {
+          userExchanges.push({
+            question: chatHistory[i].content,
+            answer: assistantResponse
+          });
+        }
       }
     }
 
