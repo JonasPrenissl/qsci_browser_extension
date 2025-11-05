@@ -13,6 +13,7 @@
   ],
   
   "host_permissions": [
+    "file:///*",
     "https://pubmed.ncbi.nlm.nih.gov/*",
     "https://pmc.ncbi.nlm.nih.gov/*",
     "https://www.ncbi.nlm.nih.gov/*",
@@ -68,6 +69,7 @@
   "content_scripts": [
     {
       "matches": [
+        "file:///*",
         "https://pubmed.ncbi.nlm.nih.gov/*",
         "https://pmc.ncbi.nlm.nih.gov/*",
         "https://www.ncbi.nlm.nih.gov/*",

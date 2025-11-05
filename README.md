@@ -98,6 +98,7 @@ AI-powered scientific paper quality evaluator for Chrome. Automatically analyze 
 ### Core Features
 - ✅ **AI-Powered Analysis** - Comprehensive paper quality evaluation
 - ✅ **Multi-Site Support** - Works on PubMed, arXiv, Nature, Science, and more
+- ✅ **Local PDF Support** - Analyze PDF files from your Downloads folder or any local directory
 - ✅ **PDF Analysis** - Direct PDF content analysis when available
 - ✅ **HTML Fallback** - Analyzes webpage content when PDF not available
 - ✅ **Quality Scoring** - Percentage-based quality score with traffic light system

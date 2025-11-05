@@ -146,6 +146,45 @@ For each user, set their subscription status in Clerk:
 7. **Click "Analyze Paper"**
 8. **Check that usage counter updates** after analysis
 
+## Analyzing Local PDF Files
+
+The extension can analyze PDF files stored locally on your computer (e.g., downloaded PDFs in your Downloads folder).
+
+### Enabling File Access
+
+To analyze local PDF files, you need to enable file access for the extension:
+
+1. Open Chrome and navigate to: `chrome://extensions/`
+2. Find **Q-SCI: Scientific Paper Quality Evaluator** in the list
+3. Click **"Details"** button
+4. Scroll down to **"Allow access to file URLs"**
+5. **Toggle the switch to ON** (enable it)
+
+### Using the Extension with Local PDFs
+
+After enabling file access:
+
+1. **Open a local PDF file** in Chrome:
+   - Drag and drop a PDF file into Chrome, or
+   - Use File → Open File (Ctrl+O), or
+   - Navigate to a file URL like `file:///C:/Users/YourName/Downloads/paper.pdf`
+
+2. **The extension will automatically detect the PDF** and load the content script
+
+3. **Click the extension icon** and select **"Analyze Paper"**
+
+4. **The extension will extract text** from the PDF viewer and analyze it
+
+### Supported Local File Formats
+
+- ✅ `.pdf` files opened in Chrome's built-in PDF viewer
+- ✅ Files in any local directory (Downloads, Documents, etc.)
+- ✅ URLs with spaces and special characters (e.g., `file:///D:/Downloads%20extern/paper.pdf`)
+
+### Note
+
+⚠️ **Important**: You must enable "Allow access to file URLs" in Chrome extension settings (step above) for local PDF analysis to work. This is a Chrome security feature that requires explicit user permission.
+
 ## Troubleshooting
 
 ### Extension Won't Load

@@ -148,7 +148,8 @@
         url.includes('/downloadpdf') ||
         url.includes('/viewpdf') ||
         url.includes('.pdf') ||
-        url.includes('pdf=')) {
+        url.includes('pdf=') ||
+        (url.startsWith('file:///') && url.includes('.pdf'))) {
       console.log('Q-SCI Content Script: PDF detected from URL pattern');
       return true;
     }
