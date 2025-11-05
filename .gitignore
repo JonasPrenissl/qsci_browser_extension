@@ -52,3 +52,4 @@ test-citation-display.html
 # Test files for development
 test-lancet-*.js
 test-fix-*.js
+verify-progress-i18n.js
