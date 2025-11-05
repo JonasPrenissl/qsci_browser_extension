@@ -45,6 +45,10 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
   // Temperature setting for the model.  Lower values make the output
   // more deterministic.
   const TEMPERATURE = 0.0;
+  
+  // Top-p sampling for faster token generation without quality loss
+  // 0.9 provides good balance between speed and quality
+  const TOP_P = 0.9;
 
   // API endpoint for OpenAI chat completions
   const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
@@ -412,6 +416,9 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       model: MODEL_NAME,
       messages: messages,
       temperature: TEMPERATURE,
+      top_p: TOP_P,
+      // Force JSON response format for faster parsing and more reliable output
+      response_format: { type: "json_object" },
       // Provide a max_tokens to cap the response length. Increased to 1500 tokens
       // to accommodate longer reasoning (2-3 paragraphs), explanations for each aspect,
       // and journal information.

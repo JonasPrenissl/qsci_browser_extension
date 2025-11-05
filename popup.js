@@ -1714,6 +1714,24 @@ async function handleChatSend() {
     return;
   }
   
+  // Check usage limits before sending chat message (chat questions count as analyses)
+  try {
+    const usageCheck = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
+    console.log('Q-SCI Debug Popup: Chat usage check:', usageCheck);
+    
+    if (!usageCheck.canAnalyze) {
+      const limitMsg = window.QSCIi18n 
+        ? window.QSCIi18n.t('message.dailyLimitReached')
+        : `Daily analysis limit reached (${usageCheck.limit}). Please upgrade to Premium for more analyses.`;
+      showError(limitMsg);
+      return;
+    }
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error checking usage limits:', error);
+    showError('Could not verify usage limits. Please try again.');
+    return;
+  }
+  
   // Clear input
   elements.chatInput.value = '';
   
@@ -1788,6 +1806,17 @@ async function handleChatSend() {
     // Add to chat history for context
     chatHistory.push({ role: 'user', content: userMessage });
     chatHistory.push({ role: 'assistant', content: aiResponse });
+    
+    // Increment usage after successful chat response (chat questions count as analyses)
+    try {
+      console.log('Q-SCI Debug Popup: Incrementing usage counter for chat question...');
+      await window.QSCIUsage.incrementUsage();
+      await updateUsageDisplay();
+      console.log('Q-SCI Debug Popup: Usage incremented successfully for chat');
+    } catch (usageError) {
+      console.error('Q-SCI Debug Popup: Failed to increment usage for chat:', usageError);
+      // Don't throw here, as the chat response was successful
+    }
     
   } catch (error) {
     console.error('Q-SCI Debug Popup: Chat error:', error);
