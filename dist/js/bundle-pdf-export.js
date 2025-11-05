@@ -33881,9 +33881,6 @@
       doc.setFont("helvetica", "bold");
       doc.text("Begr\xFCndung", margin, yPosition);
       yPosition += 7;
-      doc.setFillColor(...COLORS.background);
-      doc.setDrawColor(...COLORS.primary);
-      doc.setLineWidth(0.5);
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...COLORS.text);
@@ -33893,7 +33890,12 @@
         doc.addPage();
         yPosition = margin;
       }
-      doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2);
+      doc.setFillColor(...COLORS.background);
+      doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2, "F");
+      doc.setDrawColor(...COLORS.primary);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(margin, yPosition, pageWidth - 2 * margin, reasoningHeight, 2, 2, "S");
+      doc.setFillColor(...COLORS.primary);
       doc.rect(margin, yPosition, 2, reasoningHeight, "F");
       doc.text(reasoningLines, margin + 7, yPosition + 7);
       yPosition += reasoningHeight + 10;

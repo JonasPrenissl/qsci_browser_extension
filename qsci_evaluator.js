@@ -253,15 +253,21 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
    * @param {string} title - Paper title
    * @param {string} sourceUrl - URL of the paper
    * @param {string} text - Paper text content
+   * @param {string} language - Language code ('de' or 'en') for output
    * @returns {Array} messages suitable for OpenAI chat completion API
    */
-  function buildMessages(title, sourceUrl, text) {
+  function buildMessages(title, sourceUrl, text, language = 'de') {
     // Apply intelligent truncation to keep analysis time under 20 seconds
     const truncatedText = truncateTextIntelligently(text);
     const wasTruncated = text.length > MAX_TEXT_LENGTH;
     
+    // Determine language for output
+    const languageName = language === 'de' ? 'German' : 'English';
+    const languageNative = language === 'de' ? 'Deutsch' : 'English';
+    
     // Build system prompt - only mention truncation if it actually occurred
     let systemPrompt = `You are Q‑SCI, an expert scientific publication quality evaluator.\n\n` +
+      `IMPORTANT: You MUST respond in ${languageName} (${languageNative}). All text fields including 'reasoning', 'aspect', 'explanation', and all other text content must be in ${languageName}.\n\n` +
       `When given the text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. `;
     
     if (wasTruncated) {
@@ -272,7 +278,16 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Identify study design features (e.g. randomized controlled trial, crossover, meta‑analysis, observational study), sample size and clear reporting practices. ` +
       `Consider whether the study is blinded, placebo controlled or non‑inferiority, whether it follows reporting guidelines (e.g. CONSORT for trials, PRISMA for reviews, STROBE for observational studies), and whether sample sizes are adequate. ` +
       `Assign a quality score between 0 and 100. 90–100 = 🟢 Green, 70–89 = 🟡 Amber, below 70 = 🔴 Red. ` +
-      `Then provide between 3 and 7 positive aspects and between 3 and 7 negative aspects. Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
+      `\n\n` +
+      `ASPECT COUNT REQUIREMENTS - Adjust the number of aspects based on the quality score:\n` +
+      `- For scores ≥85%: Provide at least 6 positive aspects and 3-4 negative aspects\n` +
+      `- For scores 70-84%: Provide 4-5 positive aspects and 4-5 negative aspects\n` +
+      `- For scores 50-69%: Provide 3-4 positive aspects and 5-6 negative aspects\n` +
+      `- For scores <50%: Provide at least 3 positive aspects and at least 6 negative aspects\n` +
+      `- Always provide at least 3 aspects in each category (positive and negative)\n` +
+      `- Total aspects should be between 6 and 12 combined\n` +
+      `\n` +
+      `Each aspect must be directly supported by a snippet of source text taken verbatim from the paper. ` +
       `For each aspect, set the 'aspect' field to a complete, clear sentence that stands alone and communicates the evaluation point in plain language (e.g., "The study objective is stated clearly" or "The sample size is small"). ` +
       `CRITICAL REQUIREMENT FOR SOURCE_TEXT: You MUST copy the exact text word-for-word from the paper content provided below. This is a CITATION that will be shown to users in quotation marks. DO NOT write any new text, DO NOT paraphrase, DO NOT summarize, and DO NOT generate explanatory text. Simply copy and paste the relevant sentence(s) from the paper that support each aspect. The 'source_text' must be a verbatim substring that appears exactly as written in the provided paper content. If an aspect is based on reasoning regarding multiple parts of the publication where no single exact citation can be extracted, set 'source_text' to an empty string (""). Every non-empty 'source_text' value will be displayed as a direct quotation from the paper. ` +
       `EXPLANATION REQUIREMENT: For each aspect (positive and negative), you must also provide an 'explanation' field that explains in 2-3 sentences why this aspect is significant for the quality assessment. This explanation helps users understand the importance and implications of each finding. ` +
@@ -280,12 +295,14 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       `Ignore the reference list entirely when choosing aspects and source text. ` +
       `REASONING REQUIREMENT: Provide a 'reasoning' field with 2-3 paragraphs (NOT sentences - paragraphs with 3-5 sentences each) that thoroughly explains why you assigned this specific quality score. Include: (1) an overview of the study's strengths, (2) a discussion of its weaknesses or limitations, and (3) a concluding statement on the overall quality assessment. This reasoning should be comprehensive and detailed. ` +
       `JOURNAL INFORMATION: If you can identify the journal name from the provided source URL or paper content, research and provide the journal's impact factor. Include this in a 'journal_info' object with keys 'journal_name' (string) and 'impact_factor' (string, if available, otherwise "Not available"). If you cannot determine the journal, omit this field. ` +
+      `\n\n` +
+      `REMEMBER: ALL text in your response must be in ${languageName} (${languageNative}).\n\n` +
       `Return your answer strictly as a JSON object with the following keys:\n\n` +
       `quality_percentage (number),\n` +
       `traffic_light (string, one of \"🟢 Green\", \"🟡 Amber\", \"🔴 Red\"),\n` +
-      `reasoning (string, 2-3 paragraphs explaining the quality score in detail),\n` +
-      `positive_aspects (array of 3-7 objects with keys 'aspect', 'source_text', and 'explanation'),\n` +
-      `negative_aspects (array of 3-7 objects with keys 'aspect', 'source_text', and 'explanation'),\n` +
+      `reasoning (string in ${languageName}, 2-3 paragraphs explaining the quality score in detail),\n` +
+      `positive_aspects (array of objects with keys 'aspect' (in ${languageName}), 'source_text', and 'explanation' (in ${languageName})),\n` +
+      `negative_aspects (array of objects with keys 'aspect' (in ${languageName}), 'source_text', and 'explanation' (in ${languageName})),\n` +
       `journal_info (optional object with keys 'journal_name' and 'impact_factor')\n\n` +
       `Do not include any code block formatting, backticks or additional commentary.  Only output a single valid JSON object.`;
 
@@ -364,6 +381,15 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       throw new Error('Insufficient text provided for analysis');
     }
 
+    // Get current language from i18n service
+    let currentLanguage = 'de'; // Default to German
+    if (typeof window !== 'undefined' && window.QSCIi18n && typeof window.QSCIi18n.getLanguage === 'function') {
+      currentLanguage = window.QSCIi18n.getLanguage();
+      console.log('Q‑SCI LLM Evaluator: Using language:', currentLanguage);
+    } else {
+      console.log('Q‑SCI LLM Evaluator: i18n service not available, using default language:', currentLanguage);
+    }
+
     // Fetch the OpenAI API key from the backend instead of local storage
     // This ensures the key is managed centrally and users don't need to manually enter it
     let apiKey;
@@ -411,7 +437,7 @@ if (typeof window !== 'undefined' && typeof window.qsciEvaluatePaper === 'undefi
       throw new Error(userFriendlyMessage);
     }
 
-    const messages = buildMessages(title, sourceUrl, text);
+    const messages = buildMessages(title, sourceUrl, text, currentLanguage);
     const body = JSON.stringify({
       model: MODEL_NAME,
       messages: messages,
