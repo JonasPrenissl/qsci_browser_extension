@@ -3,9 +3,22 @@
 // and performs analysis in the background to continue even when popup is closed
 'use strict';
 
-// Dev reload (development only) - loads from local dev server when running
-if (typeof importScripts === "function") {
-  try { importScripts("http://localhost:35729/dev-reload.js"); } catch (e) {}
+// Dev reload (development only) - embedded directly to avoid CSP violations
+// This connects to the local dev server's WebSocket to reload the extension on changes
+try {
+  // Only attempt WebSocket connection in development (when localhost is accessible)
+  const ws = new WebSocket("ws://localhost:35729");
+  ws.onmessage = (e) => {
+    if (e.data === "reload-extension") {
+      console.log('Q-SCI Background: Reloading extension due to file change...');
+      chrome.runtime.reload();
+    }
+  };
+  ws.onerror = () => {
+    // Silently ignore - dev server not running
+  };
+} catch (e) {
+  // Silently ignore - WebSocket not available or connection failed
 }
 
 console.log('Q-SCI Background: Service worker starting...');
