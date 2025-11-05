@@ -80,6 +80,21 @@ const pdfBuildConfig = {
   }
 };
 
+// Build configuration for PDF export bundle
+const pdfExportBuildConfig = {
+  entryPoints: ['pdf-export.js'],
+  bundle: true,
+  outfile: 'dist/js/bundle-pdf-export.js',
+  platform: 'browser',
+  format: 'iife',
+  target: ['chrome91'],
+  sourcemap: true,
+  minify: false,
+  define: {
+    'global': 'window'
+  }
+};
+
 async function buildAll() {
   try {
     // Build auth bundle
@@ -89,6 +104,10 @@ async function buildAll() {
     // Build PDF handler bundle
     await esbuild.build(pdfBuildConfig);
     console.log('✓ Build complete: dist/js/bundle-pdf-handler.js');
+    
+    // Build PDF export bundle
+    await esbuild.build(pdfExportBuildConfig);
+    console.log('✓ Build complete: dist/js/bundle-pdf-export.js');
   } catch (error) {
     console.error('✗ Build failed:', error);
     
@@ -109,10 +128,12 @@ if (isWatchMode) {
   // Watch mode
   Promise.all([
     esbuild.context(authBuildConfig),
-    esbuild.context(pdfBuildConfig)
-  ]).then(([authCtx, pdfCtx]) => {
+    esbuild.context(pdfBuildConfig),
+    esbuild.context(pdfExportBuildConfig)
+  ]).then(([authCtx, pdfCtx, pdfExportCtx]) => {
     authCtx.watch();
     pdfCtx.watch();
+    pdfExportCtx.watch();
     console.log('✓ Watching for changes...');
   }).catch((error) => {
     console.error('✗ Watch failed:', error);
