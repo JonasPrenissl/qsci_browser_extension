@@ -84,6 +84,23 @@
       'message.error': 'Ein Fehler ist aufgetreten.',
       'message.success': 'Erfolg!',
       
+      // Progress messages
+      'progress.preparingAnalysis': 'Analyse wird vorbereitet...',
+      'progress.detectingPage': 'Seite wird erkannt...',
+      'progress.extractingContent': 'Inhalt wird von der Seite extrahiert...',
+      'progress.contentExtracted': 'Inhalt erfolgreich extrahiert',
+      'progress.usingFallback': 'Verwende Fallback-Extraktion...',
+      'progress.downloadingPdf': 'PDF wird heruntergeladen...',
+      'progress.pdfExtracted': 'PDF erfolgreich extrahiert',
+      'progress.preparingText': 'Text wird für Analyse vorbereitet...',
+      'progress.textPrepared': 'Text erfolgreich vorbereitet',
+      'progress.sendingToAi': 'Wird zur KI-Analyse gesendet...',
+      'progress.startingBackground': 'Hintergrundanalyse wird gestartet...',
+      'progress.runningInBackground': 'Analyse läuft im Hintergrund...',
+      'progress.processingResults': 'Ergebnisse werden verarbeitet...',
+      'progress.displayingResults': 'Ergebnisse werden angezeigt...',
+      'progress.complete': 'Abgeschlossen!',
+      
       // Settings
       'settings.button': 'Einstellungen',
       'settings.title': 'Q-SCI Einstellungen',
@@ -193,6 +210,23 @@
       'message.analyzing': 'Analyzing...',
       'message.error': 'An error occurred.',
       'message.success': 'Success!',
+      
+      // Progress messages
+      'progress.preparingAnalysis': 'Preparing analysis...',
+      'progress.detectingPage': 'Detecting page...',
+      'progress.extractingContent': 'Extracting content from page...',
+      'progress.contentExtracted': 'Content extracted successfully',
+      'progress.usingFallback': 'Using fallback extraction...',
+      'progress.downloadingPdf': 'Downloading PDF...',
+      'progress.pdfExtracted': 'PDF extracted successfully',
+      'progress.preparingText': 'Preparing text for analysis...',
+      'progress.textPrepared': 'Text prepared successfully',
+      'progress.sendingToAi': 'Sending to AI for analysis...',
+      'progress.startingBackground': 'Starting background analysis...',
+      'progress.runningInBackground': 'Analysis running in background...',
+      'progress.processingResults': 'Processing results...',
+      'progress.displayingResults': 'Displaying results...',
+      'progress.complete': 'Complete!',
       
       // Settings
       'settings.button': 'Settings',
