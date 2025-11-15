@@ -1802,7 +1802,7 @@ function showSourceText(evaluationPoint, type, index, sourceText, explanation) {
     displayText = `"${sourceText}"`;
   } else {
     // Use i18n for fallback message
-    displayText = window.QSCIi18n ? window.QSCIi18n.t('detailed.noExactCitation') : 'aspect extracted from reasoning regarding multiple parts of the publication';
+    displayText = window.QSCIi18n ? window.QSCIi18n.t('detailed.noExactCitation') : 'A precise source citation cannot be provided here, as this aspect is based on an integrative analysis of multiple text passages. The scientific validity derives from the overall argumentation of the publication.';
   }
   
   if (elements.sourceContent) {
