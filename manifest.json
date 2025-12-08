@@ -167,8 +167,9 @@
     "page": "options.html",
     "open_in_tab": true
   },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.openai.com https://q-sci.org https://www.q-sci.org https://optimal-jennet-35.clerk.accounts.dev https://*.clerk.accounts.dev wss://localhost:35729 ws://localhost:35729;"
-  }
+"content_security_policy": {
+  "extension_pages": "script-src 'self' https://clerk.dev https://*.clerk.com https://*.clerk.accounts.dev; object-src 'self'; connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.thelancet.com https://pubmed.ncbi.nlm.nih.gov https://www.ncbi.nlm.nih.gov https://arxiv.org https://doi.org https://dx.doi.org https://www.nature.com https://www.science.org https://journals.plos.org https://www.pnas.org https://academic.oup.com https://*.wiley.com https://*.springer.com https://*.elsevier.com https://*.frontiersin.org https://*.biomedcentral.com https://*.mdpi.com;"
+}
+
 }
 
