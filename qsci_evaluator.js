@@ -71,6 +71,11 @@
   // while keeping API processing time well under 20-second target
   // GPT-4o-mini processes this in approximately 8-12 seconds
   const MAX_TEXT_LENGTH = 30000;
+  
+  // Truncation constants
+  const DEFAULT_METHODS_SECTION_LENGTH = 8000; // Assumed length if Methods end not found
+  const LABEL_SPACE_RESERVATION = 20; // Characters reserved for section labels
+  const ADDITIONAL_CONTENT_SPACE = 50; // Characters reserved for additional content label
 
   /**
    * Intelligently truncate text to fit within token limits while preserving
@@ -98,9 +103,11 @@
     // Strategy: Try to find and preserve complete Methods section, 
     // then fill remaining space with text from the beginning
     
-    // Try to identify Methods section location
+    // Try to identify Methods section location using comprehensive patterns
     const methodsPatterns = [
-      /\n\s*(methods?|methodology|materials? and methods?|study design|procedures?)\s*\n/i
+      /\n\s*(methods?|methodology|materials? and methods?|study design|procedures?)\s*\n/i,
+      /\n\s*(materials? & methods?|experimental procedures?|experimental methods?)\s*\n/i,
+      /\n\s*(methods? and materials?|study methodology)\s*\n/i
     ];
     
     let methodsStartIndex = -1;
@@ -132,7 +139,7 @@
       
       // If no clear end, assume Methods extends for reasonable length
       if (methodsEndIndex === -1) {
-        methodsEndIndex = Math.min(methodsStartIndex + 8000, text.length);
+        methodsEndIndex = Math.min(methodsStartIndex + DEFAULT_METHODS_SECTION_LENGTH, text.length);
       }
     }
     
@@ -150,14 +157,14 @@
         truncatedText = methodsText.substring(0, MAX_TEXT_LENGTH) + '\n[... methods section truncated for length ...]';
       } else {
         // Include as much from the beginning as possible, then add complete Methods
-        const remainingSpace = MAX_TEXT_LENGTH - methodsLength - 20; // Reserve space for label
+        const remainingSpace = MAX_TEXT_LENGTH - methodsLength - LABEL_SPACE_RESERVATION;
         const beginningText = text.substring(0, Math.min(methodsStartIndex, remainingSpace));
         
         truncatedText = beginningText + '\n[Methods - Complete]\n' + methodsText;
         
         // If we still have space, add some content after Methods
         if (truncatedText.length < MAX_TEXT_LENGTH && methodsEndIndex < text.length) {
-          const additionalSpace = MAX_TEXT_LENGTH - truncatedText.length - 50;
+          const additionalSpace = MAX_TEXT_LENGTH - truncatedText.length - ADDITIONAL_CONTENT_SPACE;
           const afterMethodsText = text.substring(methodsEndIndex, Math.min(methodsEndIndex + additionalSpace, text.length));
           if (afterMethodsText.trim()) {
             truncatedText += '\n[Additional Content]\n' + afterMethodsText;
