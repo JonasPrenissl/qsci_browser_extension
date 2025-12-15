@@ -1392,6 +1392,126 @@ function extractPageContent() {
 }
 
 // Display analysis results
+// Helper function to create aspect element with inline source/explanation
+function createAspectElement(aspect, type) {
+  // Create container for aspect and its details
+  const aspectContainer = document.createElement('div');
+  aspectContainer.className = 'aspect-container';
+  
+  // Create the clickable aspect element
+  const aspectElement = document.createElement('div');
+  aspectElement.className = 'analysis-item clickable';
+  
+  // Handle both string and object formats
+  // For LLM results, aspect objects have keys 'aspect', 'source_text', and 'explanation'.
+  // For legacy heuristic results, use 'text' and 'source'.
+  let aspectText;
+  let aspectSource;
+  let aspectExplanation;
+  if (typeof aspect === 'string') {
+    aspectText = aspect;
+    aspectSource = null;
+    aspectExplanation = null;
+  } else if (typeof aspect === 'object') {
+    aspectText = aspect.aspect || aspect.text || '';
+    aspectSource = aspect.source_text || aspect.source || null;
+    aspectExplanation = aspect.explanation || null;
+  } else {
+    aspectText = String(aspect);
+    aspectSource = null;
+    aspectExplanation = null;
+  }
+  
+  aspectElement.textContent = aspectText;
+  
+  // Create inline source/explanation section (hidden by default)
+  const detailsSection = document.createElement('div');
+  detailsSection.className = 'aspect-details';
+  detailsSection.style.display = 'none';
+  
+  // Determine colors based on aspect type
+  const isPositive = type === 'positive';
+  const sourceBgColor = isPositive ? '#f8fafc' : '#fef2f2';
+  const sourceBorderColor = isPositive ? '#10b981' : '#ef4444';
+  const sourceLabelColor = isPositive ? '#059669' : '#dc2626';
+  
+  // Create source section
+  const sourceSection = document.createElement('div');
+  sourceSection.className = 'aspect-source';
+  sourceSection.style.marginTop = '8px';
+  sourceSection.style.padding = '12px';
+  sourceSection.style.background = sourceBgColor;
+  sourceSection.style.borderLeft = `4px solid ${sourceBorderColor}`;
+  sourceSection.style.borderRadius = '4px';
+  
+  const sourceLabel = document.createElement('div');
+  sourceLabel.style.fontSize = '12px';
+  sourceLabel.style.fontWeight = '600';
+  sourceLabel.style.color = sourceLabelColor;
+  sourceLabel.style.marginBottom = '6px';
+  sourceLabel.setAttribute('data-i18n', 'detailed.source');
+  sourceLabel.textContent = window.QSCIi18n ? window.QSCIi18n.t('detailed.source') : 'Quelle';
+  
+  const sourceContent = document.createElement('div');
+  sourceContent.style.fontStyle = 'italic';
+  sourceContent.style.fontSize = '13px';
+  sourceContent.style.lineHeight = '1.6';
+  sourceContent.style.color = '#374151';
+  
+  // Use actual source text from API if available, otherwise show fallback message
+  let displayText;
+  if (aspectSource !== undefined && aspectSource !== null && aspectSource.trim() !== '') {
+    displayText = `"${aspectSource}"`;
+  } else {
+    displayText = window.QSCIi18n ? window.QSCIi18n.t('detailed.noExactCitation') : 'A precise source citation cannot be provided here, as this aspect is based on an integrative analysis of multiple text passages. The scientific validity derives from the overall argumentation of the publication.';
+  }
+  sourceContent.textContent = displayText;
+  
+  sourceSection.appendChild(sourceLabel);
+  sourceSection.appendChild(sourceContent);
+  detailsSection.appendChild(sourceSection);
+  
+  // Create explanation section if available
+  if (aspectExplanation && aspectExplanation.trim() !== '') {
+    const explanationSection = document.createElement('div');
+    explanationSection.className = 'aspect-explanation';
+    explanationSection.style.marginTop = '8px';
+    explanationSection.style.padding = '12px';
+    explanationSection.style.background = '#f0f9ff';
+    explanationSection.style.borderLeft = '4px solid #3b82f6';
+    explanationSection.style.borderRadius = '4px';
+    
+    const explanationLabel = document.createElement('div');
+    explanationLabel.style.fontSize = '12px';
+    explanationLabel.style.fontWeight = '600';
+    explanationLabel.style.color = '#1e40af';
+    explanationLabel.style.marginBottom = '6px';
+    explanationLabel.setAttribute('data-i18n', 'detailed.explanation');
+    explanationLabel.textContent = window.QSCIi18n ? window.QSCIi18n.t('detailed.explanation') : 'Erklärung:';
+    
+    const explanationContent = document.createElement('div');
+    explanationContent.style.fontSize = '13px';
+    explanationContent.style.lineHeight = '1.6';
+    explanationContent.style.color = '#1e3a8a';
+    explanationContent.textContent = aspectExplanation;
+    
+    explanationSection.appendChild(explanationLabel);
+    explanationSection.appendChild(explanationContent);
+    detailsSection.appendChild(explanationSection);
+  }
+  
+  // Toggle visibility on click
+  aspectElement.addEventListener('click', () => {
+    const isVisible = detailsSection.style.display !== 'none';
+    detailsSection.style.display = isVisible ? 'none' : 'block';
+  });
+  
+  aspectContainer.appendChild(aspectElement);
+  aspectContainer.appendChild(detailsSection);
+  
+  return aspectContainer;
+}
+
 function displayAnalysisResults(analysis) {
   console.log('Q-SCI Debug Popup: Displaying results:', analysis);
   
@@ -1706,114 +1826,7 @@ function populateDetailedAnalysis(analysis) {
     elements.positiveAspectsList.innerHTML = '';
     
     analysis.positive_aspects.forEach((aspect, index) => {
-      // Create container for aspect and its details
-      const aspectContainer = document.createElement('div');
-      aspectContainer.className = 'aspect-container';
-      
-      // Create the clickable aspect element
-      const aspectElement = document.createElement('div');
-      aspectElement.className = 'analysis-item clickable';
-      
-      // Handle both string and object formats
-      // For LLM results, aspect objects have keys 'aspect', 'source_text', and 'explanation'.
-      // For legacy heuristic results, use 'text' and 'source'.
-      let aspectText;
-      let aspectSource;
-      let aspectExplanation;
-      if (typeof aspect === 'string') {
-        aspectText = aspect;
-        aspectSource = null;
-        aspectExplanation = null;
-      } else if (typeof aspect === 'object') {
-        aspectText = aspect.aspect || aspect.text || '';
-        aspectSource = aspect.source_text || aspect.source || null;
-        aspectExplanation = aspect.explanation || null;
-      } else {
-        aspectText = String(aspect);
-        aspectSource = null;
-        aspectExplanation = null;
-      }
-      
-      aspectElement.textContent = aspectText;
-      
-      // Create inline source/explanation section (hidden by default)
-      const detailsSection = document.createElement('div');
-      detailsSection.className = 'aspect-details';
-      detailsSection.style.display = 'none';
-      
-      // Create source section
-      const sourceSection = document.createElement('div');
-      sourceSection.className = 'aspect-source';
-      sourceSection.style.marginTop = '8px';
-      sourceSection.style.padding = '12px';
-      sourceSection.style.background = '#f8fafc';
-      sourceSection.style.borderLeft = '4px solid #10b981';
-      sourceSection.style.borderRadius = '4px';
-      
-      const sourceLabel = document.createElement('div');
-      sourceLabel.style.fontSize = '12px';
-      sourceLabel.style.fontWeight = '600';
-      sourceLabel.style.color = '#059669';
-      sourceLabel.style.marginBottom = '6px';
-      sourceLabel.setAttribute('data-i18n', 'detailed.source');
-      sourceLabel.textContent = window.QSCIi18n ? window.QSCIi18n.t('detailed.source') : 'Quelle';
-      
-      const sourceContent = document.createElement('div');
-      sourceContent.style.fontStyle = 'italic';
-      sourceContent.style.fontSize = '13px';
-      sourceContent.style.lineHeight = '1.6';
-      sourceContent.style.color = '#374151';
-      
-      // Use actual source text from API if available, otherwise show fallback message
-      let displayText;
-      if (aspectSource !== undefined && aspectSource !== null && aspectSource.trim() !== '') {
-        displayText = `"${aspectSource}"`;
-      } else {
-        displayText = window.QSCIi18n ? window.QSCIi18n.t('detailed.noExactCitation') : 'A precise source citation cannot be provided here, as this aspect is based on an integrative analysis of multiple text passages. The scientific validity derives from the overall argumentation of the publication.';
-      }
-      sourceContent.textContent = displayText;
-      
-      sourceSection.appendChild(sourceLabel);
-      sourceSection.appendChild(sourceContent);
-      detailsSection.appendChild(sourceSection);
-      
-      // Create explanation section if available
-      if (aspectExplanation && aspectExplanation.trim() !== '') {
-        const explanationSection = document.createElement('div');
-        explanationSection.className = 'aspect-explanation';
-        explanationSection.style.marginTop = '8px';
-        explanationSection.style.padding = '12px';
-        explanationSection.style.background = '#f0f9ff';
-        explanationSection.style.borderLeft = '4px solid #3b82f6';
-        explanationSection.style.borderRadius = '4px';
-        
-        const explanationLabel = document.createElement('div');
-        explanationLabel.style.fontSize = '12px';
-        explanationLabel.style.fontWeight = '600';
-        explanationLabel.style.color = '#1e40af';
-        explanationLabel.style.marginBottom = '6px';
-        explanationLabel.setAttribute('data-i18n', 'detailed.explanation');
-        explanationLabel.textContent = window.QSCIi18n ? window.QSCIi18n.t('detailed.explanation') : 'Erklärung:';
-        
-        const explanationContent = document.createElement('div');
-        explanationContent.style.fontSize = '13px';
-        explanationContent.style.lineHeight = '1.6';
-        explanationContent.style.color = '#1e3a8a';
-        explanationContent.textContent = aspectExplanation;
-        
-        explanationSection.appendChild(explanationLabel);
-        explanationSection.appendChild(explanationContent);
-        detailsSection.appendChild(explanationSection);
-      }
-      
-      // Toggle visibility on click
-      aspectElement.addEventListener('click', () => {
-        const isVisible = detailsSection.style.display !== 'none';
-        detailsSection.style.display = isVisible ? 'none' : 'block';
-      });
-      
-      aspectContainer.appendChild(aspectElement);
-      aspectContainer.appendChild(detailsSection);
+      const aspectContainer = createAspectElement(aspect, 'positive');
       elements.positiveAspectsList.appendChild(aspectContainer);
     });
   }
@@ -1823,112 +1836,7 @@ function populateDetailedAnalysis(analysis) {
     elements.negativeAspectsList.innerHTML = '';
     
     analysis.negative_aspects.forEach((aspect, index) => {
-      // Create container for aspect and its details
-      const aspectContainer = document.createElement('div');
-      aspectContainer.className = 'aspect-container';
-      
-      // Create the clickable aspect element
-      const aspectElement = document.createElement('div');
-      aspectElement.className = 'analysis-item clickable';
-      
-      // Handle both string and object formats
-      let aspectText;
-      let aspectSource;
-      let aspectExplanation;
-      if (typeof aspect === 'string') {
-        aspectText = aspect;
-        aspectSource = null;
-        aspectExplanation = null;
-      } else if (typeof aspect === 'object') {
-        aspectText = aspect.aspect || aspect.text || '';
-        aspectSource = aspect.source_text || aspect.source || null;
-        aspectExplanation = aspect.explanation || null;
-      } else {
-        aspectText = String(aspect);
-        aspectSource = null;
-        aspectExplanation = null;
-      }
-      
-      aspectElement.textContent = aspectText;
-      
-      // Create inline source/explanation section (hidden by default)
-      const detailsSection = document.createElement('div');
-      detailsSection.className = 'aspect-details';
-      detailsSection.style.display = 'none';
-      
-      // Create source section
-      const sourceSection = document.createElement('div');
-      sourceSection.className = 'aspect-source';
-      sourceSection.style.marginTop = '8px';
-      sourceSection.style.padding = '12px';
-      sourceSection.style.background = '#fef2f2';
-      sourceSection.style.borderLeft = '4px solid #ef4444';
-      sourceSection.style.borderRadius = '4px';
-      
-      const sourceLabel = document.createElement('div');
-      sourceLabel.style.fontSize = '12px';
-      sourceLabel.style.fontWeight = '600';
-      sourceLabel.style.color = '#dc2626';
-      sourceLabel.style.marginBottom = '6px';
-      sourceLabel.setAttribute('data-i18n', 'detailed.source');
-      sourceLabel.textContent = window.QSCIi18n ? window.QSCIi18n.t('detailed.source') : 'Quelle';
-      
-      const sourceContent = document.createElement('div');
-      sourceContent.style.fontStyle = 'italic';
-      sourceContent.style.fontSize = '13px';
-      sourceContent.style.lineHeight = '1.6';
-      sourceContent.style.color = '#374151';
-      
-      // Use actual source text from API if available, otherwise show fallback message
-      let displayText;
-      if (aspectSource !== undefined && aspectSource !== null && aspectSource.trim() !== '') {
-        displayText = `"${aspectSource}"`;
-      } else {
-        displayText = window.QSCIi18n ? window.QSCIi18n.t('detailed.noExactCitation') : 'A precise source citation cannot be provided here, as this aspect is based on an integrative analysis of multiple text passages. The scientific validity derives from the overall argumentation of the publication.';
-      }
-      sourceContent.textContent = displayText;
-      
-      sourceSection.appendChild(sourceLabel);
-      sourceSection.appendChild(sourceContent);
-      detailsSection.appendChild(sourceSection);
-      
-      // Create explanation section if available
-      if (aspectExplanation && aspectExplanation.trim() !== '') {
-        const explanationSection = document.createElement('div');
-        explanationSection.className = 'aspect-explanation';
-        explanationSection.style.marginTop = '8px';
-        explanationSection.style.padding = '12px';
-        explanationSection.style.background = '#f0f9ff';
-        explanationSection.style.borderLeft = '4px solid #3b82f6';
-        explanationSection.style.borderRadius = '4px';
-        
-        const explanationLabel = document.createElement('div');
-        explanationLabel.style.fontSize = '12px';
-        explanationLabel.style.fontWeight = '600';
-        explanationLabel.style.color = '#1e40af';
-        explanationLabel.style.marginBottom = '6px';
-        explanationLabel.setAttribute('data-i18n', 'detailed.explanation');
-        explanationLabel.textContent = window.QSCIi18n ? window.QSCIi18n.t('detailed.explanation') : 'Erklärung:';
-        
-        const explanationContent = document.createElement('div');
-        explanationContent.style.fontSize = '13px';
-        explanationContent.style.lineHeight = '1.6';
-        explanationContent.style.color = '#1e3a8a';
-        explanationContent.textContent = aspectExplanation;
-        
-        explanationSection.appendChild(explanationLabel);
-        explanationSection.appendChild(explanationContent);
-        detailsSection.appendChild(explanationSection);
-      }
-      
-      // Toggle visibility on click
-      aspectElement.addEventListener('click', () => {
-        const isVisible = detailsSection.style.display !== 'none';
-        detailsSection.style.display = isVisible ? 'none' : 'block';
-      });
-      
-      aspectContainer.appendChild(aspectElement);
-      aspectContainer.appendChild(detailsSection);
+      const aspectContainer = createAspectElement(aspect, 'negative');
       elements.negativeAspectsList.appendChild(aspectContainer);
     });
   }
