@@ -752,7 +752,6 @@ body {
 
 .analysis-item {
   padding: 14px 18px;
-  border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 14px;
@@ -760,7 +759,7 @@ body {
 }
 
 .analysis-item:last-child {
-  border-bottom: none;
+  /* border removed - now on aspect-container */
 }
 
 .analysis-item:hover {
@@ -784,6 +783,31 @@ body {
 
 .analysis-item.clickable:hover::after {
   opacity: 1;
+}
+
+/* Aspect container for inline source/explanation */
+.aspect-container {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.aspect-container:last-child {
+  border-bottom: none;
+}
+
+.aspect-details {
+  padding: 0 18px 14px 18px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Source Citations */
