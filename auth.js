@@ -505,7 +505,7 @@
      * Helper function to fetch API key from backend with a given token
      * @private
      */
-    _fetchApiKeyWithToken: async function(token) {
+    _fetchApiKeyWithToken: async (token) => {
       const response = await fetch(`${API_BASE_URL}/extension-auth?operation=openai-key`, {
         method: 'GET',
         headers: {
