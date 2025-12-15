@@ -2096,10 +2096,19 @@ async function handleChatSend() {
     const messages = buildChatMessages(userMessage);
     
     // Get OpenAI API key
+    // Note: This may refresh the auth token internally if it has expired
     const apiKey = await window.QSCIAuth.getOpenAIApiKey();
     
     if (!apiKey) {
       throw new Error('Failed to retrieve API key from backend.');
+    }
+    
+    // Refresh currentUser in case the token was updated during API key fetch
+    try {
+      currentUser = await window.QSCIAuth.getCurrentUser();
+    } catch (userRefreshError) {
+      // Non-critical error, continue with chat
+      console.warn('Q-SCI Debug Popup: Could not refresh currentUser after API key fetch:', userRefreshError);
     }
     
     // Call OpenAI API
