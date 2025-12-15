@@ -701,7 +701,9 @@ async function updateUsageDisplay() {
     const usageInfo = await window.QSCIUsage.canAnalyze(currentUser.subscriptionStatus);
     
     if (elements.usageDisplay) {
-      elements.usageDisplay.textContent = `${usageInfo.used} / ${usageInfo.limit}`;
+      // Format usage to show 1 decimal place for fractional values
+      const usedFormatted = usageInfo.used % 1 === 0 ? usageInfo.used : usageInfo.used.toFixed(1);
+      elements.usageDisplay.textContent = `${usedFormatted} / ${usageInfo.limit}`;
       
       // Color code based on remaining
       if (usageInfo.remaining === 0) {
@@ -2110,10 +2112,10 @@ async function handleChatSend() {
     chatHistory.push({ role: 'user', content: userMessage });
     chatHistory.push({ role: 'assistant', content: aiResponse });
     
-    // Increment usage after successful chat response (chat questions count as analyses)
+    // Increment usage after successful chat response (chat questions count as 0.2 analyses)
     try {
-      console.log('Q-SCI Debug Popup: Incrementing usage counter for chat question...');
-      await window.QSCIUsage.incrementUsage();
+      console.log('Q-SCI Debug Popup: Incrementing usage counter for chat question (0.2)...');
+      await window.QSCIUsage.incrementUsage(0.2);
       await updateUsageDisplay();
       console.log('Q-SCI Debug Popup: Usage incremented successfully for chat');
     } catch (usageError) {
