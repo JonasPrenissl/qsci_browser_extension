@@ -502,6 +502,21 @@
     },
     
     /**
+     * Helper function to fetch API key from backend with a given token
+     * @private
+     */
+    _fetchApiKeyWithToken: async function(token) {
+      const response = await fetch(`${API_BASE_URL}/extension-auth?operation=openai-key`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response;
+    },
+    
+    /**
      * Fetch OpenAI API key from backend
      * This method retrieves the API key from the backend server
      * The backend should return the key based on the user's authentication token
@@ -510,18 +525,6 @@
      */
     async getOpenAIApiKey() {
       console.log('Q-SCI Auth: getOpenAIApiKey() called');
-      
-      // Helper function to make the actual API request
-      const fetchApiKey = async (token) => {
-        const response = await fetch(`${API_BASE_URL}/extension-auth?operation=openai-key`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        return response;
-      };
       
       try {
         const user = await this.getCurrentUser();
@@ -537,9 +540,11 @@
         console.log('Q-SCI Auth: API endpoint:', `${API_BASE_URL}/extension-auth?operation=openai-key`);
         console.log('Q-SCI Auth: Using token (first 20 chars):', user.token.substring(0, 20) + '...');
         
+        const originalToken = user.token;
+        
         // Call backend API to get OpenAI API key
         // Using consolidated extension-auth endpoint with operation parameter
-        let response = await fetchApiKey(user.token);
+        let response = await this._fetchApiKeyWithToken(originalToken);
         
         console.log('Q-SCI Auth: Backend response status:', response.status);
         
@@ -552,10 +557,15 @@
             const refreshedUser = await this.verifyAndRefreshAuth();
             
             if (refreshedUser && refreshedUser.token) {
+              // Validate that the token has changed or is still valid
+              if (refreshedUser.token === originalToken) {
+                console.warn('Q-SCI Auth: Token unchanged after refresh, session may still be invalid');
+              }
+              
               console.log('Q-SCI Auth: Auth refresh successful, retrying API key fetch...');
               
               // Retry the API key fetch with the refreshed token
-              response = await fetchApiKey(refreshedUser.token);
+              response = await this._fetchApiKeyWithToken(refreshedUser.token);
               console.log('Q-SCI Auth: Retry response status:', response.status);
               
               // If the retry also returns 401, then we truly have an expired session

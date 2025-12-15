@@ -2103,14 +2103,6 @@ async function handleChatSend() {
       throw new Error('Failed to retrieve API key from backend.');
     }
     
-    // Refresh currentUser in case the token was updated during API key fetch
-    try {
-      currentUser = await window.QSCIAuth.getCurrentUser();
-    } catch (userRefreshError) {
-      // Non-critical error, continue with chat
-      console.warn('Q-SCI Debug Popup: Could not refresh currentUser after API key fetch:', userRefreshError);
-    }
-    
     // Call OpenAI API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
