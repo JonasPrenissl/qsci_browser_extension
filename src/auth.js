@@ -597,20 +597,21 @@
     
     /**
      * Increment daily usage count
+     * @param {number} amount - Amount to increment (default: 1.0 for full analysis, 0.2 for chat questions)
      * @returns {Promise<number>} New usage count
      */
-    async incrementUsage() {
+    async incrementUsage(amount = 1.0) {
       try {
         const today = this._getTodayDate();
         const currentUsage = await this.getDailyUsage();
-        const newUsage = currentUsage + 1;
+        const newUsage = currentUsage + amount;
         
         await chrome.storage.local.set({
           [STORAGE_KEYS.DAILY_USAGE]: newUsage,
           [STORAGE_KEYS.LAST_USAGE_DATE]: today
         });
         
-        console.log('Q-SCI Usage: Incremented to', newUsage);
+        console.log('Q-SCI Usage: Incremented by', amount, 'to', newUsage);
         return newUsage;
       } catch (error) {
         console.error('Q-SCI Usage: Error incrementing usage:', error);
