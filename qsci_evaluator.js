@@ -205,7 +205,7 @@
       `When given the text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. `;
     
     if (wasTruncated) {
-      systemPrompt += `Note: This paper's text was intelligently truncated to include the most relevant sections (Abstract, Methods, Results, Discussion) to optimize processing time. `;
+      systemPrompt += `Note: This paper's text was optimized to include up to 30,000 characters (~7,500 tokens) with priority given to preserving the complete Methods section and content from the beginning of the paper. `;
     }
     
     systemPrompt += `Focus on the actual paper content only — ignore the reference list and citations. ` +
