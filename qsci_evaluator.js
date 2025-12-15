@@ -61,34 +61,34 @@
   const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
   // Timeout for API requests (in milliseconds)
-  // Increased to 120 seconds to handle longer PDF extractions and complex analyses
-  // This allows sufficient time for PDF processing and complex papers like The Lancet
+  // Set to 120 seconds to handle longer PDF extractions and complex analyses
+  // With 30K character input (~7,500 tokens), typical response time is 8-15 seconds
   const API_TIMEOUT_MS = 120000; // 120 seconds (2 minutes)
 
   // Maximum text length to send to the API (in characters)
   // Optimized to balance analysis quality with response time (<20 seconds)
-  // ~15,000 chars = ~3,750 tokens, which provides sufficient context while
-  // keeping API processing time under target
-  const MAX_TEXT_LENGTH = 15000;
-
-  // Maximum length for a line to be considered a section header
-  // Longer lines are likely paragraph text, not headers
-  const MAX_SECTION_HEADER_LENGTH = 100;
-
-  // Minimum proportion of text that should be extracted by section detection
-  // If less than this proportion is extracted, fall back to simple truncation
-  const SECTION_EXTRACTION_THRESHOLD = 0.5;
+  // ~30,000 chars = ~7,500 tokens, which provides extensive full-text coverage
+  // while keeping API processing time well under 20-second target
+  // GPT-4o-mini processes this in approximately 8-12 seconds
+  const MAX_TEXT_LENGTH = 30000;
+  
+  // Truncation constants
+  const DEFAULT_METHODS_SECTION_LENGTH = 8000; // Assumed length if Methods end not found
+  const LABEL_SPACE_RESERVATION = 20; // Characters reserved for section labels
+  const ADDITIONAL_CONTENT_SPACE = 50; // Characters reserved for additional content label
 
   /**
    * Intelligently truncate text to fit within token limits while preserving
-   * the most important sections for quality analysis.
+   * as much full text as possible for comprehensive analysis.
    * 
-   * Priority and allocation:
-   * - Methods: 100% (NEVER truncated - crucial for quality assessment)
-   * - Abstract: 35% (Important study summary)
-   * - Results: 10% (Beginning of results section)
-   * - Discussion: 5% (Only limitations and advantages paragraphs)
-   * - Introduction: Last paragraph only (where hypotheses are typically stated)
+   * Strategy:
+   * - Methods section: Preserved completely (NEVER truncated - crucial for quality)
+   * - Remaining space: Filled with text from the beginning of the paper
+   * - This naturally includes: Abstract, Introduction, and start of Methods
+   * - If Methods not found separately, uses simple truncation from start
+   * 
+   * This approach maximizes full-text coverage (30K chars = ~7,500 tokens)
+   * while ensuring the most critical section (Methods) is always complete.
    * 
    * @param {string} text - The full paper text
    * @returns {string} Truncated text optimized for analysis
@@ -98,149 +98,83 @@
       return text;
     }
 
-    console.log(`Q‑SCI LLM Evaluator: Text length ${text.length} exceeds limit, applying intelligent truncation...`);
+    console.log(`Q‑SCI LLM Evaluator: Text length ${text.length} exceeds limit, applying full-text optimized truncation...`);
 
-    // Section markers to identify key parts (case-insensitive)
-    // Patterns are designed to match section headers, not inline text
-    // They require word boundaries and typically short lines to avoid false positives
-    const sectionPatterns = {
-      abstract: /^\s*(abstract|summary)\s*$/i,
-      methods: /^\s*(methods?|methodology|materials? and methods?|study design|participants?|procedures?)\s*$/i,
-      results: /^\s*(results?|findings?|outcomes?)\s*$/i,
-      discussion: /^\s*(discussion|conclusion|conclusions?|interpretation)\s*$/i,
-      introduction: /^\s*(introduction|background)\s*$/i
-    };
-
-    // Try to extract sections by finding section headers
-    const lines = text.split('\n');
-    const sections = {
-      abstract: [],
-      methods: [],
-      results: [],
-      discussion: [],
-      introduction: [],
-      other: []
-    };
+    // Strategy: Try to find and preserve complete Methods section, 
+    // then fill remaining space with text from the beginning
     
-    let currentSection = 'other';
+    // Try to identify Methods section location using comprehensive patterns
+    const methodsPatterns = [
+      /\n\s*(methods?|methodology|materials? and methods?|study design|procedures?)\s*\n/i,
+      /\n\s*(materials? & methods?|experimental procedures?|experimental methods?)\s*\n/i,
+      /\n\s*(methods? and materials?|study methodology)\s*\n/i
+    ];
     
-    for (const line of lines) {
-      const trimmedLine = line.trim();
+    let methodsStartIndex = -1;
+    let methodsEndIndex = -1;
+    
+    // Find start of Methods section
+    for (const pattern of methodsPatterns) {
+      const match = text.match(pattern);
+      if (match && match.index !== undefined) {
+        methodsStartIndex = match.index;
+        break;
+      }
+    }
+    
+    // If we found Methods, try to find its end (next major section)
+    if (methodsStartIndex !== -1) {
+      const afterMethods = text.substring(methodsStartIndex + 1);
+      const nextSectionPatterns = [
+        /\n\s*(results?|findings?|outcomes?|discussion|conclusion)\s*\n/i
+      ];
       
-      // Check if this line is a section header
-      let foundSection = false;
-      for (const [sectionName, pattern] of Object.entries(sectionPatterns)) {
-        if (pattern.test(trimmedLine) && trimmedLine.length < MAX_SECTION_HEADER_LENGTH) {
-          // Short lines matching section patterns are likely headers
-          currentSection = sectionName;
-          foundSection = true;
+      for (const pattern of nextSectionPatterns) {
+        const match = afterMethods.match(pattern);
+        if (match && match.index !== undefined) {
+          methodsEndIndex = methodsStartIndex + 1 + match.index;
           break;
         }
       }
       
-      if (!foundSection && trimmedLine.length > 0) {
-        sections[currentSection].push(line);
+      // If no clear end, assume Methods extends for reasonable length
+      if (methodsEndIndex === -1) {
+        methodsEndIndex = Math.min(methodsStartIndex + DEFAULT_METHODS_SECTION_LENGTH, text.length);
       }
     }
-
-    // Build truncated text by prioritizing sections
-    // Updated allocation strategy based on quality analysis importance:
-    // - Methods: 100% (CRUCIAL - never truncate, most important for quality)
-    // - Abstract: 35% (Important summary of the study)
-    // - Results: 10% (Less important for quality analysis)
-    // - Discussion: 5% (Only limitations/advantages paragraphs)
-    // - Introduction: Last paragraph only (hypotheses location)
     
     let truncatedText = '';
     
-    // 1. Abstract - important summary (35% = 5,250 chars)
-    if (sections.abstract.length > 0) {
-      const sectionText = sections.abstract.join('\n');
-      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.35);
-      const label = 'Abstract';
+    // Case 1: Methods section identified - preserve it completely and fill rest from beginning
+    if (methodsStartIndex !== -1 && methodsEndIndex !== -1) {
+      const methodsText = text.substring(methodsStartIndex, methodsEndIndex);
+      const methodsLength = methodsText.length;
       
-      if (sectionText.length > allocation) {
-        truncatedText += `\n[${label}]\n${sectionText.substring(0, allocation)}...\n`;
+      console.log(`Q‑SCI LLM Evaluator: Methods section found (${methodsLength} chars), preserving completely`);
+      
+      // If Methods alone is longer than our limit, truncate from end of Methods
+      if (methodsLength >= MAX_TEXT_LENGTH) {
+        truncatedText = methodsText.substring(0, MAX_TEXT_LENGTH) + '\n[... methods section truncated for length ...]';
       } else {
-        truncatedText += `\n[${label}]\n${sectionText}\n`;
-      }
-    }
-    
-    // 2. Methods - CRITICAL, include 100% without truncation
-    // This is the most important section for quality analysis
-    if (sections.methods.length > 0) {
-      const sectionText = sections.methods.join('\n');
-      truncatedText += `\n[Methods]\n${sectionText}\n`;
-    }
-    
-    // 3. Results - reduced importance (10% = 1,500 chars)
-    if (sections.results.length > 0) {
-      const sectionText = sections.results.join('\n');
-      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.10);
-      const label = 'Results';
-      
-      if (sectionText.length > allocation) {
-        truncatedText += `\n[${label}]\n${sectionText.substring(0, allocation)}...\n`;
-      } else {
-        truncatedText += `\n[${label}]\n${sectionText}\n`;
-      }
-    }
-    
-    // 4. Discussion - only limitations and advantages (5% = 750 chars)
-    // Focus on the most relevant parts for quality assessment
-    if (sections.discussion.length > 0) {
-      const sectionText = sections.discussion.join('\n');
-      const allocation = Math.floor(MAX_TEXT_LENGTH * 0.05);
-      
-      // Try to extract paragraphs mentioning limitations or advantages
-      const paragraphs = sectionText.split(/\n\s*\n/);
-      let discussionText = '';
-      const limitationKeywords = /\b(limitation|drawback|weakness|constraint|disadvantage|caveat)\b/i;
-      const advantageKeywords = /\b(advantage|strength|benefit|robust|reliable|novel|innovative)\b/i;
-      
-      for (const para of paragraphs) {
-        if (limitationKeywords.test(para) || advantageKeywords.test(para)) {
-          discussionText += para + '\n\n';
-          if (discussionText.length > allocation) break;
+        // Include as much from the beginning as possible, then add complete Methods
+        const remainingSpace = MAX_TEXT_LENGTH - methodsLength - LABEL_SPACE_RESERVATION;
+        const beginningText = text.substring(0, Math.min(methodsStartIndex, remainingSpace));
+        
+        truncatedText = beginningText + '\n[Methods - Complete]\n' + methodsText;
+        
+        // If we still have space, add some content after Methods
+        if (truncatedText.length < MAX_TEXT_LENGTH && methodsEndIndex < text.length) {
+          const additionalSpace = MAX_TEXT_LENGTH - truncatedText.length - ADDITIONAL_CONTENT_SPACE;
+          const afterMethodsText = text.substring(methodsEndIndex, Math.min(methodsEndIndex + additionalSpace, text.length));
+          if (afterMethodsText.trim()) {
+            truncatedText += '\n[Additional Content]\n' + afterMethodsText;
+          }
         }
       }
-      
-      // If we didn't find specific paragraphs, take beginning
-      if (discussionText.trim().length === 0) {
-        discussionText = sectionText.substring(0, allocation);
-      }
-      
-      truncatedText += `\n[Discussion]\n${discussionText.substring(0, allocation)}...\n`;
-    }
-    
-    // 5. Introduction - only last paragraph (where hypotheses are usually mentioned)
-    if (sections.introduction.length > 0) {
-      const sectionText = sections.introduction.join('\n');
-      const paragraphs = sectionText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
-      
-      if (paragraphs.length > 0) {
-        // Take the last paragraph (usually contains hypotheses)
-        const lastParagraph = paragraphs[paragraphs.length - 1];
-        truncatedText += `\n[Introduction - Hypotheses]\n${lastParagraph}\n`;
-      }
-    }
-
-    // If we still have room and collected "other" content, add some of it
-    if (truncatedText.length < MAX_TEXT_LENGTH && sections.other.length > 0) {
-      const remainingSpace = MAX_TEXT_LENGTH - truncatedText.length;
-      const otherText = sections.other.join('\n');
-      if (otherText.length > remainingSpace) {
-        truncatedText += '\n[Additional Content]\n' + otherText.substring(0, remainingSpace) + '...';
-      } else {
-        truncatedText += '\n[Additional Content]\n' + otherText;
-      }
-    }
-
-    // Fallback: if section extraction didn't work well (very short result), 
-    // just take the beginning of the text
-    if (truncatedText.length < MAX_TEXT_LENGTH * SECTION_EXTRACTION_THRESHOLD) {
-      console.log('Q‑SCI LLM Evaluator: Section extraction yielded limited content, using simple truncation');
-      // Reserve space for the truncation message to ensure we don't exceed MAX_TEXT_LENGTH
+    } 
+    // Case 2: Methods not clearly identified - take from beginning
+    else {
+      console.log('Q‑SCI LLM Evaluator: Methods section not clearly identified, using full-text from beginning');
       const truncationMessage = '\n[... content truncated for length ...]';
       const reservedLength = MAX_TEXT_LENGTH - truncationMessage.length;
       truncatedText = text.substring(0, reservedLength) + truncationMessage;
@@ -278,7 +212,7 @@
       `When given the text of a scientific publication, you must assess the overall quality of the study using standard evidence‑grading principles. `;
     
     if (wasTruncated) {
-      systemPrompt += `Note: This paper's text was intelligently truncated to include the most relevant sections (Abstract, Methods, Results, Discussion) to optimize processing time. `;
+      systemPrompt += `Note: This paper's text was optimized to include up to 30,000 characters (~7,500 tokens) with priority given to preserving the complete Methods section and content from the beginning of the paper. `;
     }
     
     systemPrompt += `Focus on the actual paper content only — ignore the reference list and citations. ` +

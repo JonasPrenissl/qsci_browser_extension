@@ -91,13 +91,13 @@ test.describe('Q&A Chat Usage Tracking', () => {
     console.log('✓ Speed optimizations are properly implemented');
   });
 
-  test('Speed optimizations do not reduce text length', async () => {
+  test('Speed optimizations maintain sufficient text length', async () => {
     // Read the qsci_evaluator.js file
     const evaluatorPath = path.resolve('.', 'qsci_evaluator.js');
     const evaluatorContent = fs.readFileSync(evaluatorPath, 'utf-8');
     
-    // Verify MAX_TEXT_LENGTH is still 15000 (not reduced)
-    expect(evaluatorContent).toContain('const MAX_TEXT_LENGTH = 15000');
+    // Verify MAX_TEXT_LENGTH is 30000 (optimized for full-text analysis while staying under 20s)
+    expect(evaluatorContent).toContain('const MAX_TEXT_LENGTH = 30000');
     
     // Verify intelligent truncation function still exists
     expect(evaluatorContent).toContain('function truncateTextIntelligently(text)');
@@ -105,6 +105,6 @@ test.describe('Q&A Chat Usage Tracking', () => {
     // Verify max_tokens is still 1500 (not reduced)
     expect(evaluatorContent).toContain('max_tokens: 1500');
     
-    console.log('✓ Text length and quality parameters are maintained');
+    console.log('✓ Text length optimized for full-text analysis (30K chars) while maintaining quality');
   });
 });
