@@ -2135,7 +2135,7 @@ async function handleChatSend() {
     // This ensures subsequent chat calls have up-to-date auth data
     currentUser = await window.QSCIAuth.getCurrentUser();
     if (!currentUser) {
-      throw new Error('Session expired. Please login again.');
+      throw new Error('Your session has expired. Please login again.');
     }
     
     // Call OpenAI API
@@ -2184,7 +2184,13 @@ async function handleChatSend() {
     addChatMessage('error', 'Error: ' + error.message);
     
     // If session expired, update UI to show login form
-    if (error.message && error.message.includes('session has expired')) {
+    // Check for various session expiration error messages
+    const sessionExpiredPhrases = ['session has expired', 'session expired', 'please login'];
+    const isSessionExpired = error.message && sessionExpiredPhrases.some(phrase => 
+      error.message.toLowerCase().includes(phrase.toLowerCase())
+    );
+    
+    if (isSessionExpired) {
       console.log('Q-SCI Debug Popup: Session expired, updating UI to show login form');
       currentUser = null;
       showLoginForm();
