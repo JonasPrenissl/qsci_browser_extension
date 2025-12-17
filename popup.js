@@ -2131,6 +2131,13 @@ async function handleChatSend() {
       throw new Error('Failed to retrieve API key from backend.');
     }
     
+    // Refresh currentUser after getOpenAIApiKey() in case auth was refreshed
+    // This ensures subsequent chat calls have up-to-date auth data
+    currentUser = await window.QSCIAuth.getCurrentUser();
+    if (!currentUser) {
+      throw new Error('Session expired. Please login again.');
+    }
+    
     // Call OpenAI API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
