@@ -2096,6 +2096,7 @@ async function handleChatSend() {
     const messages = buildChatMessages(userMessage);
     
     // Get OpenAI API key
+    // Note: This may refresh the auth token internally if it has expired
     const apiKey = await window.QSCIAuth.getOpenAIApiKey();
     
     if (!apiKey) {

@@ -502,9 +502,25 @@
     },
     
     /**
+     * Helper function to fetch API key from backend with a given token
+     * @private
+     */
+    _fetchApiKeyWithToken: async (token) => {
+      const response = await fetch(`${API_BASE_URL}/extension-auth?operation=openai-key`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response;
+    },
+    
+    /**
      * Fetch OpenAI API key from backend
      * This method retrieves the API key from the backend server
      * The backend should return the key based on the user's authentication token
+     * If a 401 error occurs, it will attempt to refresh the auth token once before failing
      * @returns {Promise<string>} OpenAI API key
      */
     async getOpenAIApiKey() {
@@ -524,18 +540,54 @@
         console.log('Q-SCI Auth: API endpoint:', `${API_BASE_URL}/extension-auth?operation=openai-key`);
         console.log('Q-SCI Auth: Using token (first 20 chars):', user.token.substring(0, 20) + '...');
         
+        const originalToken = user.token;
+        
         // Call backend API to get OpenAI API key
         // Using consolidated extension-auth endpoint with operation parameter
-        const response = await fetch(`${API_BASE_URL}/extension-auth?operation=openai-key`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        let response = await this._fetchApiKeyWithToken(originalToken);
         
         console.log('Q-SCI Auth: Backend response status:', response.status);
         
+        // If we get a 401, attempt to refresh the auth token and retry once
+        if (response.status === 401) {
+          console.log('Q-SCI Auth: Received 401, attempting to refresh authentication...');
+          
+          try {
+            // Attempt to refresh/verify the authentication
+            const refreshedUser = await this.verifyAndRefreshAuth();
+            
+            if (refreshedUser && refreshedUser.token) {
+              // Validate that the token has changed or is still valid
+              if (refreshedUser.token === originalToken) {
+                console.warn('Q-SCI Auth: Token unchanged after refresh, session may still be invalid');
+              }
+              
+              console.log('Q-SCI Auth: Auth refresh successful, retrying API key fetch...');
+              
+              // Retry the API key fetch with the refreshed token
+              response = await this._fetchApiKeyWithToken(refreshedUser.token);
+              console.log('Q-SCI Auth: Retry response status:', response.status);
+              
+              // If the retry also returns 401, then we truly have an expired session
+              if (response.status === 401) {
+                console.log('Q-SCI Auth: Retry also returned 401, session is expired');
+                await this.logout();
+                throw new Error('Your session has expired. Please click "Login with Clerk" to sign in again.');
+              }
+            } else {
+              console.log('Q-SCI Auth: Auth refresh did not return valid user, session expired');
+              await this.logout();
+              throw new Error('Your session has expired. Please click "Login with Clerk" to sign in again.');
+            }
+          } catch (refreshError) {
+            console.error('Q-SCI Auth: Error during auth refresh:', refreshError);
+            // If refresh fails, log out and inform user
+            await this.logout();
+            throw new Error('Your session has expired. Please click "Login with Clerk" to sign in again.');
+          }
+        }
+        
+        // Handle other error responses
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Q-SCI Auth: Failed to fetch API key from backend:', response.status, errorText);
@@ -543,23 +595,6 @@
           let userMessage;
           if (response.status === 404) {
             userMessage = `Backend endpoint not found (404). The /api/extension-auth endpoint needs to be deployed to Vercel. Please ensure the backend is properly configured.`;
-          } else if (response.status === 401) {
-            // Check if token expired by parsing error response
-            let errorData;
-            try {
-              errorData = JSON.parse(errorText);
-            } catch (e) {
-              errorData = {};
-            }
-            
-            // If token expired, logout and show clear message
-            if (errorData.message && errorData.message.toLowerCase().includes('expired')) {
-              console.log('Q-SCI Auth: Token expired, logging out user');
-              await this.logout();
-              userMessage = `Your session has expired. Please click "Login with Clerk" to sign in again.`;
-            } else {
-              userMessage = `Authentication failed (401). Your session may have expired. Please try logging out and logging in again.`;
-            }
           } else if (response.status === 500) {
             userMessage = `Backend server error (500). The OPENAI_API_KEY environment variable may not be set on Vercel. Please contact support.`;
           } else {
