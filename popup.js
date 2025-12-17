@@ -2182,6 +2182,13 @@ async function handleChatSend() {
   } catch (error) {
     console.error('Q-SCI Debug Popup: Chat error:', error);
     addChatMessage('error', 'Error: ' + error.message);
+    
+    // If session expired, update UI to show login form
+    if (error.message && error.message.includes('session has expired')) {
+      console.log('Q-SCI Debug Popup: Session expired, updating UI to show login form');
+      currentUser = null;
+      showLoginForm();
+    }
   } finally {
     // Re-enable send button
     if (elements.chatSendBtn) {
