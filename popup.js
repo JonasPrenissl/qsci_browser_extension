@@ -2131,6 +2131,13 @@ async function handleChatSend() {
       throw new Error('Failed to retrieve API key from backend.');
     }
     
+    // Refresh currentUser after getOpenAIApiKey() in case auth was refreshed
+    // This ensures subsequent chat calls have up-to-date auth data
+    currentUser = await window.QSCIAuth.getCurrentUser();
+    if (!currentUser) {
+      throw new Error('Your session has expired. Please login again.');
+    }
+    
     // Call OpenAI API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -2175,6 +2182,19 @@ async function handleChatSend() {
   } catch (error) {
     console.error('Q-SCI Debug Popup: Chat error:', error);
     addChatMessage('error', 'Error: ' + error.message);
+    
+    // If session expired, update UI to show login form
+    // Check for various session expiration error messages
+    const sessionExpiredPhrases = ['session has expired', 'session expired', 'please login'];
+    const isSessionExpired = error.message && sessionExpiredPhrases.some(phrase => 
+      error.message.toLowerCase().includes(phrase.toLowerCase())
+    );
+    
+    if (isSessionExpired) {
+      console.log('Q-SCI Debug Popup: Session expired, updating UI to show login form');
+      currentUser = null;
+      showLoginForm();
+    }
   } finally {
     // Re-enable send button
     if (elements.chatSendBtn) {
