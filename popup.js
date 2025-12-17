@@ -587,9 +587,17 @@ async function handleLogout() {
 async function handleRefreshSubscription() {
   console.log('Q-SCI Debug Popup: Refreshing subscription status...');
   
-  if (!currentUser) {
+  // Check actual auth state from storage instead of relying on currentUser variable
+  // This prevents false "Please login first" errors when popup reopens
+  const isLoggedIn = await window.QSCIAuth.isLoggedIn();
+  if (!isLoggedIn) {
     showError('Please login first.');
     return;
+  }
+  
+  // Get current user from storage if not already set
+  if (!currentUser) {
+    currentUser = await window.QSCIAuth.getCurrentUser();
   }
 
   // Disable refresh button
@@ -690,6 +698,12 @@ function showUserStatus(user) {
 
 // Update usage display
 async function updateUsageDisplay() {
+  // Get current user from storage if not already set
+  if (!currentUser) {
+    currentUser = await window.QSCIAuth.getCurrentUser();
+  }
+  
+  // Return early if still no user (not logged in)
   if (!currentUser) return;
   
   try {
@@ -848,11 +862,18 @@ async function analyzePage() {
   currentAnalysis = null;
   currentPdfUrl = null;
   
-  // Check if user is logged in
-  if (!currentUser) {
+  // Check if user is logged in by querying actual auth state
+  // This prevents false "Please login" errors when popup reopens
+  const isLoggedIn = await window.QSCIAuth.isLoggedIn();
+  if (!isLoggedIn) {
     console.error('Q-SCI Debug Popup: No current user, showing error');
     showError('Please login to use analysis features.');
     return;
+  }
+  
+  // Get current user from storage if not already set
+  if (!currentUser) {
+    currentUser = await window.QSCIAuth.getCurrentUser();
   }
   
   console.log('Q-SCI Debug Popup: Current user:', currentUser.email);
@@ -2025,11 +2046,18 @@ async function handleChatSend() {
     return;
   }
   
-  // Check if user is logged in
-  if (!currentUser) {
+  // Check if user is logged in by querying actual auth state
+  // This prevents false "Please login" errors when popup reopens
+  const isLoggedIn = await window.QSCIAuth.isLoggedIn();
+  if (!isLoggedIn) {
     const loginMsg = window.QSCIi18n ? window.QSCIi18n.t('chat.loginRequired') : 'Please login to use the chat feature.';
     showError(loginMsg);
     return;
+  }
+  
+  // Get current user from storage if not already set
+  if (!currentUser) {
+    currentUser = await window.QSCIAuth.getCurrentUser();
   }
   
   // Check if analysis exists
