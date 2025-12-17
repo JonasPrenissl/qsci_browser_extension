@@ -152,6 +152,7 @@
         "qsci_calibration_publications.json",
         "popup.html",
         "clerk-auth.html",
+        "privacy.html",
         "i18n.js",
         "dist/js/bundle-auth.js",
         "dist/js/bundle-auth.js.map",
