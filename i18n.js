@@ -116,6 +116,8 @@
       'settings.languagePreference': 'Spracheinstellung',
       'settings.german': 'Deutsch',
       'settings.english': 'Englisch',
+      'settings.legal': 'Rechtliches',
+      'settings.privacyPolicy': '📄 Datenschutzerklärung',
       
       // Clerk auth page
       'clerkAuth.title': 'Q-SCI Anmeldung',
@@ -243,6 +245,8 @@
       'settings.languagePreference': 'Language Preference',
       'settings.german': 'German',
       'settings.english': 'English',
+      'settings.legal': 'Legal',
+      'settings.privacyPolicy': '📄 Privacy Policy',
       
       // Clerk auth page
       'clerkAuth.title': 'Q-SCI Login',
