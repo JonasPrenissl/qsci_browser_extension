@@ -220,7 +220,6 @@
       'message.processing': 'Processing...',
       'message.error': 'An error occurred.',
       'message.success': 'Success!',
-      'message.success': 'Success!',
       
       // Progress messages
       'progress.preparingAnalysis': 'Preparing analysis...',
