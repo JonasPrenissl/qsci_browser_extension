@@ -81,6 +81,7 @@
       
       // Messages
       'message.analyzing': 'Analysiere...',
+      'message.processing': 'Verarbeite...',
       'message.error': 'Ein Fehler ist aufgetreten.',
       'message.success': 'Erfolg!',
       
@@ -107,6 +108,8 @@
       'settings.authStatus': 'Authentifizierungsstatus',
       'settings.subscriptionManagement': 'Abonnementverwaltung',
       'settings.refreshSubscription': '🔄 Abonnementstatus aktualisieren',
+      'settings.refreshSubscriptionSuccess': 'Abonnementstatus erfolgreich aktualisiert.',
+      'settings.refreshSubscriptionError': 'Fehler beim Aktualisieren des Abonnementstatus. Bitte versuchen Sie es erneut.',
       'settings.upgradeToPremium': '⚡ Auf Premium upgraden',
       'settings.openaiConfig': 'OpenAI API Konfiguration',
       'settings.openaiManagedCentrally': 'Der OpenAI API-Schlüssel wird zentral vom Q-SCI-Backend verwaltet. Sie müssen keinen eigenen Schlüssel eingeben. Alle Analysen werden über den zentralen Service ausgeführt.',
@@ -214,7 +217,9 @@
       
       // Messages
       'message.analyzing': 'Analyzing...',
+      'message.processing': 'Processing...',
       'message.error': 'An error occurred.',
+      'message.success': 'Success!',
       'message.success': 'Success!',
       
       // Progress messages
@@ -240,6 +245,8 @@
       'settings.authStatus': 'Authentication Status',
       'settings.subscriptionManagement': 'Subscription Management',
       'settings.refreshSubscription': '🔄 Refresh Subscription Status',
+      'settings.refreshSubscriptionSuccess': 'Subscription status refreshed successfully.',
+      'settings.refreshSubscriptionError': 'Failed to refresh subscription status. Please try again.',
       'settings.upgradeToPremium': '⚡ Upgrade to Premium',
       'settings.openaiConfig': 'OpenAI API Configuration',
       'settings.openaiManagedCentrally': 'The OpenAI API key is centrally managed by the Q-SCI backend. You don\'t need to enter your own key. All analyses are performed through the central service.',

@@ -485,13 +485,14 @@
           }
         });
         
+        // Check for HTTP errors first - handle JSON error responses if available
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           console.error('Q-SCI Auth: Failed to cancel subscription (status:', response.status, ')');
           throw new Error(errorData.error || 'Failed to cancel subscription. Please try again or contact support.');
         }
         
-        // Check if response is JSON before parsing
+        // For successful responses, verify content type before parsing
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
           console.warn('Q-SCI Auth: Backend returned non-JSON response for cancellation');

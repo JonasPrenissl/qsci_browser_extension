@@ -37,16 +37,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshSubscriptionBtn.addEventListener('click', async () => {
       refreshSubscriptionBtn.disabled = true;
       const originalText = refreshSubscriptionBtn.textContent;
-      refreshSubscriptionBtn.textContent = '⏳ ' + window.QSCIi18n.t('message.analyzing');
+      refreshSubscriptionBtn.textContent = '⏳ ' + window.QSCIi18n.t('message.processing');
       
       try {
         await window.QSCIAuth.refreshSubscriptionStatus();
         await updateAuthStatus();
         await updateSubscriptionInfo();
-        showStatus(window.QSCIi18n.t('settings.cancelSubscriptionSuccess'), 'success');
+        showStatus(window.QSCIi18n.t('settings.refreshSubscriptionSuccess'), 'success');
       } catch (error) {
         console.error('Error refreshing subscription:', error);
-        showStatus(window.QSCIi18n.t('settings.cancelSubscriptionError'), 'error');
+        showStatus(window.QSCIi18n.t('settings.refreshSubscriptionError'), 'error');
       } finally {
         refreshSubscriptionBtn.disabled = false;
         refreshSubscriptionBtn.textContent = originalText;
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       cancelSubscriptionBtn.disabled = true;
       const originalText = cancelSubscriptionBtn.textContent;
-      cancelSubscriptionBtn.textContent = '⏳ ' + window.QSCIi18n.t('message.analyzing');
+      cancelSubscriptionBtn.textContent = '⏳ ' + window.QSCIi18n.t('message.processing');
       
       try {
         await window.QSCIAuth.cancelSubscription();
