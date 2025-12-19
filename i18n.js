@@ -116,6 +116,10 @@
       'settings.languagePreference': 'Spracheinstellung',
       'settings.german': 'Deutsch',
       'settings.english': 'Englisch',
+      'settings.cancelSubscription': '🚫 Abonnement kündigen',
+      'settings.cancelSubscriptionConfirm': 'Möchten Sie Ihr Abonnement wirklich kündigen? Sie können bis zum Ende des Abrechnungszeitraums weiterhin Premium-Funktionen nutzen.',
+      'settings.cancelSubscriptionSuccess': 'Abonnement erfolgreich gekündigt.',
+      'settings.cancelSubscriptionError': 'Fehler beim Kündigen des Abonnements. Bitte versuchen Sie es erneut.',
       'settings.legal': 'Rechtliches',
       'settings.privacyPolicy': '📄 Datenschutzerklärung',
       
@@ -245,6 +249,10 @@
       'settings.languagePreference': 'Language Preference',
       'settings.german': 'German',
       'settings.english': 'English',
+      'settings.cancelSubscription': '🚫 Cancel Subscription',
+      'settings.cancelSubscriptionConfirm': 'Are you sure you want to cancel your subscription? You will continue to have Premium access until the end of your billing period.',
+      'settings.cancelSubscriptionSuccess': 'Subscription cancelled successfully.',
+      'settings.cancelSubscriptionError': 'Failed to cancel subscription. Please try again.',
       'settings.legal': 'Legal',
       'settings.privacyPolicy': '📄 Privacy Policy',
       

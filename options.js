@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const authStatusEl = document.getElementById('auth-status');
   const usageStatsEl = document.getElementById('usage-stats');
   const refreshSubscriptionBtn = document.getElementById('refreshSubscriptionBtn');
+  const cancelSubscriptionBtn = document.getElementById('cancelSubscriptionBtn');
 
   // Note: API key management has been removed as it's now handled by the backend
   // Users no longer need to manually enter their OpenAI API keys
@@ -35,19 +36,49 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (refreshSubscriptionBtn) {
     refreshSubscriptionBtn.addEventListener('click', async () => {
       refreshSubscriptionBtn.disabled = true;
-      refreshSubscriptionBtn.textContent = '⏳ Refreshing...';
+      const originalText = refreshSubscriptionBtn.textContent;
+      refreshSubscriptionBtn.textContent = '⏳ ' + window.QSCIi18n.t('message.analyzing');
       
       try {
         await window.QSCIAuth.refreshSubscriptionStatus();
         await updateAuthStatus();
         await updateSubscriptionInfo();
-        showStatus('Subscription status refreshed successfully!', 'success');
+        showStatus(window.QSCIi18n.t('settings.cancelSubscriptionSuccess'), 'success');
       } catch (error) {
         console.error('Error refreshing subscription:', error);
-        showStatus('Failed to refresh subscription status.', 'error');
+        showStatus(window.QSCIi18n.t('settings.cancelSubscriptionError'), 'error');
       } finally {
         refreshSubscriptionBtn.disabled = false;
-        refreshSubscriptionBtn.textContent = '🔄 Refresh Subscription Status';
+        refreshSubscriptionBtn.textContent = originalText;
+      }
+    });
+  }
+
+  // Cancel subscription button handler
+  if (cancelSubscriptionBtn) {
+    cancelSubscriptionBtn.addEventListener('click', async () => {
+      // Show confirmation dialog
+      const confirmed = confirm(window.QSCIi18n.t('settings.cancelSubscriptionConfirm'));
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      cancelSubscriptionBtn.disabled = true;
+      const originalText = cancelSubscriptionBtn.textContent;
+      cancelSubscriptionBtn.textContent = '⏳ ' + window.QSCIi18n.t('message.analyzing');
+      
+      try {
+        await window.QSCIAuth.cancelSubscription();
+        await updateAuthStatus();
+        await updateSubscriptionInfo();
+        showStatus(window.QSCIi18n.t('settings.cancelSubscriptionSuccess'), 'success');
+      } catch (error) {
+        console.error('Error cancelling subscription:', error);
+        showStatus(error.message || window.QSCIi18n.t('settings.cancelSubscriptionError'), 'error');
+      } finally {
+        cancelSubscriptionBtn.disabled = false;
+        cancelSubscriptionBtn.textContent = originalText;
       }
     });
   }
@@ -92,6 +123,7 @@ async function updateAuthStatus() {
 
 async function updateSubscriptionInfo() {
   const subscriptionInfoEl = document.getElementById('subscription-info');
+  const cancelSubscriptionBtn = document.getElementById('cancelSubscriptionBtn');
   
   try {
     const isLoggedIn = await window.QSCIAuth.isLoggedIn();
@@ -106,14 +138,26 @@ async function updateSubscriptionInfo() {
         statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #dcfce7; color: #166534; font-weight: 500;">✓ Premium</span>';
         dailyLimit = '100';
         tipMessage = '';
+        // Show cancel button for subscribed users
+        if (cancelSubscriptionBtn) {
+          cancelSubscriptionBtn.style.display = 'inline-block';
+        }
       } else if (status === 'past_due') {
         statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #fef3c7; color: #92400e; font-weight: 500;">⚠ Payment Due</span>';
         dailyLimit = '10';
         tipMessage = '<div style="margin-top: 8px; color: #b91c1c;"><strong>⚠ Action Required:</strong> Please update your payment method to restore Premium access.</div>';
+        // Hide cancel button for past_due users
+        if (cancelSubscriptionBtn) {
+          cancelSubscriptionBtn.style.display = 'none';
+        }
       } else {
         statusBadge = '<span style="padding: 2px 8px; border-radius: 3px; background: #f3f4f6; color: #6b7280; font-weight: 500;">Free</span>';
         dailyLimit = '10';
         tipMessage = '<div style="margin-top: 8px; color: #92400e;"><strong>💡 Tip:</strong> Upgrade to Premium for 10x more analyses per day!</div>';
+        // Hide cancel button for free users
+        if (cancelSubscriptionBtn) {
+          cancelSubscriptionBtn.style.display = 'none';
+        }
       }
       
       subscriptionInfoEl.innerHTML = `
@@ -128,12 +172,20 @@ async function updateSubscriptionInfo() {
       subscriptionInfoEl.innerHTML = `
         <div>Login to view subscription information.</div>
       `;
+      // Hide cancel button when not logged in
+      if (cancelSubscriptionBtn) {
+        cancelSubscriptionBtn.style.display = 'none';
+      }
     }
   } catch (error) {
     console.error('Error loading subscription info:', error);
     subscriptionInfoEl.innerHTML = `
       <div>Unable to load subscription information.</div>
     `;
+    // Hide cancel button on error
+    if (cancelSubscriptionBtn) {
+      cancelSubscriptionBtn.style.display = 'none';
+    }
   }
 }
 
