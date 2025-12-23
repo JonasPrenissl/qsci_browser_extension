@@ -388,7 +388,140 @@ router.get("/subscription-status", verifyClerkToken, async (req, res) => {
 export default router;
 ```
 
-## 5. Configure Stripe Webhook
+## 5. Subscription Cancellation Endpoint
+
+**File:** `server/routes/subscription.js`
+
+This endpoint allows users to cancel their subscription directly from the browser extension.
+
+```javascript
+import express from "express";
+import Stripe from "stripe";
+import { clerkClient } from "@clerk/clerk-sdk-node";
+
+const router = express.Router();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { 
+  apiVersion: "2024-06-20" 
+});
+
+/**
+ * Middleware: Verify Clerk session token
+ */
+async function verifyClerkToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing or invalid authorization header" });
+  }
+
+  const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+  try {
+    // Verify the token with Clerk
+    const session = await clerkClient.sessions.verifySession(token);
+    req.clerkUserId = session.userId;
+    next();
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+
+/**
+ * POST /api/subscription/cancel
+ * Cancel user's active subscription in Stripe
+ * 
+ * The user will continue to have access until the end of their billing period.
+ * After cancellation, Stripe will send a webhook event that updates Clerk metadata.
+ */
+router.post("/cancel", verifyClerkToken, async (req, res) => {
+  try {
+    const userId = req.clerkUserId;
+    
+    // Get user from Clerk to find their Stripe customer ID
+    const user = await clerkClient.users.getUser(userId);
+    const email = user.emailAddresses?.[0]?.emailAddress;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        error: "No email address found for user" 
+      });
+    }
+
+    // Find Stripe customer by email and Clerk user ID
+    const customers = await stripe.customers.list({
+      email: email,
+      limit: 10
+    });
+
+    const customer = customers.data.find(
+      (c) => c.metadata?.clerk_user_id === userId
+    );
+
+    if (!customer) {
+      return res.status(404).json({ 
+        error: "No Stripe customer found for this user. You may not have an active subscription." 
+      });
+    }
+
+    // Find active subscriptions for this customer
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: 'active',
+      limit: 10
+    });
+
+    if (subscriptions.data.length === 0) {
+      return res.status(404).json({ 
+        error: "No active subscription found to cancel." 
+      });
+    }
+
+    // Cancel the first active subscription
+    // Set cancel_at_period_end to true so user keeps access until billing period ends
+    const subscription = subscriptions.data[0];
+    const canceledSubscription = await stripe.subscriptions.update(
+      subscription.id,
+      {
+        cancel_at_period_end: true
+      }
+    );
+
+    console.log(`Subscription ${subscription.id} marked for cancellation for user ${userId}`);
+    
+    // Note: We keep the status as "subscribed" until the period ends
+    // The webhook will update the status to "free" when the subscription actually ends
+    res.json({
+      success: true,
+      message: "Subscription will be cancelled at the end of the billing period.",
+      subscription_status: "subscribed",
+      cancel_at_period_end: true,
+      current_period_end: new Date(canceledSubscription.current_period_end * 1000).toISOString()
+    });
+
+  } catch (error) {
+    console.error("Error cancelling subscription:", error);
+    res.status(500).json({ 
+      error: "Failed to cancel subscription",
+      message: error.message 
+    });
+  }
+});
+
+export default router;
+```
+
+**Don't forget to add this route to your main server file:**
+
+```javascript
+// In server/index.js
+import subscriptionRoutes from "./routes/subscription.js";
+
+// Add after other routes
+app.use("/api/subscription", subscriptionRoutes);
+```
+
+## 6. Configure Stripe Webhook
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com/webhooks)
 2. Click "Add endpoint"

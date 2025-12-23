@@ -462,6 +462,66 @@
     },
     
     /**
+     * Cancel user's subscription
+     * Sends cancellation request to backend which will cancel the Stripe subscription
+     * @returns {Promise<Object>} Updated user data with cancelled subscription status
+     */
+    async cancelSubscription() {
+      try {
+        const user = await this.getCurrentUser();
+        
+        if (!user || !user.token) {
+          throw new Error('No authentication token found. Please login first.');
+        }
+        
+        console.log('Q-SCI Auth: Cancelling subscription...');
+        
+        // Call backend API to cancel subscription in Stripe
+        const response = await fetch(`${API_BASE_URL}/subscription/cancel`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        // Check for HTTP errors first - handle JSON error responses if available
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Q-SCI Auth: Failed to cancel subscription (status:', response.status, ')');
+          throw new Error(errorData.error || 'Failed to cancel subscription. Please try again or contact support.');
+        }
+        
+        // For successful responses, verify content type before parsing
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Q-SCI Auth: Backend returned non-JSON response for cancellation');
+          throw new Error('Backend returned invalid response format.');
+        }
+        
+        const data = await response.json();
+        console.log('Q-SCI Auth: Subscription cancelled successfully');
+        
+        // Update local subscription status to free
+        // Note: The user keeps Premium access until the end of their billing period,
+        // but Stripe will update the status via webhook when that time comes
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.SUBSCRIPTION_STATUS]: data.subscription_status || 'free'
+        });
+        
+        // Return updated user data
+        return {
+          ...user,
+          subscriptionStatus: data.subscription_status || 'free'
+        };
+        
+      } catch (error) {
+        console.error('Q-SCI Auth: Error cancelling subscription:', error);
+        throw error;
+      }
+    },
+    
+    /**
      * Store authentication data
      * @private
      */

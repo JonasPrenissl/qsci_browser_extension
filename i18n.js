@@ -81,6 +81,7 @@
       
       // Messages
       'message.analyzing': 'Analysiere...',
+      'message.processing': 'Verarbeite...',
       'message.error': 'Ein Fehler ist aufgetreten.',
       'message.success': 'Erfolg!',
       
@@ -107,6 +108,8 @@
       'settings.authStatus': 'Authentifizierungsstatus',
       'settings.subscriptionManagement': 'Abonnementverwaltung',
       'settings.refreshSubscription': '🔄 Abonnementstatus aktualisieren',
+      'settings.refreshSubscriptionSuccess': 'Abonnementstatus erfolgreich aktualisiert.',
+      'settings.refreshSubscriptionError': 'Fehler beim Aktualisieren des Abonnementstatus. Bitte versuchen Sie es erneut.',
       'settings.upgradeToPremium': '⚡ Auf Premium upgraden',
       'settings.openaiConfig': 'OpenAI API Konfiguration',
       'settings.openaiManagedCentrally': 'Der OpenAI API-Schlüssel wird zentral vom Q-SCI-Backend verwaltet. Sie müssen keinen eigenen Schlüssel eingeben. Alle Analysen werden über den zentralen Service ausgeführt.',
@@ -116,6 +119,10 @@
       'settings.languagePreference': 'Spracheinstellung',
       'settings.german': 'Deutsch',
       'settings.english': 'Englisch',
+      'settings.cancelSubscription': '🚫 Abonnement kündigen',
+      'settings.cancelSubscriptionConfirm': 'Möchten Sie Ihr Abonnement wirklich kündigen? Sie können bis zum Ende des Abrechnungszeitraums weiterhin Premium-Funktionen nutzen.',
+      'settings.cancelSubscriptionSuccess': 'Abonnement erfolgreich gekündigt.',
+      'settings.cancelSubscriptionError': 'Fehler beim Kündigen des Abonnements. Bitte versuchen Sie es erneut.',
       'settings.legal': 'Rechtliches',
       'settings.privacyPolicy': '📄 Datenschutzerklärung',
       
@@ -210,6 +217,7 @@
       
       // Messages
       'message.analyzing': 'Analyzing...',
+      'message.processing': 'Processing...',
       'message.error': 'An error occurred.',
       'message.success': 'Success!',
       
@@ -236,6 +244,8 @@
       'settings.authStatus': 'Authentication Status',
       'settings.subscriptionManagement': 'Subscription Management',
       'settings.refreshSubscription': '🔄 Refresh Subscription Status',
+      'settings.refreshSubscriptionSuccess': 'Subscription status refreshed successfully.',
+      'settings.refreshSubscriptionError': 'Failed to refresh subscription status. Please try again.',
       'settings.upgradeToPremium': '⚡ Upgrade to Premium',
       'settings.openaiConfig': 'OpenAI API Configuration',
       'settings.openaiManagedCentrally': 'The OpenAI API key is centrally managed by the Q-SCI backend. You don\'t need to enter your own key. All analyses are performed through the central service.',
@@ -245,6 +255,10 @@
       'settings.languagePreference': 'Language Preference',
       'settings.german': 'German',
       'settings.english': 'English',
+      'settings.cancelSubscription': '🚫 Cancel Subscription',
+      'settings.cancelSubscriptionConfirm': 'Are you sure you want to cancel your subscription? You will continue to have Premium access until the end of your billing period.',
+      'settings.cancelSubscriptionSuccess': 'Subscription cancelled successfully.',
+      'settings.cancelSubscriptionError': 'Failed to cancel subscription. Please try again.',
       'settings.legal': 'Legal',
       'settings.privacyPolicy': '📄 Privacy Policy',
       
