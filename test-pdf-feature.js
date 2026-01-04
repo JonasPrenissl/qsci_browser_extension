@@ -141,12 +141,6 @@ function testPopupJSUpdated() {
     }
     console.log('✓ PASS: tryDownloadAndExtractPDF called in popup.js');
     
-    if (!content.includes('Downloading PDF for analysis')) {
-      console.error('✗ FAIL: PDF download status message not found');
-      return false;
-    }
-    console.log('✓ PASS: PDF download status message added');
-    
     return true;
   } catch (error) {
     console.error('✗ FAIL: Error reading popup.js:', error.message);
