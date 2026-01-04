@@ -554,8 +554,6 @@ body {
 .detailed-section {
   background: #ffffff;
   border-top: 2px solid #e2e8f0;
-  max-height: 700px;
-  overflow-y: auto;
 }
 
 .detailed-header {
@@ -883,24 +881,6 @@ body {
   }
 }
 
-/* Scrollbar styling for detailed section */
-.detailed-section::-webkit-scrollbar {
-  width: 8px;
-}
-
-.detailed-section::-webkit-scrollbar-track {
-  background: #f7fafc;
-}
-
-.detailed-section::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
-  border-radius: 4px;
-}
-
-.detailed-section::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
-}
-
 /* Elegant Settings Button */
 .settings-button {
   display: inline-flex;
@@ -960,31 +940,11 @@ body {
 }
 
 #chat-messages {
-  max-height: 300px;
-  overflow-y: auto;
   margin-bottom: 12px;
   padding: 8px;
   background: white;
   border-radius: 6px;
   min-height: 100px;
-}
-
-#chat-messages::-webkit-scrollbar {
-  width: 6px;
-}
-
-#chat-messages::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-#chat-messages::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
-  border-radius: 3px;
-}
-
-#chat-messages::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
 }
 
 .chat-message {
