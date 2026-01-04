@@ -86,10 +86,18 @@
   /**
    * Generate a cache key from source URL and text
    * Uses first 500 chars of text to detect content changes
+   * Includes length for better collision detection
    */
   function generateCacheKey(sourceUrl, text) {
     const textSample = (text || '').substring(0, 500);
-    return `${sourceUrl}:${textSample.length}:${textSample.substring(0, 100)}`;
+    // Use simple hash for better collision resistance
+    let hash = 0;
+    for (let i = 0; i < textSample.length; i++) {
+      const char = textSample.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return `${sourceUrl}:${textSample.length}:${hash}`;
   }
   
   /**
@@ -105,10 +113,14 @@
    */
   function cacheAnalysis(sourceUrl, text, result) {
     // Limit cache size to prevent memory issues
+    // Remove oldest 20% when limit reached for better performance
     if (analysisCache.size >= CACHE_MAX_SIZE) {
-      // Remove oldest entry (first entry in Map)
-      const firstKey = analysisCache.keys().next().value;
-      analysisCache.delete(firstKey);
+      const entriesToRemove = Math.max(1, Math.floor(CACHE_MAX_SIZE * 0.2));
+      const keys = Array.from(analysisCache.keys());
+      for (let i = 0; i < entriesToRemove; i++) {
+        analysisCache.delete(keys[i]);
+      }
+      console.log(`Q‑SCI LLM Evaluator: Cache evicted ${entriesToRemove} old entries`);
     }
     
     const key = generateCacheKey(sourceUrl, text);
@@ -265,7 +277,7 @@
       `ASPECT FORMAT: Clear sentence (e.g., "Study uses proper randomization"). ` +
       `SOURCE_TEXT: Copy exact text from paper word-for-word (will be shown as quote). Use "" if based on multiple parts. Never invent or paraphrase. ` +
       `EXPLANATION: 2-3 sentences on significance.\n\n` +
-      `REASONING: 2 paragraphs (2-4 sentences each): (1) strengths overview, (2) weaknesses & conclusion.\n\n` +
+      `REASONING: 2 concise paragraphs: (1) key strengths, (2) key weaknesses & conclusion.\n\n` +
       `JOURNAL: If identifiable from URL/content, add journal_info with journal_name and impact_factor (or "Not available"). Otherwise omit.\n\n` +
       `OUTPUT: JSON only, no formatting:\n` +
       `{quality_percentage, traffic_light, reasoning, positive_aspects[], negative_aspects[], journal_info{}}`;
