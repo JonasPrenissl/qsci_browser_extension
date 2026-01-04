@@ -76,6 +76,45 @@
   const DEFAULT_METHODS_SECTION_LENGTH = 8000; // Assumed length if Methods end not found
   const LABEL_SPACE_RESERVATION = 20; // Characters reserved for section labels
   const ADDITIONAL_CONTENT_SPACE = 50; // Characters reserved for additional content label
+  
+  // Analysis cache to avoid re-analyzing the same papers
+  // Stores results in memory for the current session
+  // Key: hash of (sourceUrl + text first 500 chars), Value: analysis result
+  const analysisCache = new Map();
+  const CACHE_MAX_SIZE = 50; // Maximum number of cached results
+  
+  /**
+   * Generate a cache key from source URL and text
+   * Uses first 500 chars of text to detect content changes
+   */
+  function generateCacheKey(sourceUrl, text) {
+    const textSample = (text || '').substring(0, 500);
+    return `${sourceUrl}:${textSample.length}:${textSample.substring(0, 100)}`;
+  }
+  
+  /**
+   * Get cached analysis result if available
+   */
+  function getCachedAnalysis(sourceUrl, text) {
+    const key = generateCacheKey(sourceUrl, text);
+    return analysisCache.get(key);
+  }
+  
+  /**
+   * Cache an analysis result
+   */
+  function cacheAnalysis(sourceUrl, text, result) {
+    // Limit cache size to prevent memory issues
+    if (analysisCache.size >= CACHE_MAX_SIZE) {
+      // Remove oldest entry (first entry in Map)
+      const firstKey = analysisCache.keys().next().value;
+      analysisCache.delete(firstKey);
+    }
+    
+    const key = generateCacheKey(sourceUrl, text);
+    analysisCache.set(key, result);
+    console.log('Q‑SCI LLM Evaluator: Cached analysis result for:', sourceUrl);
+  }
 
   /**
    * Intelligently truncate text to fit within token limits while preserving
@@ -305,6 +344,15 @@
     if (!text || text.trim().length < 50) {
       throw new Error('Insufficient text provided for analysis');
     }
+    
+    // Check cache first - instant results for repeat analyses
+    const cachedResult = getCachedAnalysis(sourceUrl, text);
+    if (cachedResult) {
+      console.log('Q‑SCI LLM Evaluator: Returning cached result for:', sourceUrl);
+      console.log('Q‑SCI LLM Evaluator: Cache hit! Analysis completed instantly.');
+      return cachedResult;
+    }
+    console.log('Q‑SCI LLM Evaluator: No cache hit, proceeding with API call...');
 
     // Get current language from i18n service
     // Use self for service worker context, window for browser context
@@ -420,6 +468,9 @@
       if (!parsed) {
         throw new Error('Failed to parse evaluation from OpenAI response');
       }
+      
+      // Cache the successful result for future use
+      cacheAnalysis(sourceUrl, text, parsed);
       
       console.log('Q‑SCI LLM Evaluator: Evaluation completed successfully');
       return parsed;
