@@ -1011,10 +1011,6 @@ async function analyzePage() {
       console.log('Q-SCI Debug Popup: PDF URLs found, attempting PDF download and analysis...');
       pdfAnalysisAttempted = true;
       
-      // Show a status message to the user
-      const downloadingMsg = window.QSCIi18n ? window.QSCIi18n.t('progress.downloadingPdf') : 'Downloading PDF...';
-      updateLoadingProgress(downloadingMsg, 40);
-      
       try {
         const pdfResult = await window.QSCIPDFHandler.tryDownloadAndExtractPDF(pageData.pdfUrls);
         
