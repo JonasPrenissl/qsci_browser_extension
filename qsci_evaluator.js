@@ -434,8 +434,11 @@
       response_format: { type: "json_object" },
       // Provide a max_tokens to cap the response length. Optimized to 1000 tokens
       // for faster response times (~30% faster) while maintaining quality.
-      // This accommodates reasoning (2 paragraphs), explanations for each aspect,
-      // and journal information.
+      // This accommodates: 
+      // - Reasoning: 2 concise paragraphs (reduced from 2-3 paragraphs for speed)
+      // - Aspects: 6-12 total with explanations (2-3 sentences each)
+      // - Journal information if available
+      // Trade-off: Slightly more focused reasoning, but still comprehensive
       max_tokens: 1000
     });
 
