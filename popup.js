@@ -1016,8 +1016,6 @@ async function analyzePage() {
         
         if (pdfResult.success && pdfResult.text && pdfResult.text.length >= 50) {
           console.log('Q-SCI Debug Popup: PDF text extracted successfully:', pdfResult.text.length, 'characters');
-          const pdfExtractedMsg = window.QSCIi18n ? window.QSCIi18n.t('progress.pdfExtracted') : 'PDF extracted successfully';
-          updateLoadingProgress(pdfExtractedMsg, 50);
           requestData = {
             text: pdfResult.text,
             title: pageData.title || 'Unknown Title',
