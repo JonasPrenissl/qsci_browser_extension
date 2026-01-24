@@ -50,8 +50,10 @@ const HOURS_IN_MS = 60 * 60 * 1000;  // Milliseconds in one hour
 const MINUTES_IN_MS = 60 * 1000;      // Milliseconds in one minute
 
 // Token refresh settings
+// Sessions should last at least 24 hours without requiring re-login
+// The Clerk Dashboard should be configured with matching session lifetime
 const TOKEN_REFRESH_INTERVAL_HOURS = 12;  // Check token age every 12 hours
-const TOKEN_MAX_AGE_HOURS = 23;            // Warn if token is older than 23 hours
+const TOKEN_MAX_AGE_HOURS = 168;           // Warn if token is older than 7 days (168 hours)
 const TOKEN_REFRESH_INTERVAL = TOKEN_REFRESH_INTERVAL_HOURS * HOURS_IN_MS;
 const TOKEN_MAX_AGE = TOKEN_MAX_AGE_HOURS * HOURS_IN_MS;
 
