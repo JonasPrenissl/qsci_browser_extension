@@ -15,6 +15,7 @@ let paperContextForChat = null; // Store paper context for chat even when not on
 const POLL_INTERVAL_MS = 500; // Poll every 500ms for analysis status
 const MAX_POLL_ATTEMPTS = 240; // 240 * 500ms = 2 minutes max polling time
 const MAX_HISTORY_ITEMS = 50; // Maximum number of analyses to store in history
+const MIN_REASONING_LENGTH = 10; // Minimum characters required for reasoning text to be displayed
 
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
@@ -1751,8 +1752,8 @@ function displayAnalysisResults(analysis) {
   if (elements.scoreReasoningSection && elements.scoreReasoningText) {
     const reasoningText = analysis.reasoning || analysis.justification || '';
     
-    // Only show reasoning if it has meaningful content (more than 10 characters)
-    if (reasoningText.trim().length > 10) {
+    // Only show reasoning if it has meaningful content (more than MIN_REASONING_LENGTH characters)
+    if (reasoningText.trim().length > MIN_REASONING_LENGTH) {
       
       // Format the reasoning into paragraphs
       // Split on double line breaks first (if present), then on single line breaks, then on sentences
