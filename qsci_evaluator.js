@@ -275,9 +275,9 @@
       `- Score <50%: 3+ positive, 6+ negative\n` +
       `\n` +
       `ASPECT FORMAT: Clear sentence (e.g., "Study uses proper randomization"). ` +
-      `SOURCE_TEXT: Copy exact text from paper word-for-word (will be shown as quote). Use "" if based on multiple parts. Never invent or paraphrase. ` +
-      `EXPLANATION: 2-3 sentences on significance.\n\n` +
-      `REASONING: 2 concise paragraphs: (1) key strengths, (2) key weaknesses & conclusion.\n\n` +
+      `SOURCE_TEXT: REQUIRED. Copy exact text from paper word-for-word (will be shown as quote). Use "" if based on multiple parts. Never invent or paraphrase. ` +
+      `EXPLANATION: REQUIRED. 2-3 sentences on significance.\n\n` +
+      `REASONING: REQUIRED. 2-3 detailed paragraphs: (1) key strengths, (2) key weaknesses, (3) overall conclusion.\n\n` +
       `JOURNAL: If identifiable from URL/content, add journal_info with journal_name and impact_factor (or "Not available"). Otherwise omit.\n\n` +
       `OUTPUT: JSON only, no formatting:\n` +
       `{quality_percentage, traffic_light, reasoning, positive_aspects[], negative_aspects[], journal_info{}}`;
@@ -432,14 +432,13 @@
       top_p: TOP_P,
       // Force JSON response format for faster parsing and more reliable output
       response_format: { type: "json_object" },
-      // Provide a max_tokens to cap the response length. Optimized to 1000 tokens
-      // for faster response times (~30% faster) while maintaining quality.
-      // This accommodates: 
-      // - Reasoning: 2 concise paragraphs (reduced from 2-3 paragraphs for speed)
-      // - Aspects: 6-12 total with explanations (2-3 sentences each)
-      // - Journal information if available
-      // Trade-off: Slightly more focused reasoning, but still comprehensive
-      max_tokens: 1000
+      // Provide a max_tokens to accommodate complete analysis output.
+      // Increased to 2500 to ensure full detailed responses:
+      // - Reasoning: 2-3 detailed paragraphs (~400-600 tokens)
+      // - Aspects: 6-12 total, each with source_text quote and 2-3 sentence explanation (~100-150 tokens each)
+      // - Journal information if available (~50 tokens)
+      // Previous 1000 token limit was insufficient and caused truncation of reasoning and aspect details
+      max_tokens: 2500
     });
 
     const headers = {
