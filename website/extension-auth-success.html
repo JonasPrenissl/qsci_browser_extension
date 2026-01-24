@@ -198,6 +198,8 @@
         const email = user.primaryEmailAddress?.emailAddress || user.emailAddresses[0]?.emailAddress;
 
         // Fetch subscription status from backend
+        // The backend is the authoritative source as it checks privateMetadata.stripe_customer_id
+        // which is only accessible server-side and is the definitive indicator of an active subscription
         let subscriptionStatus = 'free';
         try {
           const response = await fetch(`${API_BASE_URL}/auth/subscription-status`, {
@@ -214,20 +216,17 @@
               const data = await response.json();
               subscriptionStatus = data.subscription_status || 'free';
               console.log('Q-SCI Auth Success: Subscription status from backend:', subscriptionStatus);
+            } else {
+              console.warn('Q-SCI Auth Success: Backend returned non-JSON response, defaulting to free');
             }
           } else {
-            console.warn('Q-SCI Auth Success: Failed to fetch subscription status, using fallback');
-            // Fallback: Check publicMetadata for plan_id
-            if (user.publicMetadata && user.publicMetadata.plan_id) {
-              subscriptionStatus = 'subscribed';
-            }
+            console.warn('Q-SCI Auth Success: Failed to fetch subscription status (HTTP ' + response.status + '), defaulting to free');
+            console.warn('Q-SCI Auth Success: Please refresh your subscription status from the extension options page once backend is available');
           }
         } catch (error) {
           console.error('Q-SCI Auth Success: Error fetching subscription status:', error);
-          // Fallback: Check publicMetadata for plan_id
-          if (user.publicMetadata && user.publicMetadata.plan_id) {
-            subscriptionStatus = 'subscribed';
-          }
+          console.warn('Q-SCI Auth Success: Network error - defaulting to free tier');
+          console.warn('Q-SCI Auth Success: Please refresh your subscription status from the extension options page once backend is available');
         }
 
         // Prepare auth data
