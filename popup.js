@@ -266,17 +266,17 @@ function setupEventListeners() {
   // Event delegation for dynamically created history list buttons
   document.addEventListener('click', function(e) {
     // Handle load history item button
-    if (e.target.classList.contains('history-load-btn') || e.target.closest('.history-load-btn')) {
-      const button = e.target.classList.contains('history-load-btn') ? e.target : e.target.closest('.history-load-btn');
-      const itemId = parseInt(button.dataset.historyId);
+    const loadBtn = e.target.closest('.history-load-btn');
+    if (loadBtn) {
+      const itemId = parseInt(loadBtn.dataset.historyId);
       console.log('Q-SCI Debug Popup: Load history button clicked for item:', itemId);
       loadHistoryItem(itemId);
     }
     
     // Handle delete history item button
-    if (e.target.classList.contains('history-delete-btn') || e.target.closest('.history-delete-btn')) {
-      const button = e.target.classList.contains('history-delete-btn') ? e.target : e.target.closest('.history-delete-btn');
-      const itemId = parseInt(button.dataset.historyId);
+    const deleteBtn = e.target.closest('.history-delete-btn');
+    if (deleteBtn) {
+      const itemId = parseInt(deleteBtn.dataset.historyId);
       console.log('Q-SCI Debug Popup: Delete history button clicked for item:', itemId);
       deleteHistoryItem(itemId);
     }
