@@ -2585,9 +2585,27 @@ When asked about specific details (like sample size, methods, results), search t
   // Add paper context if available - now includes FULL paper text for accurate answers
   if (paperContextForChat) {
     // Truncate paper text if too long to stay within token limits
+    // Try to cut at a sentence or word boundary for better readability
     let paperText = paperContextForChat.text || '';
     if (paperText.length > CHAT_CONTEXT_MAX_LENGTH) {
-      paperText = paperText.substring(0, CHAT_CONTEXT_MAX_LENGTH) + '\n[... paper text truncated for length ...]';
+      let truncatedText = paperText.substring(0, CHAT_CONTEXT_MAX_LENGTH);
+      // Try to find the last sentence boundary (period, question mark, or exclamation point followed by space)
+      const lastSentenceEnd = Math.max(
+        truncatedText.lastIndexOf('. '),
+        truncatedText.lastIndexOf('? '),
+        truncatedText.lastIndexOf('! ')
+      );
+      // If we found a sentence boundary within the last 500 chars, use it
+      if (lastSentenceEnd > CHAT_CONTEXT_MAX_LENGTH - 500) {
+        truncatedText = truncatedText.substring(0, lastSentenceEnd + 1);
+      } else {
+        // Otherwise, try to find a word boundary (space)
+        const lastSpace = truncatedText.lastIndexOf(' ');
+        if (lastSpace > CHAT_CONTEXT_MAX_LENGTH - 100) {
+          truncatedText = truncatedText.substring(0, lastSpace);
+        }
+      }
+      paperText = truncatedText + '\n[... paper text truncated for length ...]';
     }
     
     const contextMessage = `Paper Title: ${paperContextForChat.title}\n` +

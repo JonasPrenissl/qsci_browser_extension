@@ -743,12 +743,13 @@
         
         // Check if cache is still valid (within 24 hours)
         const age = Date.now() - timestamp;
+        const ageInHours = Math.round(age / (60 * 60 * 1000));
         if (age >= API_KEY_CACHE_DURATION_MS) {
-          console.log('Q-SCI Auth: Cached API key expired (age:', Math.round(age / (60 * 60 * 1000)), 'hours)');
+          console.log('Q-SCI Auth: Cached API key expired (age:', ageInHours, 'hours)');
           return null;
         }
         
-        console.log('Q-SCI Auth: Cached API key still valid (age:', Math.round(age / (60 * 60 * 1000)), 'hours)');
+        console.log('Q-SCI Auth: Cached API key still valid (age:', ageInHours, 'hours)');
         return cachedKey;
       } catch (error) {
         console.error('Q-SCI Auth: Error reading cached API key:', error);
