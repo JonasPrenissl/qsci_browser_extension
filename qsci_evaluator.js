@@ -320,11 +320,45 @@
       }
       // Ensure required keys exist and types are correct
       if (!parsed || typeof parsed !== 'object') throw new Error('Invalid JSON structure');
-      const quality = typeof parsed.quality_percentage === 'number' ? parsed.quality_percentage : 0;
+      
+      // Validate quality_percentage is a valid number between 0-100
+      const quality = (typeof parsed.quality_percentage === 'number' && 
+                      parsed.quality_percentage >= 0 && 
+                      parsed.quality_percentage <= 100) ? 
+                      parsed.quality_percentage : null;
+      
+      // If quality is null/invalid, throw an error instead of defaulting to 0
+      if (quality === null) {
+        throw new Error('Invalid or missing quality_percentage in API response');
+      }
+      
       const traffic = typeof parsed.traffic_light === 'string' ? parsed.traffic_light : '🟡 Amber';
-      const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning : '';
-      const pos = Array.isArray(parsed.positive_aspects) ? parsed.positive_aspects : [];
-      const neg = Array.isArray(parsed.negative_aspects) ? parsed.negative_aspects : [];
+      
+      // Validate reasoning is a non-empty string with meaningful content
+      const reasoning = (typeof parsed.reasoning === 'string' && 
+                        parsed.reasoning.trim().length > 10) ? 
+                        parsed.reasoning : '';
+      
+      // Filter out invalid aspects - keep only valid strings or objects with content
+      const pos = Array.isArray(parsed.positive_aspects) ? 
+                  parsed.positive_aspects.filter(a => {
+                    if (typeof a === 'string') return a.trim().length > 0;
+                    if (typeof a === 'object' && a !== null) {
+                      const text = a.aspect || a.text || '';
+                      return text.trim().length > 0;
+                    }
+                    return false;
+                  }) : [];
+      
+      const neg = Array.isArray(parsed.negative_aspects) ? 
+                  parsed.negative_aspects.filter(a => {
+                    if (typeof a === 'string') return a.trim().length > 0;
+                    if (typeof a === 'object' && a !== null) {
+                      const text = a.aspect || a.text || '';
+                      return text.trim().length > 0;
+                    }
+                    return false;
+                  }) : [];
       return { 
         quality_percentage: quality, 
         traffic_light: traffic, 
