@@ -39,8 +39,14 @@
     SUBSCRIPTION_STATUS: 'qsci_subscription_status', // Values: 'free', 'subscribed', 'past_due'
     DAILY_USAGE: 'qsci_daily_usage',
     LAST_USAGE_DATE: 'qsci_last_usage_date',
-    TOKEN_TIMESTAMP: 'qsci_auth_token_timestamp' // Timestamp when token was created/refreshed
+    TOKEN_TIMESTAMP: 'qsci_auth_token_timestamp', // Timestamp when token was created/refreshed
+    OPENAI_API_KEY_CACHE: 'qsci_openai_api_key_cache', // Cached OpenAI API key
+    OPENAI_API_KEY_TIMESTAMP: 'qsci_openai_api_key_timestamp' // Timestamp when API key was cached
   };
+  
+  // Cache settings - cache API key for 24 hours to reduce backend calls
+  // This helps prevent session expiration issues by reducing the number of authenticated requests
+  const API_KEY_CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
   // Usage limits
   // Subscription status determination:
@@ -237,13 +243,15 @@
      */
     async logout() {
       try {
-        // Clear all auth-related storage
+        // Clear all auth-related storage including cached API key
         await chrome.storage.local.remove([
           STORAGE_KEYS.AUTH_TOKEN,
           STORAGE_KEYS.USER_EMAIL,
           STORAGE_KEYS.USER_ID,
           STORAGE_KEYS.CLERK_SESSION_ID,
-          STORAGE_KEYS.SUBSCRIPTION_STATUS
+          STORAGE_KEYS.SUBSCRIPTION_STATUS,
+          STORAGE_KEYS.OPENAI_API_KEY_CACHE,
+          STORAGE_KEYS.OPENAI_API_KEY_TIMESTAMP
         ]);
         
         console.log('Q-SCI Auth: User logged out');
@@ -583,6 +591,7 @@
      * This method retrieves the API key from the backend server
      * The backend should return the key based on the user's authentication token
      * If a 401 error occurs, it will attempt to refresh the auth token once before failing
+     * Caches the API key locally for 24 hours to reduce backend calls and improve reliability
      * @returns {Promise<string>} OpenAI API key
      */
     async getOpenAIApiKey() {
@@ -598,7 +607,14 @@
           throw new Error(errorMsg);
         }
         
-        console.log('Q-SCI Auth: Fetching OpenAI API key from backend...');
+        // Check for cached API key first to avoid unnecessary backend calls
+        const cachedKey = await this._getCachedApiKey();
+        if (cachedKey) {
+          console.log('Q-SCI Auth: Using cached OpenAI API key (still valid)');
+          return cachedKey;
+        }
+        
+        console.log('Q-SCI Auth: No valid cached key, fetching OpenAI API key from backend...');
         console.log('Q-SCI Auth: API endpoint:', `${API_BASE_URL}/extension-auth?operation=openai-key`);
         console.log('Q-SCI Auth: Using token (first 20 chars):', user.token.substring(0, 20) + '...');
         
@@ -683,7 +699,10 @@
           throw new Error('Backend did not return an API key. Please ensure the OPENAI_API_KEY environment variable is set in Vercel.');
         }
         
-        console.log('Q-SCI Auth: OpenAI API key fetched successfully (length:', data.api_key.length, ')');
+        // Cache the API key for 24 hours to reduce backend calls
+        await this._cacheApiKey(data.api_key);
+        
+        console.log('Q-SCI Auth: OpenAI API key fetched and cached successfully (length:', data.api_key.length, ')');
         return data.api_key;
         
       } catch (error) {
@@ -700,6 +719,58 @@
         }
         
         throw error;
+      }
+    },
+    
+    /**
+     * Get cached OpenAI API key if still valid
+     * @private
+     * @returns {Promise<string|null>} Cached API key or null if expired/not found
+     */
+    async _getCachedApiKey() {
+      try {
+        const result = await chrome.storage.local.get([
+          STORAGE_KEYS.OPENAI_API_KEY_CACHE,
+          STORAGE_KEYS.OPENAI_API_KEY_TIMESTAMP
+        ]);
+        
+        const cachedKey = result[STORAGE_KEYS.OPENAI_API_KEY_CACHE];
+        const timestamp = result[STORAGE_KEYS.OPENAI_API_KEY_TIMESTAMP];
+        
+        if (!cachedKey || !timestamp) {
+          return null;
+        }
+        
+        // Check if cache is still valid (within 24 hours)
+        const age = Date.now() - timestamp;
+        if (age >= API_KEY_CACHE_DURATION_MS) {
+          console.log('Q-SCI Auth: Cached API key expired (age:', Math.round(age / (60 * 60 * 1000)), 'hours)');
+          return null;
+        }
+        
+        console.log('Q-SCI Auth: Cached API key still valid (age:', Math.round(age / (60 * 60 * 1000)), 'hours)');
+        return cachedKey;
+      } catch (error) {
+        console.error('Q-SCI Auth: Error reading cached API key:', error);
+        return null;
+      }
+    },
+    
+    /**
+     * Cache the OpenAI API key
+     * @private
+     * @param {string} apiKey - The API key to cache
+     */
+    async _cacheApiKey(apiKey) {
+      try {
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.OPENAI_API_KEY_CACHE]: apiKey,
+          [STORAGE_KEYS.OPENAI_API_KEY_TIMESTAMP]: Date.now()
+        });
+        console.log('Q-SCI Auth: API key cached for 24 hours');
+      } catch (error) {
+        console.error('Q-SCI Auth: Error caching API key:', error);
+        // Non-fatal - just log and continue
       }
     }
   };

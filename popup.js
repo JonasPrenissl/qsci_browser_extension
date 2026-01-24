@@ -2393,10 +2393,11 @@ function escapeHtml(text) {
 let chatHistory = [];
 
 // Chat configuration constants
-const CHAT_MAX_TOKENS = 500;
+const CHAT_MAX_TOKENS = 800; // Increased to allow for more detailed responses based on full paper content
 const CHAT_TEMPERATURE = 0.7;
 const CHAT_HISTORY_LIMIT = 10; // Keep last 5 exchanges (10 messages)
 const CHAT_FALLBACK_MODEL = 'gpt-4o-mini'; // Fallback if window.QSCI_MODEL_NAME not available
+const CHAT_CONTEXT_MAX_LENGTH = 25000; // Maximum characters of paper text to include in chat context
 
 // Handle sending a chat message
 async function handleChatSend() {
@@ -2575,19 +2576,27 @@ async function handleChatSend() {
 // Build chat messages for OpenAI API
 function buildChatMessages(userMessage) {
   const systemPrompt = `You are Q-SCI, an expert assistant helping users understand scientific publications. 
-You have access to the analysis results of a paper and can answer questions about it.
-Be concise, clear, and helpful in your responses. Base your answers on the paper's content and analysis.`;
+You have access to the FULL TEXT of a paper and its analysis results. You can answer questions about any aspect of the paper including sample size, methodology, results, statistics, and conclusions.
+Be concise, clear, and helpful in your responses. Base your answers on the paper's actual content.
+When asked about specific details (like sample size, methods, results), search through the provided paper text to find the relevant information.`;
 
   const messages = [{ role: 'system', content: systemPrompt }];
   
-  // Add paper context if available
+  // Add paper context if available - now includes FULL paper text for accurate answers
   if (paperContextForChat) {
+    // Truncate paper text if too long to stay within token limits
+    let paperText = paperContextForChat.text || '';
+    if (paperText.length > CHAT_CONTEXT_MAX_LENGTH) {
+      paperText = paperText.substring(0, CHAT_CONTEXT_MAX_LENGTH) + '\n[... paper text truncated for length ...]';
+    }
+    
     const contextMessage = `Paper Title: ${paperContextForChat.title}\n` +
       `URL: ${paperContextForChat.url}\n\n` +
       `Analysis Summary:\n` +
       `Quality Score: ${currentAnalysis.quality_percentage}%\n` +
       `Assessment: ${currentAnalysis.traffic_light}\n` +
-      `Reasoning: ${currentAnalysis.reasoning || 'N/A'}\n\n`;
+      `Reasoning: ${currentAnalysis.reasoning || 'N/A'}\n\n` +
+      `FULL PAPER TEXT:\n${paperText}`;
     
     messages.push({ role: 'system', content: contextMessage });
   }
