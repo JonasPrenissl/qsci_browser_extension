@@ -9,7 +9,9 @@
     "storage",
     "scripting",
     "tabs",
-    "downloads"
+    "downloads",
+    "alarms",
+    "offscreen"
   ],
   
   "host_permissions": [

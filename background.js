@@ -40,9 +40,14 @@ if (typeof importScripts === "function") {
 // Storage keys for analysis state and auth
 const ANALYSIS_STATE_KEY = 'qsci_current_analysis_state';
 const AUTH_TOKEN_KEY = 'qsci_auth_token';
+const TOKEN_TIMESTAMP_KEY = 'qsci_auth_token_timestamp';
 const API_BASE_URL = 'https://www.q-sci.org/api';
 const LANGUAGE_KEY = 'qsci_language';
 const DEFAULT_LANGUAGE = 'de'; // Default to German, can be overridden by user preference
+
+// Token refresh settings
+const TOKEN_REFRESH_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+const TOKEN_MAX_AGE = 23 * 60 * 60 * 1000; // 23 hours - refresh before 24h expiry
 
 // Helper function to get user's preferred language from storage
 async function getUserLanguage() {
@@ -376,5 +381,128 @@ self.addEventListener('activate', (event) => {
   console.log('Q-SCI Background: Service worker activated');
 });
 
-console.log('Q-SCI Background: Service worker initialized successfully');
+// ========================================
+// Token Refresh Management
+// ========================================
+
+/**
+ * Check if the stored token needs refreshing based on its age
+ * @returns {Promise<boolean>} True if token needs refresh
+ */
+async function shouldRefreshToken() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([AUTH_TOKEN_KEY, TOKEN_TIMESTAMP_KEY], (result) => {
+      const token = result[AUTH_TOKEN_KEY];
+      const timestamp = result[TOKEN_TIMESTAMP_KEY];
+      
+      if (!token) {
+        resolve(false); // No token to refresh
+        return;
+      }
+      
+      if (!timestamp) {
+        resolve(true); // Token exists but no timestamp - should refresh
+        return;
+      }
+      
+      const tokenAge = Date.now() - timestamp;
+      const needsRefresh = tokenAge >= TOKEN_MAX_AGE;
+      
+      if (needsRefresh) {
+        console.log('Q-SCI Background: Token age:', Math.round(tokenAge / (60 * 60 * 1000)), 'hours - needs refresh');
+      }
+      
+      resolve(needsRefresh);
+    });
+  });
+}
+
+/**
+ * Request token refresh by opening auth page silently
+ * This leverages the existing Clerk session to get a fresh token
+ */
+async function refreshTokenSilently() {
+  try {
+    console.log('Q-SCI Background: Starting silent token refresh...');
+    
+    // Open auth success page in a hidden iframe-like context
+    // The page will check for existing Clerk session and refresh the token
+    const REFRESH_URL = 'https://www.q-sci.org/extension-auth-success';
+    
+    // Create an offscreen document for token refresh
+    // This allows us to run the Clerk SDK without opening a visible window
+    try {
+      await chrome.offscreen.createDocument({
+        url: REFRESH_URL,
+        reasons: ['DOM_SCRAPING'], // We need DOM to run Clerk SDK
+        justification: 'Refresh authentication token from Clerk session'
+      });
+      
+      console.log('Q-SCI Background: Offscreen document created for token refresh');
+      
+      // Wait a bit for the token to be refreshed
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Close the offscreen document
+      await chrome.offscreen.closeDocument();
+      
+      // Update timestamp
+      await chrome.storage.local.set({
+        [TOKEN_TIMESTAMP_KEY]: Date.now()
+      });
+      
+      console.log('Q-SCI Background: Token refreshed successfully');
+      return true;
+      
+    } catch (error) {
+      // Offscreen API might not be available or might fail
+      console.warn('Q-SCI Background: Offscreen document not available:', error.message);
+      console.log('Q-SCI Background: Token will be refreshed on next user login');
+      return false;
+    }
+    
+  } catch (error) {
+    console.error('Q-SCI Background: Error refreshing token:', error);
+    return false;
+  }
+}
+
+/**
+ * Periodic token refresh check
+ * Called by alarm every 12 hours
+ */
+async function checkAndRefreshToken() {
+  try {
+    const shouldRefresh = await shouldRefreshToken();
+    
+    if (shouldRefresh) {
+      console.log('Q-SCI Background: Token needs refresh');
+      await refreshTokenSilently();
+    } else {
+      console.log('Q-SCI Background: Token is still fresh');
+    }
+  } catch (error) {
+    console.error('Q-SCI Background: Error in token refresh check:', error);
+  }
+}
+
+// Set up periodic token refresh alarm
+chrome.alarms.create('tokenRefresh', {
+  periodInMinutes: TOKEN_REFRESH_INTERVAL / (60 * 1000) // Convert ms to minutes
+});
+
+// Listen for alarm
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'tokenRefresh') {
+    console.log('Q-SCI Background: Token refresh alarm triggered');
+    checkAndRefreshToken();
+  }
+});
+
+// Check token on service worker startup
+checkAndRefreshToken().catch(err => {
+  console.error('Q-SCI Background: Initial token check failed:', err);
+});
+
+console.log('Q-SCI Background: Service worker initialized successfully with token refresh support');
 

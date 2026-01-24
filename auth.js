@@ -38,7 +38,8 @@
     CLERK_SESSION_ID: 'qsci_clerk_session_id',
     SUBSCRIPTION_STATUS: 'qsci_subscription_status', // Values: 'free', 'subscribed', 'past_due'
     DAILY_USAGE: 'qsci_daily_usage',
-    LAST_USAGE_DATE: 'qsci_last_usage_date'
+    LAST_USAGE_DATE: 'qsci_last_usage_date',
+    TOKEN_TIMESTAMP: 'qsci_auth_token_timestamp' // Timestamp when token was created/refreshed
   };
 
   // Usage limits
@@ -539,7 +540,8 @@
           [STORAGE_KEYS.USER_EMAIL]: email,
           [STORAGE_KEYS.USER_ID]: userId,
           [STORAGE_KEYS.CLERK_SESSION_ID]: clerkSessionId,
-          [STORAGE_KEYS.SUBSCRIPTION_STATUS]: subscriptionStatus
+          [STORAGE_KEYS.SUBSCRIPTION_STATUS]: subscriptionStatus,
+          [STORAGE_KEYS.TOKEN_TIMESTAMP]: Date.now() // Track when token was created
         });
         
         console.log('Q-SCI Auth: Auth data stored successfully');
