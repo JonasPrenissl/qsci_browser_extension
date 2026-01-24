@@ -60,10 +60,11 @@ console.log('');
 const authSuccessFile = path.join(__dirname, 'website/extension-auth-success.html');
 
 // Verify that problematic fallback is removed
+// We check that the pattern of checking publicMetadata.plan_id to set subscribed status is gone
 checkFileDoesNotContain(
   authSuccessFile,
-  'if (user.publicMetadata && user.publicMetadata.plan_id) {\n              subscriptionStatus = \'subscribed\';',
-  'Removed problematic publicMetadata.plan_id fallback in else block'
+  'user.publicMetadata.plan_id',
+  'No longer checks publicMetadata.plan_id for fallback (removed from auth flow)'
 );
 
 checkFileDoesNotContain(
