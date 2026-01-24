@@ -39,6 +39,7 @@
       'page.analyzeButton': 'Paper analysieren',
       'page.refreshButton': 'Aktualisieren',
       'page.analyzePdf': 'PDF analysieren (falls verfügbar)',
+      'page.viewHistory': '📚 Analysehistorie anzeigen',
       
       // Analysis results
       'results.title': 'Analyseergebnisse',
@@ -73,6 +74,15 @@
       'detailed.send': 'Senden',
       'detailed.exportAnalysis': 'Analyse exportieren',
       'detailed.downloadPdf': 'PDF herunterladen',
+      
+      // Analysis History
+      'history.title': 'Analysehistorie',
+      'history.close': 'Schließen',
+      'history.empty': 'Noch keine Analysehistorie vorhanden.',
+      'history.viewAnalysis': 'Anzeigen',
+      'history.deleteAnalysis': 'Löschen',
+      'history.loadedFrom': 'Geladen aus Historie',
+      'history.returnToCurrent': '← Zurück zur aktuellen Seite',
       
       // Chat messages
       'chat.you': 'Sie',
@@ -173,6 +183,7 @@
       'page.analyzeButton': 'Analyze Paper',
       'page.refreshButton': 'Refresh',
       'page.analyzePdf': 'Analyze PDF (if available)',
+      'page.viewHistory': '📚 View Analysis History',
       
       // Analysis results
       'results.title': 'Analysis Results',
@@ -207,6 +218,15 @@
       'detailed.send': 'Send',
       'detailed.exportAnalysis': 'Export Analysis',
       'detailed.downloadPdf': 'Download PDF',
+      
+      // Analysis History
+      'history.title': 'Analysis History',
+      'history.close': 'Close',
+      'history.empty': 'No analysis history yet.',
+      'history.viewAnalysis': 'View',
+      'history.deleteAnalysis': 'Delete',
+      'history.loadedFrom': 'Loaded from history',
+      'history.returnToCurrent': '← Return to Current Page',
       
       // Chat messages
       'chat.you': 'You',
