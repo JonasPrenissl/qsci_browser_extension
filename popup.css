@@ -405,7 +405,7 @@ body {
 
 /* Loading Overlay */
 .loading-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -467,7 +467,7 @@ body {
 /* Messages */
 .error-message,
 .success-message {
-  position: absolute;
+  position: fixed;
   top: 20px;
   left: 20px;
   right: 20px;
@@ -554,6 +554,8 @@ body {
 .detailed-section {
   background: #ffffff;
   border-top: 2px solid #e2e8f0;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
 }
 
 .detailed-header {
@@ -746,6 +748,8 @@ body {
 
 .analysis-list {
   padding: 0;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .analysis-item {
