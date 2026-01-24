@@ -418,66 +418,26 @@ async function shouldRefreshToken() {
 }
 
 /**
- * Request token refresh by opening auth page silently
- * This leverages the existing Clerk session to get a fresh token
- */
-async function refreshTokenSilently() {
-  try {
-    console.log('Q-SCI Background: Starting silent token refresh...');
-    
-    // Open auth success page in a hidden iframe-like context
-    // The page will check for existing Clerk session and refresh the token
-    const REFRESH_URL = 'https://www.q-sci.org/extension-auth-success';
-    
-    // Create an offscreen document for token refresh
-    // This allows us to run the Clerk SDK without opening a visible window
-    try {
-      await chrome.offscreen.createDocument({
-        url: REFRESH_URL,
-        reasons: ['DOM_SCRAPING'], // We need DOM to run Clerk SDK
-        justification: 'Refresh authentication token from Clerk session'
-      });
-      
-      console.log('Q-SCI Background: Offscreen document created for token refresh');
-      
-      // Wait a bit for the token to be refreshed
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Close the offscreen document
-      await chrome.offscreen.closeDocument();
-      
-      // Update timestamp
-      await chrome.storage.local.set({
-        [TOKEN_TIMESTAMP_KEY]: Date.now()
-      });
-      
-      console.log('Q-SCI Background: Token refreshed successfully');
-      return true;
-      
-    } catch (error) {
-      // Offscreen API might not be available or might fail
-      console.warn('Q-SCI Background: Offscreen document not available:', error.message);
-      console.log('Q-SCI Background: Token will be refreshed on next user login');
-      return false;
-    }
-    
-  } catch (error) {
-    console.error('Q-SCI Background: Error refreshing token:', error);
-    return false;
-  }
-}
-
-/**
  * Periodic token refresh check
  * Called by alarm every 12 hours
+ * 
+ * Note: This currently only logs token age for monitoring.
+ * Actual token refresh requires the user to log in again or 
+ * for the backend to support token renewal.
+ * 
+ * The primary solution for session persistence is to configure
+ * Clerk Dashboard with longer session lifetimes (24+ hours).
+ * See SESSION_PERSISTENCE_CONFIGURATION.md for details.
  */
 async function checkAndRefreshToken() {
   try {
     const shouldRefresh = await shouldRefreshToken();
     
     if (shouldRefresh) {
-      console.log('Q-SCI Background: Token needs refresh');
-      await refreshTokenSilently();
+      console.log('Q-SCI Background: Token is older than 23 hours');
+      console.log('Q-SCI Background: User may need to log in again soon');
+      console.log('Q-SCI Background: Configure Clerk Dashboard with longer session lifetime to prevent this');
+      console.log('Q-SCI Background: See SESSION_PERSISTENCE_CONFIGURATION.md');
     } else {
       console.log('Q-SCI Background: Token is still fresh');
     }
@@ -487,8 +447,9 @@ async function checkAndRefreshToken() {
 }
 
 // Set up periodic token refresh alarm
+// This monitors token age and logs warnings when tokens are old
 chrome.alarms.create('tokenRefresh', {
-  periodInMinutes: TOKEN_REFRESH_INTERVAL / (60 * 1000) // Convert ms to minutes
+  periodInMinutes: TOKEN_REFRESH_INTERVAL / (60 * 1000) // Convert ms to minutes (720 minutes = 12 hours)
 });
 
 // Listen for alarm
@@ -504,5 +465,5 @@ checkAndRefreshToken().catch(err => {
   console.error('Q-SCI Background: Initial token check failed:', err);
 });
 
-console.log('Q-SCI Background: Service worker initialized successfully with token refresh support');
+console.log('Q-SCI Background: Service worker initialized successfully with token monitoring support');
 

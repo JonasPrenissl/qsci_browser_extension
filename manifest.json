@@ -10,8 +10,7 @@
     "scripting",
     "tabs",
     "downloads",
-    "alarms",
-    "offscreen"
+    "alarms"
   ],
   
   "host_permissions": [
