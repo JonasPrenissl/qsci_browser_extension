@@ -1608,9 +1608,9 @@ function createAspectElement(aspect, type) {
   const aspectContainer = document.createElement('div');
   aspectContainer.className = 'aspect-container';
   
-  // Create the clickable aspect element
+  // Create the aspect element (details always visible)
   const aspectElement = document.createElement('div');
-  aspectElement.className = 'analysis-item clickable';
+  aspectElement.className = 'analysis-item';
   
   // Handle both string and object formats
   // For LLM results, aspect objects have keys 'aspect', 'source_text', and 'explanation'.
@@ -1634,10 +1634,10 @@ function createAspectElement(aspect, type) {
   
   aspectElement.textContent = aspectText;
   
-  // Create inline source/explanation section (hidden by default)
+  // Create inline source/explanation section (always visible)
   const detailsSection = document.createElement('div');
   detailsSection.className = 'aspect-details';
-  detailsSection.style.display = 'none';
+  detailsSection.style.display = 'block';
   
   // Determine colors based on aspect type
   const isPositive = type === 'positive';
@@ -1709,12 +1709,6 @@ function createAspectElement(aspect, type) {
     explanationSection.appendChild(explanationContent);
     detailsSection.appendChild(explanationSection);
   }
-  
-  // Toggle visibility on click
-  aspectElement.addEventListener('click', () => {
-    const isVisible = detailsSection.style.display !== 'none';
-    detailsSection.style.display = isVisible ? 'none' : 'block';
-  });
   
   aspectContainer.appendChild(aspectElement);
   aspectContainer.appendChild(detailsSection);

@@ -262,30 +262,39 @@
     const languageName = language === 'de' ? 'German' : 'English';
     const languageNative = language === 'de' ? 'Deutsch' : 'English';
     
-    // Build system prompt - optimized for speed while maintaining quality
-    let systemPrompt = `You are Q‑SCI, an expert scientific publication quality evaluator.\n\n` +
+    // Build system prompt - comprehensive in-depth analysis
+    let systemPrompt = `You are Q‑SCI, an expert scientific publication quality evaluator providing IN-DEPTH academic analysis.\n\n` +
       `LANGUAGE: Respond in ${languageName}. All text fields must be in ${languageName}.\n\n` +
-      `TASK: Assess study quality using evidence-grading principles. `;
+      `TASK: Provide a comprehensive, detailed quality assessment using evidence-grading principles. This analysis must be valuable to researchers - NOT superficial. `;
     
     if (wasTruncated) {
       systemPrompt += `Note: Text optimized to 30K chars with full Methods section + beginning content. `;
     }
     
-    systemPrompt += `Ignore references. Identify study design, sample size, reporting practices, blinding, guidelines (CONSORT/PRISMA/STROBE). ` +
-      `Score: 0-100 (90-100=🟢, 70-89=🟡, <70=🔴).\n\n` +
-      `ASPECTS (6-12 total):\n` +
+    systemPrompt += `Analyze: study design, sample size, methodology rigor, statistical approach, reporting practices, blinding, randomization, control groups, follow-up, generalizability, adherence to guidelines (CONSORT/PRISMA/STROBE). Ignore references.\n\n` +
+      `SCORING: 0-100 (90-100=🟢 Green/Excellent, 70-89=🟡 Yellow/Moderate, <70=🔴 Red/Concerns)\n\n` +
+      `=== REASONING (CRITICAL - 3-4 PARAGRAPHS) ===\n` +
+      `Provide a detailed 3-4 paragraph explanation of the score:\n` +
+      `Paragraph 1: Summarize the study's key methodological strengths in detail\n` +
+      `Paragraph 2: Discuss the main limitations and weaknesses thoroughly\n` +
+      `Paragraph 3: Explain how the strengths and weaknesses balance out to justify the score\n` +
+      `Paragraph 4 (optional): Provide context on how this compares to similar studies or field standards\n` +
+      `Each paragraph should be 3-5 sentences. This reasoning is shown directly to users to help them understand why the paper received its score.\n\n` +
+      `=== ASPECTS (6-12 total) ===\n` +
+      `Number of aspects based on score:\n` +
       `- Score ≥85%: 6+ positive, 3-4 negative\n` +
       `- Score 70-84%: 4-5 positive, 4-5 negative\n` +
       `- Score 50-69%: 3-4 positive, 5-6 negative\n` +
-      `- Score <50%: 3+ positive, 6+ negative\n` +
-      `\n` +
-      `ASPECT FORMAT: Clear sentence (e.g., "Study uses proper randomization"). ` +
-      `SOURCE_TEXT: REQUIRED. Copy exact text from paper word-for-word (will be shown as quote). Use "" if based on multiple parts. Never invent or paraphrase. ` +
-      `EXPLANATION: REQUIRED. 2-3 sentences on significance.\n\n` +
-      `REASONING: REQUIRED. 2-3 detailed paragraphs: (1) key strengths, (2) key weaknesses, (3) overall conclusion.\n\n` +
-      `JOURNAL: If identifiable from URL/content, add journal_info with journal_name and impact_factor (or "Not available"). Otherwise omit.\n\n` +
-      `OUTPUT: JSON only, no formatting:\n` +
-      `{quality_percentage, traffic_light, reasoning, positive_aspects[], negative_aspects[], journal_info{}}`;
+      `- Score <50%: 3+ positive, 6+ negative\n\n` +
+      `EACH ASPECT MUST HAVE ALL THREE FIELDS:\n` +
+      `1. "aspect": A clear, specific statement of the strength/weakness (e.g., "Rigorous double-blind randomized controlled trial design minimizes selection and detection bias")\n` +
+      `2. "source_text": The EXACT quote from the paper that supports this aspect. Copy word-for-word from the paper text. This will be displayed as a quotation to users. If the aspect is based on the absence of information, explain what is missing. NEVER leave empty or use placeholder text.\n` +
+      `3. "explanation": A detailed 2-4 sentence explanation of WHY this aspect matters for the paper's quality. Explain the scientific significance and how it affects the reliability/validity of the findings. This helps users understand the importance of each point.\n\n` +
+      `EXAMPLE ASPECT:\n` +
+      `{"aspect": "Large sample size provides adequate statistical power", "source_text": "A total of 1,247 participants were enrolled across 15 clinical centers, providing 90% power to detect the primary outcome", "explanation": "A sample size of over 1,200 participants substantially exceeds the minimum required for detecting clinically meaningful effects. This reduces the risk of Type II errors (false negatives) and increases confidence that the observed effects are genuine rather than due to chance variation."}\n\n` +
+      `JOURNAL: If identifiable from URL/content, include journal_info with journal_name and impact_factor (or "Not available"). Otherwise omit.\n\n` +
+      `OUTPUT FORMAT: JSON only, no markdown formatting:\n` +
+      `{"quality_percentage": number, "traffic_light": "🟢 Green" or "🟡 Yellow" or "🔴 Red", "reasoning": "detailed 3-4 paragraph explanation", "positive_aspects": [{"aspect": "...", "source_text": "...", "explanation": "..."}], "negative_aspects": [{"aspect": "...", "source_text": "...", "explanation": "..."}], "journal_info": {"journal_name": "...", "impact_factor": "..."}}`;
 
     const user = `Paper Title: ${title || 'Unknown Title'}\n` +
       `Source URL: ${sourceUrl || 'N/A'}\n\n` +
@@ -471,13 +480,14 @@
       top_p: TOP_P,
       // Force JSON response format for faster parsing and more reliable output
       response_format: { type: "json_object" },
-      // Provide a max_tokens to accommodate complete analysis output.
-      // Increased to 2500 to ensure full detailed responses:
-      // - Reasoning: 2-3 detailed paragraphs (~400-600 tokens)
-      // - Aspects: 6-12 total, each with source_text quote and 2-3 sentence explanation (~100-150 tokens each)
+      // Provide a max_tokens to accommodate complete in-depth analysis output.
+      // Increased to 4000 to ensure comprehensive detailed responses:
+      // - Reasoning: 3-4 detailed paragraphs (~600-900 tokens)
+      // - Aspects: 6-12 total, each with detailed source_text quote and 2-4 sentence explanation (~150-200 tokens each)
       // - Journal information if available (~50 tokens)
-      // Previous 1000 token limit was insufficient and caused truncation of reasoning and aspect details
-      max_tokens: 2500
+      // Total estimated: ~900 (reasoning) + ~2000 (aspects) + ~100 (overhead) = ~3000 tokens minimum
+      // Using 4000 provides buffer for longer papers and more detailed analysis
+      max_tokens: 4000
     });
 
     const headers = {
