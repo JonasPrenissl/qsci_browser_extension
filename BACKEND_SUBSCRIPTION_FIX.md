@@ -172,10 +172,14 @@ app.post('/api/webhooks/stripe', async (req, res) => {
             }
           });
         } else {
-          // Inactive subscription - remove stripe_customer_id
+          // Inactive subscription - remove stripe_customer_id AND publicMetadata fields
           await clerkClient.users.updateUser(clerkUserId, {
             privateMetadata: {
               stripe_customer_id: undefined  // Use undefined to delete the field
+            },
+            publicMetadata: {
+              plan_id: undefined,  // IMPORTANT: Remove plan_id to prevent false premium status
+              current_period_end: undefined  // IMPORTANT: Remove period end as well
             }
           });
         }
@@ -192,6 +196,10 @@ app.post('/api/webhooks/stripe', async (req, res) => {
         await clerkClient.users.updateUser(clerkUserId, {
           privateMetadata: {
             stripe_customer_id: undefined  // Use undefined to delete the field
+          },
+          publicMetadata: {
+            plan_id: undefined,  // IMPORTANT: Remove plan_id to prevent false premium status
+            current_period_end: undefined  // IMPORTANT: Remove period end as well
           }
         });
       }
@@ -276,6 +284,12 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ## Summary
+
+**CRITICAL: publicMetadata Cleanup Required**
+
+When cancelling or deactivating a subscription, the webhook handler **MUST** clear both `privateMetadata.stripe_customer_id` AND `publicMetadata.plan_id`. Failing to clear `publicMetadata.plan_id` will cause the extension to incorrectly show users as "premium" even after their subscription is cancelled, because stale `plan_id` values will remain in Clerk's publicMetadata.
+
+The extension now defaults to 'free' status when the backend API is unavailable, preventing false premium status. However, the backend webhook must still properly clean up publicMetadata to ensure data consistency across all systems.
 
 The extension changes are complete and deployed. To make subscription status work correctly:
 

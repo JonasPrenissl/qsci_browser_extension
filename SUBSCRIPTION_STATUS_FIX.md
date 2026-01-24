@@ -121,15 +121,26 @@ The fix includes detailed console logging to help debug subscription status issu
 "Q-SCI Clerk Auth: Network error and no plan_id in publicMetadata, defaulting to free tier"
 ```
 
-## Known Limitations
-1. The fallback relies on `publicMetadata.plan_id` being correctly set by backend webhooks
-2. If a subscription is canceled but the webhook hasn't updated publicMetadata yet, the user may still appear as subscribed
-3. The fallback cannot distinguish between different subscription statuses (active vs past_due)
+## Known Limitations and Fixes (Updated)
+
+### Previous Issue (Now Fixed)
+The fallback mechanism that checked `publicMetadata.plan_id` could cause false premium status when:
+1. Backend webhooks didn't properly clear `publicMetadata.plan_id` when subscriptions were cancelled
+2. The backend API was unavailable, causing the extension to fall back to checking stale `plan_id` data
+
+### Current Behavior (After Fix)
+1. The extension now defaults to 'free' status when the backend API is unavailable
+2. The extension **no longer** uses `publicMetadata.plan_id` as a fallback
+3. Users with cancelled subscriptions will correctly show as "free" in the extension
+4. Users can manually refresh their subscription status from the extension options page
+
+### Backend Requirements
+The backend webhook handler **MUST** clear `publicMetadata.plan_id` when subscriptions are cancelled. See updated `BACKEND_SUBSCRIPTION_FIX.md` for proper webhook implementation.
 
 ## Recommendations
-1. Ensure backend webhooks are properly configured to update publicMetadata
-2. Monitor backend API availability to minimize reliance on fallback
-3. Consider adding a "Refresh Status" button to allow users to manually update their subscription status when backend is available
+1. Ensure backend webhooks properly clear both `privateMetadata.stripe_customer_id` AND `publicMetadata.plan_id` when subscriptions are cancelled
+2. Monitor backend API availability to ensure accurate subscription status
+3. Users can use the "Refresh Status" button in extension options to manually update their subscription status
 
 ## Related Files
 - `src/clerk-auth-main.js` - Login flow with fallback logic
