@@ -45,9 +45,15 @@ const API_BASE_URL = 'https://www.q-sci.org/api';
 const LANGUAGE_KEY = 'qsci_language';
 const DEFAULT_LANGUAGE = 'de'; // Default to German, can be overridden by user preference
 
+// Time constants for better readability
+const HOURS_IN_MS = 60 * 60 * 1000;  // Milliseconds in one hour
+const MINUTES_IN_MS = 60 * 1000;      // Milliseconds in one minute
+
 // Token refresh settings
-const TOKEN_REFRESH_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
-const TOKEN_MAX_AGE = 23 * 60 * 60 * 1000; // 23 hours - refresh before 24h expiry
+const TOKEN_REFRESH_INTERVAL_HOURS = 12;  // Check token age every 12 hours
+const TOKEN_MAX_AGE_HOURS = 23;            // Warn if token is older than 23 hours
+const TOKEN_REFRESH_INTERVAL = TOKEN_REFRESH_INTERVAL_HOURS * HOURS_IN_MS;
+const TOKEN_MAX_AGE = TOKEN_MAX_AGE_HOURS * HOURS_IN_MS;
 
 // Helper function to get user's preferred language from storage
 async function getUserLanguage() {
@@ -418,6 +424,16 @@ async function shouldRefreshToken() {
 }
 
 /**
+ * Convert milliseconds to minutes
+ * Helper for chrome.alarms API which requires minutes
+ * @param {number} ms - Milliseconds to convert
+ * @returns {number} Minutes
+ */
+function msToMinutes(ms) {
+  return ms / MINUTES_IN_MS;
+}
+
+/**
  * Periodic token refresh check
  * Called by alarm every 12 hours
  * 
@@ -434,7 +450,7 @@ async function checkAndRefreshToken() {
     const shouldRefresh = await shouldRefreshToken();
     
     if (shouldRefresh) {
-      console.log('Q-SCI Background: Token is older than 23 hours');
+      console.log('Q-SCI Background: Token is older than', TOKEN_MAX_AGE_HOURS, 'hours');
       console.log('Q-SCI Background: User may need to log in again soon');
       console.log('Q-SCI Background: Configure Clerk Dashboard with longer session lifetime to prevent this');
       console.log('Q-SCI Background: See SESSION_PERSISTENCE_CONFIGURATION.md');
@@ -449,7 +465,7 @@ async function checkAndRefreshToken() {
 // Set up periodic token refresh alarm
 // This monitors token age and logs warnings when tokens are old
 chrome.alarms.create('tokenRefresh', {
-  periodInMinutes: TOKEN_REFRESH_INTERVAL / (60 * 1000) // Convert ms to minutes (720 minutes = 12 hours)
+  periodInMinutes: msToMinutes(TOKEN_REFRESH_INTERVAL)
 });
 
 // Listen for alarm
@@ -466,4 +482,5 @@ checkAndRefreshToken().catch(err => {
 });
 
 console.log('Q-SCI Background: Service worker initialized successfully with token monitoring support');
+console.log('Q-SCI Background: Token monitoring interval:', TOKEN_REFRESH_INTERVAL_HOURS, 'hours');
 
