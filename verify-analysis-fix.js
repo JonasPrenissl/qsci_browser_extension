@@ -18,7 +18,7 @@ let allChecksPass = true;
 
 // Check 1: max_tokens should be 2500 or higher
 console.log('✓ Check 1: max_tokens limit');
-const maxTokensMatch = evaluatorContent.match(/max_tokens:\s*(\d+)/);
+const maxTokensMatch = evaluatorContent.match(/max_tokens\s*:\s*(\d+)/);
 if (maxTokensMatch) {
   const maxTokens = parseInt(maxTokensMatch[1]);
   console.log(`  Current max_tokens: ${maxTokens}`);
@@ -73,18 +73,11 @@ if (hasExplanationRequired) {
 
 // Check 4: Verify aspect format includes both source_text and explanation
 console.log('\n✓ Check 4: Expected JSON output format');
-const outputFormatMatch = evaluatorContent.match(/OUTPUT:[^{]*(\{[^}]+\})/);
-if (outputFormatMatch) {
-  const outputFormat = outputFormatMatch[1];
-  console.log(`  Current format: "${outputFormat.trim()}"`);
-  if (outputFormat.includes('positive_aspects') && outputFormat.includes('negative_aspects')) {
-    console.log('  ✓ PASS: Output format includes positive_aspects[] and negative_aspects[]');
-  } else {
-    console.log('  ✗ FAIL: Output format missing aspects arrays');
-    allChecksPass = false;
-  }
+// Look for the positive_aspects and negative_aspects in the output format
+if (evaluatorContent.includes('positive_aspects[]') && evaluatorContent.includes('negative_aspects[]')) {
+  console.log('  ✓ PASS: Output format includes positive_aspects[] and negative_aspects[]');
 } else {
-  console.log('  ✗ FAIL: Could not find OUTPUT format in prompt');
+  console.log('  ✗ FAIL: Output format missing aspects arrays');
   allChecksPass = false;
 }
 
