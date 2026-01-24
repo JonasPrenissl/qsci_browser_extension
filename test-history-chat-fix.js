@@ -103,5 +103,5 @@ try {
   console.error('\n=== ✗ Test Failed ===');
   console.error(error.message);
   console.error(error.stack);
-  process.exit(1);
+  throw error;
 }
