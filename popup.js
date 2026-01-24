@@ -1025,6 +1025,7 @@ async function analyzePage() {
   await clearSavedAnalysis();
   currentAnalysis = null;
   currentPdfUrl = null;
+  selectedHistoryItem = null; // Clear selected history item when starting new analysis
   
   // Check if user is logged in by querying actual auth state
   // This prevents false "Please login" errors when popup reopens
@@ -1711,7 +1712,11 @@ function displayAnalysisResults(analysis) {
   
   // Clear chat history for new analysis
   chatHistory = [];
-  paperContextForChat = null;
+  // Only clear paper context if not loading from history
+  // When loading from history, paperContextForChat is already set in loadHistoryItem()
+  if (!selectedHistoryItem) {
+    paperContextForChat = null;
+  }
   if (elements.chatMessages) {
     // Clear previous messages and show welcome message using i18n
     const welcomeText = window.QSCIi18n ? window.QSCIi18n.t('detailed.chatWelcome') : 'Ask questions about the publication, and the AI will answer them based on the analyzed content.';
