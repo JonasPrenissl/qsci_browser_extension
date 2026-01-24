@@ -526,13 +526,26 @@ async function addToHistory(analysis) {
     const result = await chrome.storage.local.get(['qsci_analysis_history']);
     let history = result.qsci_analysis_history || [];
     
+    // Create paper context if not available
+    // This ensures chat can still work even if paperContextForChat wasn't captured
+    let contextToSave = paperContextForChat;
+    if (!contextToSave && analysis) {
+      // Create a minimal context from analysis data
+      contextToSave = {
+        title: analysis.journal_name || (currentTab ? currentTab.title : 'Unknown Paper'),
+        text: analysis.reasoning || '',
+        url: currentTab ? currentTab.url : null
+      };
+      console.log('Q-SCI Debug Popup: Created fallback paper context from analysis data');
+    }
+    
     // Create history item
     const historyItem = {
       id: Date.now(), // Unique ID
       timestamp: new Date().toISOString(),
       analysis: analysis,
       pdfUrl: currentPdfUrl,
-      paperContext: paperContextForChat, // Save paper context for offline chat
+      paperContext: contextToSave, // Save paper context for offline chat
       pageUrl: currentTab ? currentTab.url : null,
       pageTitle: currentTab ? currentTab.title : null
     };
@@ -577,11 +590,18 @@ async function deleteHistoryItem(itemId) {
   console.log('Q-SCI Debug Popup: Deleting history item:', itemId);
   
   try {
+    // Reload history from storage first to avoid overwriting changes
+    const result = await chrome.storage.local.get(['qsci_analysis_history']);
+    let history = result.qsci_analysis_history || [];
+    
     // Filter out the item
-    analysisHistory = analysisHistory.filter(item => item.id !== itemId);
+    history = history.filter(item => item.id !== itemId);
     
     // Save updated history
-    await chrome.storage.local.set({ qsci_analysis_history: analysisHistory });
+    await chrome.storage.local.set({ qsci_analysis_history: history });
+    
+    // Update local cache
+    analysisHistory = history;
     
     // Refresh the history view
     await showHistoryView();
@@ -2581,12 +2601,6 @@ function addChatMessage(type, message) {
   elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
 
-// Helper function to escape HTML
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 console.log('Q-SCI Debug Popup: Script initialization complete');
 
