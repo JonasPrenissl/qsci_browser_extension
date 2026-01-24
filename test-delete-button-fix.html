@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Delete Button Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f9fafb;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        .history-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: white;
+        }
+        .log {
+            background: #1f2937;
+            color: #10b981;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin: 2px 0;
+        }
+        .success {
+            color: #10b981;
+        }
+        .error {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Delete Button Fix</h1>
+    <p>This page tests the delete button functionality using event delegation.</p>
+
+    <div class="test-section">
+        <h2>Test 1: Inline onclick (Old Method - Should NOT Work)</h2>
+        <p>This button uses inline onclick handler. In a browser extension with CSP, this might be blocked:</p>
+        <div id="old-method-list"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Event Delegation (New Method - Should Work)</h2>
+        <p>This button uses event delegation with data attributes. This should work correctly:</p>
+        <div id="new-method-list"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Event Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        // Logging function
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        log('Test page loaded', 'success');
+
+        // Create test data
+        const testItems = [
+            { id: 1, title: 'Test Item 1', date: '2024-01-20' },
+            { id: 2, title: 'Test Item 2', date: '2024-01-21' },
+            { id: 3, title: 'Test Item 3', date: '2024-01-22' }
+        ];
+
+        // Old method: inline onclick
+        function deleteItemOld(itemId) {
+            log(`OLD METHOD: Attempting to delete item ${itemId}`, 'success');
+            const item = document.querySelector(`#old-item-${itemId}`);
+            if (item) {
+                item.remove();
+                log(`OLD METHOD: Item ${itemId} deleted successfully`, 'success');
+            }
+        }
+
+        function loadItemOld(itemId) {
+            log(`OLD METHOD: Loading item ${itemId}`, 'success');
+        }
+
+        // Make functions globally accessible for onclick
+        window.deleteItemOld = deleteItemOld;
+        window.loadItemOld = loadItemOld;
+
+        // Render old method list
+        const oldList = document.getElementById('old-method-list');
+        testItems.forEach(item => {
+            oldList.innerHTML += `
+                <div class="history-item" id="old-item-${item.id}">
+                    <div><strong>${item.title}</strong> - ${item.date}</div>
+                    <div style="margin-top: 8px; display: flex; gap: 8px;">
+                        <button class="btn btn-primary" onclick="loadItemOld(${item.id})">Load</button>
+                        <button class="btn btn-secondary" onclick="deleteItemOld(${item.id})">🗑️ Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        // New method: event delegation
+        const newList = document.getElementById('new-method-list');
+        testItems.forEach(item => {
+            newList.innerHTML += `
+                <div class="history-item" id="new-item-${item.id}">
+                    <div><strong>${item.title}</strong> - ${item.date}</div>
+                    <div style="margin-top: 8px; display: flex; gap: 8px;">
+                        <button class="btn btn-primary history-load-btn" data-history-id="${item.id}">Load</button>
+                        <button class="btn btn-secondary history-delete-btn" data-history-id="${item.id}">🗑️ Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Event delegation
+        document.addEventListener('click', function(e) {
+            // Handle load button
+            if (e.target.classList.contains('history-load-btn') || e.target.closest('.history-load-btn')) {
+                const button = e.target.classList.contains('history-load-btn') ? e.target : e.target.closest('.history-load-btn');
+                const itemId = parseInt(button.dataset.historyId);
+                log(`NEW METHOD: Loading item ${itemId}`, 'success');
+            }
+            
+            // Handle delete button
+            if (e.target.classList.contains('history-delete-btn') || e.target.closest('.history-delete-btn')) {
+                const button = e.target.classList.contains('history-delete-btn') ? e.target : e.target.closest('.history-delete-btn');
+                const itemId = parseInt(button.dataset.historyId);
+                log(`NEW METHOD: Attempting to delete item ${itemId}`, 'success');
+                
+                const item = document.querySelector(`#new-item-${itemId}`);
+                if (item) {
+                    item.remove();
+                    log(`NEW METHOD: Item ${itemId} deleted successfully`, 'success');
+                }
+            }
+        });
+
+        log('Event delegation setup complete', 'success');
+        log('Try clicking the delete buttons in both sections!', 'info');
+    </script>
+</body>
+</html>

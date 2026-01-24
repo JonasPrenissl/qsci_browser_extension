@@ -263,6 +263,25 @@ function setupEventListeners() {
       closeHistoryView();
     });
   }
+
+  // Event delegation for dynamically created history list buttons
+  document.addEventListener('click', function(e) {
+    // Handle load history item button
+    const loadBtn = e.target.closest('.history-load-btn');
+    if (loadBtn) {
+      const itemId = parseInt(loadBtn.dataset.historyId);
+      console.log('Q-SCI Debug Popup: Load history button clicked for item:', itemId);
+      loadHistoryItem(itemId);
+    }
+    
+    // Handle delete history item button
+    const deleteBtn = e.target.closest('.history-delete-btn');
+    if (deleteBtn) {
+      const itemId = parseInt(deleteBtn.dataset.historyId);
+      console.log('Q-SCI Debug Popup: Delete history button clicked for item:', itemId);
+      deleteHistoryItem(itemId);
+    }
+  });
 }
 
 // Initialize authentication
@@ -2292,8 +2311,8 @@ function renderHistoryList() {
         </div>
         ${item.pageUrl ? `<div style="font-size: 11px; color: #9ca3af; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.pageUrl)}</div>` : ''}
         <div style="display: flex; gap: 6px;">
-          <button class="btn btn-primary" onclick="loadHistoryItem(${item.id})" style="flex: 1; padding: 6px 12px; font-size: 12px;">${viewText}</button>
-          <button class="btn btn-secondary" onclick="deleteHistoryItem(${item.id})" style="padding: 6px 12px; font-size: 12px;">🗑️ ${deleteText}</button>
+          <button class="btn btn-primary history-load-btn" data-history-id="${item.id}" style="flex: 1; padding: 6px 12px; font-size: 12px;">${viewText}</button>
+          <button class="btn btn-secondary history-delete-btn" data-history-id="${item.id}" style="padding: 6px 12px; font-size: 12px;">🗑️ ${deleteText}</button>
         </div>
       </div>
     `;
