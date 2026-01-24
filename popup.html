@@ -84,6 +84,17 @@
           </div>
         </div>
       </div>
+
+      <!-- Analysis History Section -->
+      <div class="section history-section" id="history-section" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="margin: 0;" data-i18n="history.title">Analysis History</h3>
+          <button class="btn btn-secondary" id="close-history-btn" style="padding: 4px 12px; font-size: 12px;" data-i18n="history.close">Close</button>
+        </div>
+        <div id="history-list" style="max-height: 400px; overflow-y: auto;">
+          <div style="font-size: 12px; color: #6b7280; text-align: center; padding: 20px;" data-i18n="history.empty">No analysis history yet.</div>
+        </div>
+      </div>
       
       <!-- Authentication section -->
       <div class="section auth-section" id="auth-section">
@@ -143,6 +154,9 @@
         <div class="action-buttons">
           <button class="btn btn-primary" id="analyze-btn" data-i18n="page.analyzeButton">Paper analysieren</button>
           <button class="btn btn-secondary" id="refresh-btn" data-i18n="page.refreshButton">Aktualisieren</button>
+        </div>
+        <div style="margin-top: 8px;">
+          <button class="btn btn-outline" id="view-history-btn" style="width: 100%; padding: 8px;" data-i18n="page.viewHistory">📚 View Analysis History</button>
         </div>
       </div>
     </div>

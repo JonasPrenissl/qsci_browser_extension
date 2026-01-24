@@ -7,10 +7,14 @@ let currentTab = null;
 let currentAnalysis = null;
 let currentUser = null;
 let currentPdfUrl = null;
+let analysisHistory = []; // Array to store historical analyses
+let selectedHistoryItem = null; // Currently selected historical analysis
+let paperContextForChat = null; // Store paper context for chat even when not on the page
 
 // Constants for polling and timeouts
 const POLL_INTERVAL_MS = 500; // Poll every 500ms for analysis status
 const MAX_POLL_ATTEMPTS = 240; // 240 * 500ms = 2 minutes max polling time
+const MAX_HISTORY_ITEMS = 50; // Maximum number of analyses to store in history
 
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
@@ -45,6 +49,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   await loadSavedAnalysis();
   
   initializeAuth();
+  
+  // Make functions globally accessible for onclick handlers
+  window.loadHistoryItem = loadHistoryItem;
+  window.deleteHistoryItem = deleteHistoryItem;
+  window.returnToCurrentPage = returnToCurrentPage;
 });
 
 // Listen for messages from background worker (e.g., analysis complete)
@@ -117,7 +126,12 @@ function initializeElements() {
     upgradePrompt: document.getElementById('upgrade-prompt'),
     refreshSubscriptionBtn: document.getElementById('refresh-subscription-btn'),
     // Language selector
-    languageSelector: document.getElementById('language-selector')
+    languageSelector: document.getElementById('language-selector'),
+    // History elements
+    viewHistoryBtn: document.getElementById('view-history-btn'),
+    closeHistoryBtn: document.getElementById('close-history-btn'),
+    historySection: document.getElementById('history-section'),
+    historyList: document.getElementById('history-list')
   };
   
   // Log which elements were found
@@ -231,6 +245,21 @@ function setupEventListeners() {
         console.log('Q-SCI Debug Popup: Chat input Enter pressed');
         handleChatSend();
       }
+    });
+  }
+
+  // History event listeners
+  if (elements.viewHistoryBtn) {
+    elements.viewHistoryBtn.addEventListener('click', function() {
+      console.log('Q-SCI Debug Popup: View history button clicked');
+      showHistoryView();
+    });
+  }
+
+  if (elements.closeHistoryBtn) {
+    elements.closeHistoryBtn.addEventListener('click', function() {
+      console.log('Q-SCI Debug Popup: Close history button clicked');
+      closeHistoryView();
     });
   }
 }
@@ -468,18 +497,133 @@ async function pollForAnalysisCompletion() {
   }
 }
 
-// Save analysis to chrome.storage.local
+// Save analysis to chrome.storage.local and add to history
 async function saveAnalysis(analysis) {
   console.log('Q-SCI Debug Popup: Saving analysis...');
   
   try {
+    // Save as current analysis
     await chrome.storage.local.set({ 
       qsci_current_analysis: analysis,
       qsci_current_pdf_url: currentPdfUrl
     });
+    
+    // Add to history
+    await addToHistory(analysis);
+    
     console.log('Q-SCI Debug Popup: Analysis saved successfully');
   } catch (error) {
     console.error('Q-SCI Debug Popup: Error saving analysis:', error);
+  }
+}
+
+// Add analysis to history
+async function addToHistory(analysis) {
+  console.log('Q-SCI Debug Popup: Adding analysis to history...');
+  
+  try {
+    // Load existing history
+    const result = await chrome.storage.local.get(['qsci_analysis_history']);
+    let history = result.qsci_analysis_history || [];
+    
+    // Create history item
+    const historyItem = {
+      id: Date.now(), // Unique ID
+      timestamp: new Date().toISOString(),
+      analysis: analysis,
+      pdfUrl: currentPdfUrl,
+      paperContext: paperContextForChat, // Save paper context for offline chat
+      pageUrl: currentTab ? currentTab.url : null,
+      pageTitle: currentTab ? currentTab.title : null
+    };
+    
+    // Add to beginning of array
+    history.unshift(historyItem);
+    
+    // Limit history size
+    if (history.length > MAX_HISTORY_ITEMS) {
+      history = history.slice(0, MAX_HISTORY_ITEMS);
+    }
+    
+    // Save updated history
+    await chrome.storage.local.set({ qsci_analysis_history: history });
+    
+    // Update local history cache
+    analysisHistory = history;
+    
+    console.log('Q-SCI Debug Popup: Analysis added to history');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error adding to history:', error);
+  }
+}
+
+// Load analysis history from storage
+async function loadAnalysisHistory() {
+  console.log('Q-SCI Debug Popup: Loading analysis history...');
+  
+  try {
+    const result = await chrome.storage.local.get(['qsci_analysis_history']);
+    analysisHistory = result.qsci_analysis_history || [];
+    console.log(`Q-SCI Debug Popup: Loaded ${analysisHistory.length} history items`);
+    return analysisHistory;
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error loading history:', error);
+    return [];
+  }
+}
+
+// Delete a history item
+async function deleteHistoryItem(itemId) {
+  console.log('Q-SCI Debug Popup: Deleting history item:', itemId);
+  
+  try {
+    // Filter out the item
+    analysisHistory = analysisHistory.filter(item => item.id !== itemId);
+    
+    // Save updated history
+    await chrome.storage.local.set({ qsci_analysis_history: analysisHistory });
+    
+    // Refresh the history view
+    await showHistoryView();
+    
+    console.log('Q-SCI Debug Popup: History item deleted');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error deleting history item:', error);
+    showError('Failed to delete history item');
+  }
+}
+
+// Load a history item and display it
+async function loadHistoryItem(itemId) {
+  console.log('Q-SCI Debug Popup: Loading history item:', itemId);
+  
+  try {
+    const item = analysisHistory.find(h => h.id === itemId);
+    
+    if (!item) {
+      showError('History item not found');
+      return;
+    }
+    
+    // Set as current analysis
+    currentAnalysis = item.analysis;
+    currentPdfUrl = item.pdfUrl;
+    paperContextForChat = item.paperContext;
+    selectedHistoryItem = item;
+    
+    // Display the analysis
+    displayAnalysisResults(item.analysis);
+    
+    // Close history view
+    closeHistoryView();
+    
+    // Show indicator that this is from history
+    showHistoryIndicator(item);
+    
+    console.log('Q-SCI Debug Popup: History item loaded');
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error loading history item:', error);
+    showError('Failed to load history item');
   }
 }
 
@@ -1002,6 +1146,14 @@ async function analyzePage() {
       pdfUrlsCount: pageData.pdfUrls ? pageData.pdfUrls.length : 0,
       isPdfViewer: pageData.isPdfViewer
     });
+    
+    // Capture paper context for chat functionality
+    paperContextForChat = {
+      title: pageData.title || 'Unknown Title',
+      text: pageData.text || '',
+      url: analyzedTab.url
+    };
+    console.log('Q-SCI Debug Popup: Paper context captured for chat');
     
     // Try to analyze PDF first if PDF URLs are available
     let requestData = null;
@@ -2015,9 +2167,176 @@ function showSuccess(message) {
   }
 }
 
+// Show history view
+async function showHistoryView() {
+  console.log('Q-SCI Debug Popup: Showing history view...');
+  
+  try {
+    // Load history
+    await loadAnalysisHistory();
+    
+    // Hide other sections
+    if (elements.statsSection) elements.statsSection.style.display = 'none';
+    if (elements.detailedSection) elements.detailedSection.style.display = 'none';
+    
+    // Show history section
+    if (elements.historySection) {
+      elements.historySection.style.display = 'block';
+    }
+    
+    // Render history list
+    renderHistoryList();
+  } catch (error) {
+    console.error('Q-SCI Debug Popup: Error showing history:', error);
+    showError('Failed to load history');
+  }
+}
+
+// Close history view
+function closeHistoryView() {
+  console.log('Q-SCI Debug Popup: Closing history view...');
+  
+  if (elements.historySection) {
+    elements.historySection.style.display = 'none';
+  }
+  
+  // Show analysis results if available
+  if (currentAnalysis) {
+    displayAnalysisResults(currentAnalysis);
+  }
+}
+
+// Render history list
+function renderHistoryList() {
+  console.log('Q-SCI Debug Popup: Rendering history list...');
+  
+  if (!elements.historyList) {
+    console.error('Q-SCI Debug Popup: History list element not found');
+    return;
+  }
+  
+  const emptyText = window.QSCIi18n ? window.QSCIi18n.t('history.empty') : 'No analysis history yet.';
+  
+  if (analysisHistory.length === 0) {
+    elements.historyList.innerHTML = `
+      <div style="font-size: 12px; color: #6b7280; text-align: center; padding: 20px;">${emptyText}</div>
+    `;
+    return;
+  }
+  
+  const viewText = window.QSCIi18n ? window.QSCIi18n.t('history.viewAnalysis') : 'View';
+  const deleteText = window.QSCIi18n ? window.QSCIi18n.t('history.deleteAnalysis') : 'Delete';
+  
+  let html = '';
+  
+  analysisHistory.forEach(item => {
+    const date = new Date(item.timestamp);
+    const dateStr = date.toLocaleDateString();
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const title = item.pageTitle || item.analysis.journal_name || 'Unknown Paper';
+    const quality = item.analysis.quality_percentage || 0;
+    const trafficLight = item.analysis.traffic_light || 'Unknown';
+    
+    // Determine color based on traffic light
+    let colorClass = 'gray';
+    if (trafficLight === 'green') colorClass = 'green';
+    else if (trafficLight === 'yellow') colorClass = 'yellow';
+    else if (trafficLight === 'red') colorClass = 'red';
+    
+    html += `
+      <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 8px; background: white;">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+          <div style="flex: 1;">
+            <div style="font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 4px; line-height: 1.4;">${escapeHtml(title)}</div>
+            <div style="font-size: 11px; color: #6b7280;">${dateStr} ${timeStr}</div>
+          </div>
+          <div style="text-align: right; margin-left: 8px;">
+            <div style="font-size: 14px; font-weight: 700; color: ${getTrafficLightColor(trafficLight)};">${quality}%</div>
+            <div style="font-size: 10px; color: #6b7280;">${trafficLight}</div>
+          </div>
+        </div>
+        ${item.pageUrl ? `<div style="font-size: 11px; color: #9ca3af; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.pageUrl)}</div>` : ''}
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-primary" onclick="loadHistoryItem(${item.id})" style="flex: 1; padding: 6px 12px; font-size: 12px;">${viewText}</button>
+          <button class="btn btn-secondary" onclick="deleteHistoryItem(${item.id})" style="padding: 6px 12px; font-size: 12px;">🗑️ ${deleteText}</button>
+        </div>
+      </div>
+    `;
+  });
+  
+  elements.historyList.innerHTML = html;
+}
+
+// Show indicator that current analysis is from history
+function showHistoryIndicator(item) {
+  console.log('Q-SCI Debug Popup: Showing history indicator...');
+  
+  const loadedText = window.QSCIi18n ? window.QSCIi18n.t('history.loadedFrom') : 'Loaded from history';
+  const returnText = window.QSCIi18n ? window.QSCIi18n.t('history.returnToCurrent') : '← Return to Current Page';
+  
+  // Add an indicator banner at the top of the stats section
+  if (elements.statsSection) {
+    // Remove existing indicator if any
+    const existingIndicator = document.getElementById('history-indicator');
+    if (existingIndicator) {
+      existingIndicator.remove();
+    }
+    
+    const indicator = document.createElement('div');
+    indicator.id = 'history-indicator';
+    indicator.style.cssText = 'background: #fef3c7; border: 1px solid #fbbf24; border-radius: 4px; padding: 8px 12px; margin-bottom: 12px; font-size: 12px; color: #92400e;';
+    
+    const date = new Date(item.timestamp);
+    const dateStr = date.toLocaleDateString();
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    indicator.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>📚 ${loadedText} (${dateStr} ${timeStr})</span>
+        <button class="btn btn-secondary" onclick="returnToCurrentPage()" style="padding: 4px 8px; font-size: 11px; margin-left: 8px;">${returnText}</button>
+      </div>
+    `;
+    
+    elements.statsSection.insertBefore(indicator, elements.statsSection.firstChild);
+  }
+}
+
+// Return to current page analysis
+async function returnToCurrentPage() {
+  console.log('Q-SCI Debug Popup: Returning to current page...');
+  
+  // Clear selected history item
+  selectedHistoryItem = null;
+  
+  // Remove indicator
+  const indicator = document.getElementById('history-indicator');
+  if (indicator) {
+    indicator.remove();
+  }
+  
+  // Reload saved analysis
+  await loadSavedAnalysis();
+}
+
+// Helper function to get traffic light color
+function getTrafficLightColor(trafficLight) {
+  switch(trafficLight) {
+    case 'green': return '#059669';
+    case 'yellow': return '#d97706';
+    case 'red': return '#dc2626';
+    default: return '#6b7280';
+  }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // Chat functionality
 let chatHistory = [];
-let paperContextForChat = null;
 
 // Chat configuration constants
 const CHAT_MAX_TOKENS = 500;
