@@ -44,6 +44,11 @@
   // different models (e.g. 'gpt-4-turbo', 'gpt-3.5-turbo-0125').
   const MODEL_NAME = 'gpt-4o-mini';
   
+  // Validation constants
+  const MIN_REASONING_LENGTH = 10; // Minimum characters required for reasoning text
+  const MIN_QUALITY_SCORE = 0;     // Minimum valid quality score
+  const MAX_QUALITY_SCORE = 100;   // Maximum valid quality score
+  
   // Export MODEL_NAME for use in chat functionality
   if (typeof window !== 'undefined') {
     window.QSCI_MODEL_NAME = MODEL_NAME;
@@ -320,11 +325,45 @@
       }
       // Ensure required keys exist and types are correct
       if (!parsed || typeof parsed !== 'object') throw new Error('Invalid JSON structure');
-      const quality = typeof parsed.quality_percentage === 'number' ? parsed.quality_percentage : 0;
+      
+      // Validate quality_percentage is a valid number between MIN_QUALITY_SCORE-MAX_QUALITY_SCORE
+      const quality = (typeof parsed.quality_percentage === 'number' && 
+                      parsed.quality_percentage >= MIN_QUALITY_SCORE && 
+                      parsed.quality_percentage <= MAX_QUALITY_SCORE) ? 
+                      parsed.quality_percentage : null;
+      
+      // If quality is null/invalid, throw an error instead of defaulting to 0
+      if (quality === null) {
+        throw new Error(`Invalid or missing quality_percentage in API response. Received: ${parsed.quality_percentage} (type: ${typeof parsed.quality_percentage})`);
+      }
+      
       const traffic = typeof parsed.traffic_light === 'string' ? parsed.traffic_light : '🟡 Amber';
-      const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning : '';
-      const pos = Array.isArray(parsed.positive_aspects) ? parsed.positive_aspects : [];
-      const neg = Array.isArray(parsed.negative_aspects) ? parsed.negative_aspects : [];
+      
+      // Validate reasoning is a non-empty string with meaningful content
+      const reasoning = (typeof parsed.reasoning === 'string' && 
+                        parsed.reasoning.trim().length > MIN_REASONING_LENGTH) ? 
+                        parsed.reasoning : '';
+      
+      // Filter out invalid aspects - keep only valid strings or objects with content
+      const pos = Array.isArray(parsed.positive_aspects) ? 
+                  parsed.positive_aspects.filter(a => {
+                    if (typeof a === 'string') return a.trim().length > 0;
+                    if (typeof a === 'object' && a !== null) {
+                      const text = a.aspect || a.text || '';
+                      return text.trim().length > 0;
+                    }
+                    return false;
+                  }) : [];
+      
+      const neg = Array.isArray(parsed.negative_aspects) ? 
+                  parsed.negative_aspects.filter(a => {
+                    if (typeof a === 'string') return a.trim().length > 0;
+                    if (typeof a === 'object' && a !== null) {
+                      const text = a.aspect || a.text || '';
+                      return text.trim().length > 0;
+                    }
+                    return false;
+                  }) : [];
       return { 
         quality_percentage: quality, 
         traffic_light: traffic, 

@@ -15,6 +15,7 @@ let paperContextForChat = null; // Store paper context for chat even when not on
 const POLL_INTERVAL_MS = 500; // Poll every 500ms for analysis status
 const MAX_POLL_ATTEMPTS = 240; // 240 * 500ms = 2 minutes max polling time
 const MAX_HISTORY_ITEMS = 50; // Maximum number of analyses to store in history
+const MIN_REASONING_LENGTH = 10; // Minimum characters required for reasoning text to be displayed
 
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
@@ -1710,6 +1711,14 @@ function displayAnalysisResults(analysis) {
     return;
   }
   
+  // Validate analysis quality score before displaying
+  const score = analysis.quality_percentage || analysis.score;
+  if (typeof score !== 'number' || score < 0 || score > 100) {
+    console.error('Q-SCI Debug Popup: Invalid quality score:', score);
+    showError('Invalid analysis result received. The quality score is missing or invalid. Please try analyzing again.');
+    return;
+  }
+  
   // Clear chat history for new analysis
   chatHistory = [];
   // Only clear paper context if not loading from history
@@ -1729,7 +1738,6 @@ function displayAnalysisResults(analysis) {
   
   // Update quality score and background color
   if (elements.qualityScore && elements.qualityStatItem) {
-    const score = analysis.quality_percentage || analysis.score || 0;
     elements.qualityScore.textContent = `${Math.round(score)}%`;
     
     // Remove all quality classes first
@@ -1747,8 +1755,10 @@ function displayAnalysisResults(analysis) {
   
   // Display reasoning/justification if available
   if (elements.scoreReasoningSection && elements.scoreReasoningText) {
-    if (analysis.reasoning || analysis.justification) {
-      const reasoningText = analysis.reasoning || analysis.justification;
+    const reasoningText = analysis.reasoning || analysis.justification || '';
+    
+    // Only show reasoning if it has meaningful content (more than MIN_REASONING_LENGTH characters)
+    if (reasoningText.trim().length > MIN_REASONING_LENGTH) {
       
       // Format the reasoning into paragraphs
       // Split on double line breaks first (if present), then on single line breaks, then on sentences

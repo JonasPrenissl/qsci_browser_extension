@@ -53,3 +53,4 @@ test-citation-display.html
 test-lancet-*.js
 test-fix-*.js
 verify-progress-i18n.js
+test-validation-fix.js
