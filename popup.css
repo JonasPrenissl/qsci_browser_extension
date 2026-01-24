@@ -773,20 +773,6 @@ body {
   position: relative;
 }
 
-.analysis-item.clickable::after {
-  content: '👁️';
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0.5;
-  font-size: 12px;
-}
-
-.analysis-item.clickable:hover::after {
-  opacity: 1;
-}
-
 /* Aspect container for inline source/explanation */
 .aspect-container {
   border-bottom: 1px solid #f1f5f9;

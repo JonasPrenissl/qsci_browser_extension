@@ -16,6 +16,7 @@ const POLL_INTERVAL_MS = 500; // Poll every 500ms for analysis status
 const MAX_POLL_ATTEMPTS = 240; // 240 * 500ms = 2 minutes max polling time
 const MAX_HISTORY_ITEMS = 50; // Maximum number of analyses to store in history
 const MIN_REASONING_LENGTH = 10; // Minimum characters required for reasoning text to be displayed
+const TOGGLE_CHEVRON = '▶'; // Chevron indicator for expandable aspects
 
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
@@ -1608,9 +1609,13 @@ function createAspectElement(aspect, type) {
   const aspectContainer = document.createElement('div');
   aspectContainer.className = 'aspect-container';
   
-  // Create the aspect element (details always visible)
+  // Create the aspect element (clickable to toggle details)
   const aspectElement = document.createElement('div');
-  aspectElement.className = 'analysis-item';
+  aspectElement.className = 'analysis-item clickable';
+  aspectElement.style.cursor = 'pointer';
+  aspectElement.style.display = 'flex';
+  aspectElement.style.justifyContent = 'space-between';
+  aspectElement.style.alignItems = 'center';
   
   // Handle both string and object formats
   // For LLM results, aspect objects have keys 'aspect', 'source_text', and 'explanation'.
@@ -1632,12 +1637,34 @@ function createAspectElement(aspect, type) {
     aspectExplanation = null;
   }
   
-  aspectElement.textContent = aspectText;
+  // Create text span
+  const textSpan = document.createElement('span');
+  textSpan.textContent = aspectText;
+  textSpan.style.flex = '1';
   
-  // Create inline source/explanation section (always visible)
+  // Create toggle indicator (chevron)
+  const toggleIndicator = document.createElement('span');
+  toggleIndicator.className = 'aspect-toggle-indicator';
+  toggleIndicator.textContent = TOGGLE_CHEVRON;
+  toggleIndicator.style.marginLeft = '8px';
+  toggleIndicator.style.fontSize = '10px';
+  toggleIndicator.style.transition = 'transform 0.2s ease';
+  toggleIndicator.style.color = '#6b7280';
+  
+  aspectElement.appendChild(textSpan);
+  aspectElement.appendChild(toggleIndicator);
+  
+  // Create inline source/explanation section (hidden by default, shown on click)
   const detailsSection = document.createElement('div');
   detailsSection.className = 'aspect-details';
-  detailsSection.style.display = 'block';
+  detailsSection.style.display = 'none';
+  
+  // Add click handler to toggle visibility
+  aspectElement.addEventListener('click', function() {
+    const isVisible = detailsSection.style.display !== 'none';
+    detailsSection.style.display = isVisible ? 'none' : 'block';
+    toggleIndicator.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+  });
   
   // Determine colors based on aspect type
   const isPositive = type === 'positive';
