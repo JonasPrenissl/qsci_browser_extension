@@ -285,7 +285,8 @@ async function handleSignInSuccess(clerk) {
         'qsci_user_email': authData.email,
         'qsci_subscription_status': authData.subscriptionStatus,
         'qsci_user_id': authData.userId,
-        'qsci_clerk_session_id': authData.clerkSessionId
+        'qsci_clerk_session_id': authData.clerkSessionId,
+        'qsci_auth_token_timestamp': Date.now() // Track when token was created
       });
       console.log('Q-SCI Clerk Auth: Auth data saved to chrome.storage successfully');
     }

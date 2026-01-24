@@ -40,9 +40,20 @@ if (typeof importScripts === "function") {
 // Storage keys for analysis state and auth
 const ANALYSIS_STATE_KEY = 'qsci_current_analysis_state';
 const AUTH_TOKEN_KEY = 'qsci_auth_token';
+const TOKEN_TIMESTAMP_KEY = 'qsci_auth_token_timestamp';
 const API_BASE_URL = 'https://www.q-sci.org/api';
 const LANGUAGE_KEY = 'qsci_language';
 const DEFAULT_LANGUAGE = 'de'; // Default to German, can be overridden by user preference
+
+// Time constants for better readability
+const HOURS_IN_MS = 60 * 60 * 1000;  // Milliseconds in one hour
+const MINUTES_IN_MS = 60 * 1000;      // Milliseconds in one minute
+
+// Token refresh settings
+const TOKEN_REFRESH_INTERVAL_HOURS = 12;  // Check token age every 12 hours
+const TOKEN_MAX_AGE_HOURS = 23;            // Warn if token is older than 23 hours
+const TOKEN_REFRESH_INTERVAL = TOKEN_REFRESH_INTERVAL_HOURS * HOURS_IN_MS;
+const TOKEN_MAX_AGE = TOKEN_MAX_AGE_HOURS * HOURS_IN_MS;
 
 // Helper function to get user's preferred language from storage
 async function getUserLanguage() {
@@ -376,5 +387,100 @@ self.addEventListener('activate', (event) => {
   console.log('Q-SCI Background: Service worker activated');
 });
 
-console.log('Q-SCI Background: Service worker initialized successfully');
+// ========================================
+// Token Refresh Management
+// ========================================
+
+/**
+ * Check if the stored token needs refreshing based on its age
+ * @returns {Promise<boolean>} True if token needs refresh
+ */
+async function shouldRefreshToken() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([AUTH_TOKEN_KEY, TOKEN_TIMESTAMP_KEY], (result) => {
+      const token = result[AUTH_TOKEN_KEY];
+      const timestamp = result[TOKEN_TIMESTAMP_KEY];
+      
+      if (!token) {
+        resolve(false); // No token to refresh
+        return;
+      }
+      
+      if (!timestamp) {
+        resolve(true); // Token exists but no timestamp - should refresh
+        return;
+      }
+      
+      const tokenAge = Date.now() - timestamp;
+      const needsRefresh = tokenAge >= TOKEN_MAX_AGE;
+      
+      if (needsRefresh) {
+        console.log('Q-SCI Background: Token age:', Math.round(tokenAge / (60 * 60 * 1000)), 'hours - needs refresh');
+      }
+      
+      resolve(needsRefresh);
+    });
+  });
+}
+
+/**
+ * Convert milliseconds to minutes
+ * Helper for chrome.alarms API which requires minutes
+ * @param {number} ms - Milliseconds to convert
+ * @returns {number} Minutes
+ */
+function msToMinutes(ms) {
+  return ms / MINUTES_IN_MS;
+}
+
+/**
+ * Periodic token refresh check
+ * Called by alarm every 12 hours
+ * 
+ * Note: This currently only logs token age for monitoring.
+ * Actual token refresh requires the user to log in again or 
+ * for the backend to support token renewal.
+ * 
+ * The primary solution for session persistence is to configure
+ * Clerk Dashboard with longer session lifetimes (24+ hours).
+ * See SESSION_PERSISTENCE_CONFIGURATION.md for details.
+ */
+async function checkAndRefreshToken() {
+  try {
+    const shouldRefresh = await shouldRefreshToken();
+    
+    if (shouldRefresh) {
+      console.log('Q-SCI Background: Token is older than', TOKEN_MAX_AGE_HOURS, 'hours');
+      console.log('Q-SCI Background: User may need to log in again soon');
+      console.log('Q-SCI Background: Configure Clerk Dashboard with longer session lifetime to prevent this');
+      console.log('Q-SCI Background: See SESSION_PERSISTENCE_CONFIGURATION.md');
+    } else {
+      console.log('Q-SCI Background: Token is still fresh');
+    }
+  } catch (error) {
+    console.error('Q-SCI Background: Error in token refresh check:', error);
+  }
+}
+
+// Set up periodic token refresh alarm
+// This monitors token age and logs warnings when tokens are old
+chrome.alarms.create('tokenRefresh', {
+  periodInMinutes: msToMinutes(TOKEN_REFRESH_INTERVAL)
+});
+
+// Listen for alarm
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'tokenRefresh') {
+    console.log('Q-SCI Background: Token refresh alarm triggered');
+    checkAndRefreshToken();
+  }
+});
+
+// Check token on service worker startup
+checkAndRefreshToken().catch(err => {
+  console.error('Q-SCI Background: Initial token check failed:', err);
+});
+
+console.log('Q-SCI Background: Service worker initialized successfully with token monitoring support');
+console.log('Q-SCI Background: Token monitoring interval:', TOKEN_REFRESH_INTERVAL_HOURS, 'hours');
 
