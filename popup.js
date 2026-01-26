@@ -1294,6 +1294,15 @@ async function analyzePage() {
       sourceType: analysisData.sourceType
     });
     
+    // Update paper context for chat with the ACTUAL text that will be analyzed
+    // This ensures chat has access to the same full text (PDF or HTML) used for analysis
+    paperContextForChat = {
+      title: analysisData.title,
+      text: analysisData.text,
+      url: analysisData.sourceUrl
+    };
+    console.log('Q-SCI Debug Popup: Paper context updated for chat with analyzed text:', paperContextForChat.text.length, 'characters');
+    
     // Start the analysis in background worker
     const startingBgMsg = window.QSCIi18n ? window.QSCIi18n.t('progress.startingBackground') : 'Starting background analysis...';
     updateLoadingProgress(startingBgMsg, 65);
@@ -2598,8 +2607,16 @@ async function handleChatSend() {
 function buildChatMessages(userMessage) {
   const systemPrompt = `You are Q-SCI, an expert assistant helping users understand scientific publications. 
 You have access to the FULL TEXT of a paper and its analysis results. You can answer questions about any aspect of the paper including sample size, methodology, results, statistics, and conclusions.
-Be concise, clear, and helpful in your responses. Base your answers on the paper's actual content.
-When asked about specific details (like sample size, methods, results), search through the provided paper text to find the relevant information.`;
+
+CRITICAL INSTRUCTIONS - DO NOT HALLUCINATE:
+- ONLY answer based on information explicitly stated in the provided paper text below.
+- If the requested information is not found in the paper text, respond formally: "I was unable to find this specific information in the provided paper text."
+- NEVER make up, infer, or assume facts that are not directly stated in the paper.
+- If the paper text appears incomplete or truncated, acknowledge this limitation.
+- When quoting or referencing the paper, be accurate and do not fabricate quotes.
+
+Be concise, clear, and helpful in your responses. Base your answers ONLY on the paper's actual content provided below.
+When asked about specific details (like sample size, methods, results), search through the provided paper text to find the relevant information. If you cannot find it, say so clearly.`;
 
   const messages = [{ role: 'system', content: systemPrompt }];
   
