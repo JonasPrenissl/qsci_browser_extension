@@ -578,7 +578,7 @@ async function addToHistory(analysis) {
       
       contextToSave = {
         title: analysis.journal_name || (currentTab ? currentTab.title : 'Unknown Paper'),
-        text: fallbackText || 'No detailed paper text available. Please re-analyze the paper while on the publication page for full chat access.',
+        text: fallbackText || 'Limited paper text available. For full chat access, please ensure you are on the publication page when starting the analysis.',
         url: currentTab ? currentTab.url : null
       };
       console.log('Q-SCI Debug Popup: Created fallback paper context from analysis data, text length:', fallbackText.length);
@@ -2454,6 +2454,8 @@ const CHAT_TEMPERATURE = 0.7;
 const CHAT_HISTORY_LIMIT = 10; // Keep last 5 exchanges (10 messages)
 const CHAT_FALLBACK_MODEL = 'gpt-4o-mini'; // Fallback if window.QSCI_MODEL_NAME not available
 const CHAT_CONTEXT_MAX_LENGTH = 25000; // Maximum characters of paper text to include in chat context
+const CHAT_MIN_TEXT_FOR_PDF_FALLBACK = 5000; // Trigger PDF extraction if HTML text is below this threshold
+const CHAT_SHORT_TEXT_WARNING_THRESHOLD = 1000; // Warn if paper text is below this length (may indicate extraction issues)
 
 // Handle sending a chat message
 async function handleChatSend() {
@@ -2561,7 +2563,7 @@ async function handleChatSend() {
           let extractedText = pageData.text || '';
           
           // If text is limited and PDF URLs are available, try PDF extraction for complete content
-          if (extractedText.length < 5000 && pageData.pdfUrls && pageData.pdfUrls.length > 0 && window.QSCIPDFHandler) {
+          if (extractedText.length < CHAT_MIN_TEXT_FOR_PDF_FALLBACK && pageData.pdfUrls && pageData.pdfUrls.length > 0 && window.QSCIPDFHandler) {
             console.log('Q-SCI Debug Popup: Extracted text is short, attempting PDF extraction for fuller context...');
             try {
               const pdfResult = await window.QSCIPDFHandler.tryDownloadAndExtractPDF(pageData.pdfUrls);
@@ -2574,12 +2576,17 @@ async function handleChatSend() {
             }
           }
           
-          paperContextForChat = {
-            title: pageData.title || 'Unknown Title',
-            text: extractedText,
-            url: currentTab.url
-          };
-          console.log('Q-SCI Debug Popup: Paper context captured for chat, text length:', extractedText.length);
+          // Only set paperContextForChat if we have meaningful content
+          if (extractedText && extractedText.length > 50) {
+            paperContextForChat = {
+              title: pageData.title || 'Unknown Title',
+              text: extractedText,
+              url: currentTab.url
+            };
+            console.log('Q-SCI Debug Popup: Paper context captured for chat, text length:', extractedText.length);
+          } else {
+            console.warn('Q-SCI Debug Popup: Extracted text too short for chat context:', extractedText?.length || 0);
+          }
         }
       } catch (error) {
         console.warn('Q-SCI Debug Popup: Could not extract paper context:', error);
@@ -2704,8 +2711,8 @@ When asked about specific details (like sample size, methods, results), search t
     const originalLength = paperText.length;
     
     // Warn if paper text is suspiciously short (might indicate extraction failed)
-    if (originalLength < 1000) {
-      console.warn('Q-SCI Debug Popup: Paper text is very short (' + originalLength + ' chars), chat may not have full article access');
+    if (originalLength < CHAT_SHORT_TEXT_WARNING_THRESHOLD) {
+      console.warn(`Q-SCI Debug Popup: Paper text is very short (${originalLength} chars), chat may not have full article access`);
     }
     
     if (paperText.length > CHAT_CONTEXT_MAX_LENGTH) {
