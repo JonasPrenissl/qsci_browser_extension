@@ -2606,7 +2606,9 @@ async function handleChatSend() {
 // Build chat messages for OpenAI API
 function buildChatMessages(userMessage) {
   const systemPrompt = `You are Q-SCI, an expert assistant helping users understand scientific publications. 
-You have access to the FULL TEXT of a paper and its analysis results. You can answer questions about any aspect of the paper including sample size, methodology, results, statistics, and conclusions.
+You have access to the COMPLETE FULL TEXT of the paper (not a summary) and its analysis results. The entire paper content is provided below - use it to answer any questions about the paper including sample size, methodology, results, statistics, conclusions, author information, and any other details.
+
+IMPORTANT: You have the FULL PAPER TEXT available, not just an abstract or summary. Search through all the provided text to find the information the user needs.
 
 CRITICAL INSTRUCTIONS - DO NOT HALLUCINATE:
 - ONLY answer based on information explicitly stated in the provided paper text below.
@@ -2616,7 +2618,7 @@ CRITICAL INSTRUCTIONS - DO NOT HALLUCINATE:
 - When quoting or referencing the paper, be accurate and do not fabricate quotes.
 
 Be concise, clear, and helpful in your responses. Base your answers ONLY on the paper's actual content provided below.
-When asked about specific details (like sample size, methods, results), search through the provided paper text to find the relevant information. If you cannot find it, say so clearly.`;
+When asked about specific details (like sample size, methods, results), search through the FULL provided paper text to find the relevant information. If you cannot find it, say so clearly.`;
 
   const messages = [{ role: 'system', content: systemPrompt }];
   
