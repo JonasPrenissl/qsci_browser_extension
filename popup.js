@@ -551,13 +551,39 @@ async function addToHistory(analysis) {
     // This ensures chat can still work even if paperContextForChat wasn't captured
     let contextToSave = paperContextForChat;
     if (!contextToSave && analysis) {
-      // Create a minimal context from analysis data
+      // Create a fallback context from analysis data
+      // Build more comprehensive text from available analysis fields
+      let fallbackText = '';
+      if (analysis.reasoning) {
+        fallbackText = 'Analysis Summary: ' + analysis.reasoning + '\n\n';
+      }
+      if (analysis.positive_aspects && Array.isArray(analysis.positive_aspects)) {
+        const positiveTexts = analysis.positive_aspects
+          .map(a => typeof a === 'string' ? a : (a.aspect || a.text || ''))
+          .filter(t => t)
+          .join(', ');
+        if (positiveTexts) {
+          fallbackText += 'Positive Aspects: ' + positiveTexts + '\n\n';
+        }
+      }
+      if (analysis.negative_aspects && Array.isArray(analysis.negative_aspects)) {
+        const negativeTexts = analysis.negative_aspects
+          .map(a => typeof a === 'string' ? a : (a.aspect || a.text || ''))
+          .filter(t => t)
+          .join(', ');
+        if (negativeTexts) {
+          fallbackText += 'Negative Aspects: ' + negativeTexts + '\n\n';
+        }
+      }
+      
       contextToSave = {
         title: analysis.journal_name || (currentTab ? currentTab.title : 'Unknown Paper'),
-        text: analysis.reasoning || '',
+        text: fallbackText || 'Limited paper text available. For full chat access, please ensure you are on the publication page when starting the analysis.',
         url: currentTab ? currentTab.url : null
       };
-      console.log('Q-SCI Debug Popup: Created fallback paper context from analysis data');
+      console.log('Q-SCI Debug Popup: Created fallback paper context from analysis data, text length:', fallbackText.length);
+    } else if (contextToSave) {
+      console.log('Q-SCI Debug Popup: Using paperContextForChat for history, text length:', contextToSave.text?.length || 0);
     }
     
     // Create history item
@@ -2428,6 +2454,8 @@ const CHAT_TEMPERATURE = 0.7;
 const CHAT_HISTORY_LIMIT = 10; // Keep last 5 exchanges (10 messages)
 const CHAT_FALLBACK_MODEL = 'gpt-4o-mini'; // Fallback if window.QSCI_MODEL_NAME not available
 const CHAT_CONTEXT_MAX_LENGTH = 25000; // Maximum characters of paper text to include in chat context
+const CHAT_MIN_TEXT_FOR_PDF_FALLBACK = 5000; // Trigger PDF extraction if HTML text is below this threshold
+const CHAT_SHORT_TEXT_WARNING_THRESHOLD = 1000; // Warn if paper text is below this length (may indicate extraction issues)
 
 // Handle sending a chat message
 async function handleChatSend() {
@@ -2496,22 +2524,69 @@ async function handleChatSend() {
   }
   
   try {
-    // Get the paper context if not already set
+    // Get the paper context if not already set - use robust extraction similar to analysis
     if (!paperContextForChat && currentTab && currentTab.url) {
-      // Try to get paper content from the last analyzed page
+      console.log('Q-SCI Debug Popup: Paper context not set, attempting robust extraction for chat...');
+      
       try {
-        const results = await chrome.scripting.executeScript({
-          target: { tabId: currentTab.id },
-          function: extractPageContent
-        });
+        // First try to get content from the content script via message passing (more robust extraction)
+        let pageData = null;
+        try {
+          pageData = await new Promise((resolve, reject) => {
+            chrome.tabs.sendMessage(currentTab.id, { type: 'EXTRACT_PAGE_DATA' }, response => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else if (response && response.success && response.data) {
+                resolve(response.data);
+              } else {
+                reject(new Error(response?.error || 'Content script extraction failed'));
+              }
+            });
+          });
+          console.log('Q-SCI Debug Popup: Content script extraction successful, text length:', pageData?.text?.length || 0);
+        } catch (contentScriptError) {
+          console.warn('Q-SCI Debug Popup: Content script extraction failed, trying fallback:', contentScriptError.message);
+          
+          // Fall back to executeScript with extractPageContent
+          const results = await chrome.scripting.executeScript({
+            target: { tabId: currentTab.id },
+            function: extractPageContent
+          });
+          
+          if (results && results[0] && results[0].result) {
+            pageData = results[0].result;
+            console.log('Q-SCI Debug Popup: Fallback extraction successful, text length:', pageData?.text?.length || 0);
+          }
+        }
         
-        if (results && results[0] && results[0].result) {
-          const pageData = results[0].result;
-          paperContextForChat = {
-            title: pageData.title || 'Unknown Title',
-            text: pageData.text || '',
-            url: currentTab.url
-          };
+        if (pageData) {
+          let extractedText = pageData.text || '';
+          
+          // If text is limited and PDF URLs are available, try PDF extraction for complete content
+          if (extractedText.length < CHAT_MIN_TEXT_FOR_PDF_FALLBACK && pageData.pdfUrls && pageData.pdfUrls.length > 0 && window.QSCIPDFHandler) {
+            console.log('Q-SCI Debug Popup: Extracted text is short, attempting PDF extraction for fuller context...');
+            try {
+              const pdfResult = await window.QSCIPDFHandler.tryDownloadAndExtractPDF(pageData.pdfUrls);
+              if (pdfResult.success && pdfResult.text && pdfResult.text.length > extractedText.length) {
+                extractedText = pdfResult.text;
+                console.log('Q-SCI Debug Popup: PDF extraction successful, text length:', extractedText.length);
+              }
+            } catch (pdfError) {
+              console.warn('Q-SCI Debug Popup: PDF extraction failed:', pdfError.message);
+            }
+          }
+          
+          // Only set paperContextForChat if we have meaningful content
+          if (extractedText && extractedText.length > 50) {
+            paperContextForChat = {
+              title: pageData.title || 'Unknown Title',
+              text: extractedText,
+              url: currentTab.url
+            };
+            console.log('Q-SCI Debug Popup: Paper context captured for chat, text length:', extractedText.length);
+          } else {
+            console.warn('Q-SCI Debug Popup: Extracted text too short for chat context:', extractedText?.length || 0);
+          }
         }
       } catch (error) {
         console.warn('Q-SCI Debug Popup: Could not extract paper context:', error);
@@ -2605,6 +2680,12 @@ async function handleChatSend() {
 
 // Build chat messages for OpenAI API
 function buildChatMessages(userMessage) {
+  console.log('Q-SCI Debug Popup: Building chat messages...');
+  console.log('Q-SCI Debug Popup: Paper context available:', !!paperContextForChat);
+  if (paperContextForChat) {
+    console.log('Q-SCI Debug Popup: Paper context text length:', paperContextForChat.text?.length || 0);
+  }
+  
   const systemPrompt = `You are Q-SCI, an expert assistant helping users understand scientific publications. 
 You have access to the COMPLETE FULL TEXT of the paper (not a summary) and its analysis results. The entire paper content is provided below - use it to answer any questions about the paper including sample size, methodology, results, statistics, conclusions, author information, and any other details.
 
@@ -2623,10 +2704,17 @@ When asked about specific details (like sample size, methods, results), search t
   const messages = [{ role: 'system', content: systemPrompt }];
   
   // Add paper context if available - now includes FULL paper text for accurate answers
-  if (paperContextForChat) {
+  if (paperContextForChat && paperContextForChat.text && paperContextForChat.text.length > 0) {
     // Truncate paper text if too long to stay within token limits
     // Try to cut at a sentence or word boundary for better readability
     let paperText = paperContextForChat.text || '';
+    const originalLength = paperText.length;
+    
+    // Warn if paper text is suspiciously short (might indicate extraction failed)
+    if (originalLength < CHAT_SHORT_TEXT_WARNING_THRESHOLD) {
+      console.warn(`Q-SCI Debug Popup: Paper text is very short (${originalLength} chars), chat may not have full article access`);
+    }
+    
     if (paperText.length > CHAT_CONTEXT_MAX_LENGTH) {
       let truncatedText = paperText.substring(0, CHAT_CONTEXT_MAX_LENGTH);
       // Try to find the last sentence boundary (period, question mark, or exclamation point followed by space)
@@ -2646,6 +2734,7 @@ When asked about specific details (like sample size, methods, results), search t
         }
       }
       paperText = truncatedText + '\n[... paper text truncated for length ...]';
+      console.log('Q-SCI Debug Popup: Paper text truncated from', originalLength, 'to', CHAT_CONTEXT_MAX_LENGTH, 'characters');
     }
     
     const contextMessage = `Paper Title: ${paperContextForChat.title}\n` +
@@ -2657,6 +2746,9 @@ When asked about specific details (like sample size, methods, results), search t
       `FULL PAPER TEXT:\n${paperText}`;
     
     messages.push({ role: 'system', content: contextMessage });
+    console.log('Q-SCI Debug Popup: Added paper context to chat, final text length:', paperText.length);
+  } else {
+    console.warn('Q-SCI Debug Popup: No paper context available for chat!');
   }
   
   // Add chat history for context (last 5 exchanges = 10 messages)
