@@ -606,7 +606,7 @@ async function addToHistory(analysis) {
       paperContext: contextToSave, // Save paper context for offline chat
       pageUrl: currentTab ? currentTab.url : null,
       pageTitle: currentTab ? currentTab.title : null,
-      hasLimitedContext: isLimitedContext // Flag to help chat know if re-extraction might be needed
+      isLimitedContext: isLimitedContext // Flag to help chat know if re-extraction might be needed
     };
     
     // Add to beginning of array
@@ -2597,12 +2597,15 @@ async function handleChatSend() {
           // This ensures we always use the best available text, not accidentally downgrade
           const existingTextLength = paperContextForChat?.text?.length || 0;
           if (extractedText && extractedText.length > 50 && extractedText.length > existingTextLength) {
+            // Determine if the new context is still limited
+            const isNewContextLimited = extractedText.length < CHAT_MIN_TEXT_FOR_PDF_FALLBACK;
             paperContextForChat = {
               title: pageData.title || paperContextForChat?.title || 'Unknown Title',
               text: extractedText,
-              url: currentTab.url
+              url: currentTab.url || paperContextForChat?.url,
+              isLimitedContext: isNewContextLimited // Update the flag based on new text length
             };
-            console.log('Q-SCI Debug Popup: Paper context updated for chat, new text length:', extractedText.length, '(was:', existingTextLength, ')');
+            console.log('Q-SCI Debug Popup: Paper context updated for chat, new text length:', extractedText.length, '(was:', existingTextLength, '), isLimited:', isNewContextLimited);
           } else if (extractedText && extractedText.length <= existingTextLength) {
             console.log('Q-SCI Debug Popup: Keeping existing paper context (', existingTextLength, 'chars) as it is longer than extracted text (', extractedText.length, 'chars)');
           } else {
@@ -2618,12 +2621,20 @@ async function handleChatSend() {
     // If so, add a warning message to inform the user
     const contextTextLength = paperContextForChat?.text?.length || 0;
     const hasLimitedContext = paperContextForChat?.isLimitedContext || contextTextLength < CHAT_MIN_TEXT_FOR_PDF_FALLBACK;
-    if (hasLimitedContext && contextTextLength > 0) {
+    
+    // Show warning for limited context (including zero-length case)
+    if (hasLimitedContext) {
       console.log('Q-SCI Debug Popup: Chat has limited paper context (' + contextTextLength + ' chars). User may not get answers to specific questions.');
       // Show a one-time warning to the user about limited context
-      if (!paperContextForChat._limitedContextWarningShown) {
-        paperContextForChat._limitedContextWarningShown = true;
-        addChatMessage('ai', '⚠️ Note: I have limited access to the full paper text (' + contextTextLength + ' characters). For detailed questions about sample size, methodology, or specific results, please navigate to the publication page and click "Analyze Page" to refresh the paper context.');
+      // Use a session-specific flag based on the current analysis to ensure warning shows for each distinct paper
+      const warningKey = currentAnalysis?.id || currentAnalysis?.quality_percentage || 'default';
+      if (!paperContextForChat._warningShownFor || paperContextForChat._warningShownFor !== warningKey) {
+        paperContextForChat._warningShownFor = warningKey;
+        // Use i18n if available
+        const warningMsg = window.QSCIi18n 
+          ? window.QSCIi18n.t('chat.limitedContextWarning', { chars: contextTextLength }) 
+          : '⚠️ Note: I have limited access to the full paper text (' + contextTextLength + ' characters). For detailed questions about sample size, methodology, or specific results, please navigate to the publication page and click "Analyze Page" to refresh the paper context.';
+        addChatMessage('ai', warningMsg);
       }
     }
     
@@ -2792,13 +2803,16 @@ When asked about specific details (like sample size, methods, results), search t
       console.log('Q-SCI Debug Popup: Paper text truncated from', originalLength, 'to', CHAT_CONTEXT_MAX_LENGTH, 'characters');
     }
     
+    // Use appropriate label based on whether we have full or limited context
+    const textLabel = hasLimitedContext ? 'AVAILABLE PAPER TEXT (LIMITED)' : 'FULL PAPER TEXT';
+    
     const contextMessage = `Paper Title: ${paperContextForChat.title}\n` +
       `URL: ${paperContextForChat.url}\n\n` +
       `Analysis Summary:\n` +
       `Quality Score: ${currentAnalysis.quality_percentage}%\n` +
       `Assessment: ${currentAnalysis.traffic_light}\n` +
       `Reasoning: ${currentAnalysis.reasoning || 'N/A'}\n\n` +
-      `FULL PAPER TEXT:\n${paperText}`;
+      `${textLabel}:\n${paperText}`;
     
     messages.push({ role: 'system', content: contextMessage });
     console.log('Q-SCI Debug Popup: Added paper context to chat, final text length:', paperText.length);

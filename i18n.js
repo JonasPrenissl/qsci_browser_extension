@@ -88,6 +88,7 @@
       'chat.you': 'Sie',
       'chat.loginRequired': 'Bitte melden Sie sich an, um die Chat-Funktion zu nutzen.',
       'chat.analyzeFirst': 'Bitte analysieren Sie zuerst ein Paper, bevor Sie Fragen stellen.',
+      'chat.limitedContextWarning': '⚠️ Hinweis: Ich habe nur begrenzten Zugang zum vollständigen Papertext ({chars} Zeichen). Für detaillierte Fragen zu Stichprobengröße, Methodik oder spezifischen Ergebnissen navigieren Sie bitte zur Publikationsseite und klicken Sie auf "Paper analysieren", um den Paperkontext zu aktualisieren.',
       
       // Messages
       'message.analyzing': 'Analysiere...',
@@ -232,6 +233,7 @@
       'chat.you': 'You',
       'chat.loginRequired': 'Please login to use the chat feature.',
       'chat.analyzeFirst': 'Please analyze a paper first before asking questions.',
+      'chat.limitedContextWarning': '⚠️ Note: I have limited access to the full paper text ({chars} characters). For detailed questions about sample size, methodology, or specific results, please navigate to the publication page and click "Analyze Page" to refresh the paper context.',
       
       // Messages
       'message.analyzing': 'Analyzing...',
@@ -323,16 +325,32 @@
     /**
      * Get translated string for the given key
      * @param {string} key - Translation key (e.g., 'auth.loginButton')
-     * @param {string} language - Optional language override
+     * @param {object|string} paramsOrLanguage - Either substitution params {key: value} or language override string
      * @returns {string} Translated string or key if not found
      */
-    t(key, language = null) {
-      const lang = language || this.currentLanguage;
-      const translation = translations[lang] && translations[lang][key];
+    t(key, paramsOrLanguage = null) {
+      // Determine if second parameter is params object or language string
+      let lang = this.currentLanguage;
+      let params = null;
+      
+      if (typeof paramsOrLanguage === 'string') {
+        lang = paramsOrLanguage;
+      } else if (typeof paramsOrLanguage === 'object' && paramsOrLanguage !== null) {
+        params = paramsOrLanguage;
+      }
+      
+      let translation = translations[lang] && translations[lang][key];
       
       if (!translation) {
         console.warn(`Q-SCI i18n: Missing translation for key "${key}" in language "${lang}"`);
         return key;
+      }
+      
+      // Handle variable substitution {varName} -> value
+      if (params) {
+        for (const [paramKey, paramValue] of Object.entries(params)) {
+          translation = translation.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), paramValue);
+        }
       }
       
       return translation;
