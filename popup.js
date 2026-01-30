@@ -550,6 +550,8 @@ async function addToHistory(analysis) {
     // Create paper context if not available
     // This ensures chat can still work even if paperContextForChat wasn't captured
     let contextToSave = paperContextForChat;
+    let isLimitedContext = false;
+    
     if (!contextToSave && analysis) {
       // Create a fallback context from analysis data
       // Build more comprehensive text from available analysis fields
@@ -579,11 +581,20 @@ async function addToHistory(analysis) {
       contextToSave = {
         title: analysis.journal_name || (currentTab ? currentTab.title : 'Unknown Paper'),
         text: fallbackText || 'Limited paper text available. For full chat access, please ensure you are on the publication page when starting the analysis.',
-        url: currentTab ? currentTab.url : null
+        url: currentTab ? currentTab.url : null,
+        isLimitedContext: true // Flag to indicate this is a fallback with limited text
       };
+      isLimitedContext = true;
       console.log('Q-SCI Debug Popup: Created fallback paper context from analysis data, text length:', fallbackText.length);
     } else if (contextToSave) {
-      console.log('Q-SCI Debug Popup: Using paperContextForChat for history, text length:', contextToSave.text?.length || 0);
+      // Check if the existing context has enough text for full-text queries
+      const textLength = contextToSave.text?.length || 0;
+      isLimitedContext = textLength < CHAT_MIN_TEXT_FOR_PDF_FALLBACK;
+      if (isLimitedContext) {
+        contextToSave.isLimitedContext = true;
+        console.log('Q-SCI Debug Popup: Paper context has limited text (' + textLength + ' chars), marking as limited');
+      }
+      console.log('Q-SCI Debug Popup: Using paperContextForChat for history, text length:', textLength);
     }
     
     // Create history item
@@ -594,7 +605,8 @@ async function addToHistory(analysis) {
       pdfUrl: currentPdfUrl,
       paperContext: contextToSave, // Save paper context for offline chat
       pageUrl: currentTab ? currentTab.url : null,
-      pageTitle: currentTab ? currentTab.title : null
+      pageTitle: currentTab ? currentTab.title : null,
+      hasLimitedContext: isLimitedContext // Flag to help chat know if re-extraction might be needed
     };
     
     // Add to beginning of array
@@ -2524,9 +2536,14 @@ async function handleChatSend() {
   }
   
   try {
-    // Get the paper context if not already set - use robust extraction similar to analysis
-    if (!paperContextForChat && currentTab && currentTab.url) {
-      console.log('Q-SCI Debug Popup: Paper context not set, attempting robust extraction for chat...');
+    // Get the paper context if not already set or if it has insufficient text for full-text queries
+    // CHAT_MIN_TEXT_FOR_PDF_FALLBACK (5000 chars) is used as threshold to determine if we have enough text
+    // This ensures the AI has access to full paper text, not just a summary
+    const currentContextTextLength = paperContextForChat?.text?.length || 0;
+    const needsExtraction = !paperContextForChat || currentContextTextLength < CHAT_MIN_TEXT_FOR_PDF_FALLBACK;
+    
+    if (needsExtraction && currentTab && currentTab.url) {
+      console.log('Q-SCI Debug Popup: Paper context needs extraction (null or insufficient text:', currentContextTextLength, 'chars), attempting robust extraction for chat...');
       
       try {
         // First try to get content from the content script via message passing (more robust extraction)
@@ -2576,20 +2593,37 @@ async function handleChatSend() {
             }
           }
           
-          // Only set paperContextForChat if we have meaningful content
-          if (extractedText && extractedText.length > 50) {
+          // Only update paperContextForChat if the new extraction has MORE text than the existing context
+          // This ensures we always use the best available text, not accidentally downgrade
+          const existingTextLength = paperContextForChat?.text?.length || 0;
+          if (extractedText && extractedText.length > 50 && extractedText.length > existingTextLength) {
             paperContextForChat = {
-              title: pageData.title || 'Unknown Title',
+              title: pageData.title || paperContextForChat?.title || 'Unknown Title',
               text: extractedText,
               url: currentTab.url
             };
-            console.log('Q-SCI Debug Popup: Paper context captured for chat, text length:', extractedText.length);
+            console.log('Q-SCI Debug Popup: Paper context updated for chat, new text length:', extractedText.length, '(was:', existingTextLength, ')');
+          } else if (extractedText && extractedText.length <= existingTextLength) {
+            console.log('Q-SCI Debug Popup: Keeping existing paper context (', existingTextLength, 'chars) as it is longer than extracted text (', extractedText.length, 'chars)');
           } else {
             console.warn('Q-SCI Debug Popup: Extracted text too short for chat context:', extractedText?.length || 0);
           }
         }
       } catch (error) {
         console.warn('Q-SCI Debug Popup: Could not extract paper context:', error);
+      }
+    }
+    
+    // Check if we still have limited context after extraction attempts
+    // If so, add a warning message to inform the user
+    const contextTextLength = paperContextForChat?.text?.length || 0;
+    const hasLimitedContext = paperContextForChat?.isLimitedContext || contextTextLength < CHAT_MIN_TEXT_FOR_PDF_FALLBACK;
+    if (hasLimitedContext && contextTextLength > 0) {
+      console.log('Q-SCI Debug Popup: Chat has limited paper context (' + contextTextLength + ' chars). User may not get answers to specific questions.');
+      // Show a one-time warning to the user about limited context
+      if (!paperContextForChat._limitedContextWarningShown) {
+        paperContextForChat._limitedContextWarningShown = true;
+        addChatMessage('ai', '⚠️ Note: I have limited access to the full paper text (' + contextTextLength + ' characters). For detailed questions about sample size, methodology, or specific results, please navigate to the publication page and click "Analyze Page" to refresh the paper context.');
       }
     }
     
@@ -2686,7 +2720,27 @@ function buildChatMessages(userMessage) {
     console.log('Q-SCI Debug Popup: Paper context text length:', paperContextForChat.text?.length || 0);
   }
   
-  const systemPrompt = `You are Q-SCI, an expert assistant helping users understand scientific publications. 
+  // Determine if we have limited context (this affects how we instruct the AI)
+  const hasLimitedContext = paperContextForChat?.isLimitedContext || 
+    (paperContextForChat?.text?.length || 0) < CHAT_MIN_TEXT_FOR_PDF_FALLBACK;
+  
+  let systemPrompt;
+  if (hasLimitedContext) {
+    // When context is limited, be honest with the AI about what it has access to
+    systemPrompt = `You are Q-SCI, an expert assistant helping users understand scientific publications. 
+You have access to a LIMITED PORTION of the paper text (possibly just the abstract or summary). The text provided below may not contain all the details from the full paper.
+
+IMPORTANT: The paper text provided is LIMITED and may not include all sections (like Methods, Results, or supplementary data). If the user asks about specific details like sample size, methodology, or statistics that are not in the provided text, honestly inform them that the full paper text is not available for this query.
+
+CRITICAL INSTRUCTIONS - DO NOT HALLUCINATE:
+- ONLY answer based on information explicitly stated in the provided paper text below.
+- If the requested information is not found in the provided text, respond: "I was unable to find this specific information in the available paper text. The full paper text may not have been captured. Please try navigating to the publication page and asking again, or try the 'Analyze Page' button to refresh the paper context."
+- NEVER make up, infer, or assume facts that are not directly stated in the text.
+- Be clear when information might be in the full paper but is not available in the current context.
+
+Be concise, clear, and helpful in your responses. Base your answers ONLY on the paper's actual content provided below.`;
+  } else {
+    systemPrompt = `You are Q-SCI, an expert assistant helping users understand scientific publications. 
 You have access to the COMPLETE FULL TEXT of the paper (not a summary) and its analysis results. The entire paper content is provided below - use it to answer any questions about the paper including sample size, methodology, results, statistics, conclusions, author information, and any other details.
 
 IMPORTANT: You have the FULL PAPER TEXT available, not just an abstract or summary. Search through all the provided text to find the information the user needs.
@@ -2700,6 +2754,7 @@ CRITICAL INSTRUCTIONS - DO NOT HALLUCINATE:
 
 Be concise, clear, and helpful in your responses. Base your answers ONLY on the paper's actual content provided below.
 When asked about specific details (like sample size, methods, results), search through the FULL provided paper text to find the relevant information. If you cannot find it, say so clearly.`;
+  }
 
   const messages = [{ role: 'system', content: systemPrompt }];
   
