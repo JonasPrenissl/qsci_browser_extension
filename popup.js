@@ -282,6 +282,13 @@ function setupEventListeners() {
       console.log('Q-SCI Debug Popup: Delete history button clicked for item:', itemId);
       deleteHistoryItem(itemId);
     }
+    
+    // Handle return to current page button
+    const returnBtn = e.target.closest('.return-to-current-btn');
+    if (returnBtn) {
+      console.log('Q-SCI Debug Popup: Return to current page button clicked');
+      returnToCurrentPage();
+    }
   });
 }
 
@@ -2403,7 +2410,7 @@ function showHistoryIndicator(item) {
     indicator.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span>📚 ${loadedText} (${dateStr} ${timeStr})</span>
-        <button class="btn btn-secondary" onclick="returnToCurrentPage()" style="padding: 4px 8px; font-size: 11px; margin-left: 8px;">${returnText}</button>
+        <button class="btn btn-secondary return-to-current-btn" style="padding: 4px 8px; font-size: 11px; margin-left: 8px;">${returnText}</button>
       </div>
     `;
     
