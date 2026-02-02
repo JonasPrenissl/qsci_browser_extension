@@ -2311,6 +2311,8 @@ async function showHistoryView() {
     // Show history section
     if (elements.historySection) {
       elements.historySection.style.display = 'block';
+      // Scroll to the history section so the user can see it
+      elements.historySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     
     // Render history list
